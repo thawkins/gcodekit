@@ -64,6 +64,33 @@ Additional Requirements:
 10. Modular Architecture: Separate communication logic from UI components for maintainability
 11. Testing: Implement comprehensive unit tests for all components using `cargo test`. Tests should cover core functionality, edge cases, and error conditions. Unit tests must pass as part of the build process and CI/CD pipeline.
 
+Future Enhancements (UGS Feature Parity):
+12. **Advanced Visualizer**: Right-click jog to location, customizable colors for G0/G1/G2/G3 paths, 6-axis visualization (XYZABC), outline gcode functionality
+13. **Designer Editor**: Import SVG/DXF/C2D files, draw shapes/text, boolean operations (union/intersect/subtract), undo/redo, shape manipulation (move/scale/rotate/mirror), grid multiplication, clipart library, bitmap tracing
+14. **G-code Editor Enhancements**: Highlight selected rows in visualizer, run from selected line, model rotation/mirroring, move to zero location
+15. **G-code Optimization**: Remove comments, truncate decimal precision, convert arcs to line segments, remove whitespace
+16. **Work Coordinate System (WCS)**: G54-G59 coordinate system management and switching
+17. **Probing Routines**: Z-probing, auto-leveling, workpiece measurement with G38.x commands
+18. **Tool Management**: Tool length offsets (G43/G49), tool change support
+19. **Machine Calibration**: Step calibration, backlash compensation, homing sequence configuration
+20. **Multiple Controller Support**: Add support for Smoothieware, TinyG, G2core, and FluidNC controllers
+21. **Gamepad/Joystick Support**: SDL-based gamepad/joystick control with customizable button mapping
+22. **Web Pendant Interface**: Remote control via web-based pendant interface
+23. **Firmware Management**: GRBL firmware updating and flashing capabilities
+24. **Settings Management**: Backup/restore GRBL settings, multiple machine profiles
+25. **File Management**: Multiple file queuing, sequential processing, file preprocessing
+26. **Error Recovery**: Automatic error handling and recovery mechanisms
+27. **Safety Features**: Emergency stop, soft limits, safety door handling
+28. **Job Management**: Time estimation, progress tracking, pause/resume functionality
+29. **Material Database**: Predefined material settings and cutting parameters
+30. **Plugin System**: Extensible architecture for custom plugins and extensions
+31. **Pendant Support**: External pendant/joystick hardware support
+32. **Custom Button Panels**: User-defined control buttons and macros
+33. **Keybinding Customization**: Configurable keyboard shortcuts for all actions
+34. **Data Logging**: Operation logging, analytics, and performance metrics
+35. **Multi-axis Support**: Support for 4+ axis machines (ABCD axes)
+36. **Configurable UI**: Dockable windows, customizable toolbars, responsive design
+
 References
 1. The existing application called "Candle" written in C++ can be found at: https://github.com/Denvi/Candle
 2. The firmware for the GRBL controler which interprets the gcode used on the devices.  https://github.com/grbl/grbl 
