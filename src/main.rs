@@ -36,6 +36,7 @@ struct GcodeKitApp {
     parsed_paths: Vec<PathSegment>,
     current_position: (f32, f32, f32),
     selected_line: Option<usize>,
+    sending_from_line: Option<usize>,
     // CAM parameters
     shape_width: f32,
     shape_height: f32,
@@ -100,6 +101,7 @@ impl GcodeKitApp {
 
     fn disconnect_from_device(&mut self) {
         self.communication.disconnect_from_device();
+        self.sending_from_line = None; // Clear sending indicator
         self.log_console(&self.communication.status_message.clone());
     }
 
@@ -117,6 +119,7 @@ impl GcodeKitApp {
                         .to_string_lossy()
                         .to_string();
                     self.parse_gcode();
+                    self.sending_from_line = None; // Clear sending indicator
                     self.status_message = format!("Loaded {}", self.gcode_filename);
                 }
                 Err(e) => {
@@ -139,6 +142,53 @@ impl GcodeKitApp {
 
         // TODO: Implement actual sending with queuing
         self.status_message = "Sending G-code to device...".to_string();
+    }
+
+    fn send_gcode_from_line(&mut self, start_line: usize) {
+        if self.communication.connection_state != communication::ConnectionState::Connected {
+            self.status_message = "Not connected to device".to_string();
+            return;
+        }
+
+        if self.gcode_content.is_empty() {
+            self.status_message = "No G-code loaded".to_string();
+            return;
+        }
+
+        let lines: Vec<&str> = self.gcode_content.lines().collect();
+        if start_line >= lines.len() {
+            self.status_message = "Invalid line number".to_string();
+            return;
+        }
+
+        // Send G-code lines starting from the selected line
+        let lines_to_send = &lines[start_line..];
+        let mut sent_count = 0;
+
+        for line in lines_to_send {
+            let trimmed = line.trim();
+            if !trimmed.is_empty() && !trimmed.starts_with(';') {
+                match self.communication.send_gcode_line(trimmed) {
+                    Ok(_) => sent_count += 1,
+                    Err(e) => {
+                        self.status_message = format!("Error sending line: {}", e);
+                        return;
+                    }
+                }
+            }
+        }
+
+        self.sending_from_line = Some(start_line);
+        self.status_message = format!(
+            "Sent {} G-code lines from line {}",
+            sent_count,
+            start_line + 1
+        );
+        self.log_console(&format!(
+            "Sent {} lines starting from line {}",
+            sent_count,
+            start_line + 1
+        ));
     }
 
     fn jog_axis(&mut self, axis: char, distance: f32) {
@@ -836,6 +886,15 @@ impl eframe::App for GcodeKitApp {
                     }
                 }
                 Tab::Visualizer3D => {
+                    // Handle keyboard shortcuts
+                    if ui.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::R)) {
+                        if let Some(line_number) = self.selected_line {
+                            if self.communication.connection_state == communication::ConnectionState::Connected {
+                                self.send_gcode_from_line(line_number);
+                            }
+                        }
+                    }
+
                     ui.vertical(|ui| {
                         ui.horizontal(|ui| {
                             ui.label("3D Visualizer");
@@ -846,6 +905,15 @@ impl eframe::App for GcodeKitApp {
                             if ui.button("📏 Fit to View").clicked() {
                                 // TODO: Fit view to content
                             }
+                            ui.separator();
+                            let run_button_enabled = self.selected_line.is_some() && self.communication.connection_state == communication::ConnectionState::Connected;
+                            if ui.add_enabled(run_button_enabled, egui::Button::new("▶️ Run from Selected Line")).clicked() {
+                                if let Some(line_number) = self.selected_line {
+                                    self.send_gcode_from_line(line_number);
+                                }
+                            }
+                            ui.separator();
+                            ui.label("(Ctrl+R to run from selected line)");
                         });
 
                         ui.separator();
@@ -968,6 +1036,9 @@ impl eframe::App for GcodeKitApp {
                             }
 
                             ui.label(format!("Segments: {}", self.parsed_paths.len()));
+                            if let Some(sending_line) = self.sending_from_line {
+                                ui.colored_label(egui::Color32::GREEN, format!("Sending from line {}", sending_line + 1));
+                            }
                         }
 
                         ui.separator();
