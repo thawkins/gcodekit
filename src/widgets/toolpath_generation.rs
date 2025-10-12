@@ -21,7 +21,7 @@ pub fn show_toolpath_generation_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp)
             .unwrap_or(&"None".to_string())
             .clone();
 
-        egui::ComboBox::from_label("")
+        egui::ComboBox::from_id_salt("toolpath_material_combobox")
             .selected_text(&current_selection)
             .show_ui(ui, |ui| {
                 for material_name in &material_names {

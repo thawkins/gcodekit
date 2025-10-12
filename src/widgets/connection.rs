@@ -12,7 +12,7 @@ pub fn show_connection_widget(ui: &mut egui::Ui, communication: &mut dyn CncCont
 
         // Port selection
         let mut selected_port = communication.get_selected_port().to_string();
-        egui::ComboBox::from_label("Serial Port")
+        egui::ComboBox::from_id_salt("serial_port_combobox")
             .selected_text(&selected_port)
             .show_ui(ui, |ui| {
                 for port in communication.get_available_ports() {

@@ -1,10 +1,9 @@
 use anyhow::Result;
 use eframe::egui;
 use image::GrayImage;
-use lyon::path::Path;
 use lyon::math::point;
-use lyon::tessellation::{FillTessellator, FillOptions};
-use lyon::tessellation::geometry_builder::{simple_builder, VertexBuffers};
+use lyon::path::Path;
+
 use rhai::{AST, Engine, Scope};
 use std::collections::VecDeque;
 use std::fs;
@@ -579,7 +578,7 @@ impl DesignerState {
                                 let radius = *stepover;
                                 let mut angle: f32 = 0.0;
                                 while angle < 360.0 {
-                                    let rad = angle.to_radians();
+                                    let _rad = angle.to_radians();
                                     let cx = center_x + (angle / 10.0).cos() * radius;
                                     let cy = center_y + (angle / 10.0).sin() * radius;
                                     gcode_lines.push(format!("G1 X{:.2} Y{:.2} F1000", cx, cy));
@@ -738,7 +737,7 @@ impl DesignerState {
                 }
                 Shape::Parametric {
                     script,
-                    ast,
+                    ast: _,
                     bounds,
                 } => {
                     gcode_lines.push(format!("; Parametric shape: {}", script));
@@ -1005,15 +1004,15 @@ impl DesignerState {
                             }
                             self.selected_shape = None;
                         }
-                        ui.close_menu();
+                        ui.close();
                     }
                     if ui.button("Intersect").clicked() {
                         // TODO: Implement intersect
-                        ui.close_menu();
+                        ui.close();
                     }
                     if ui.button("Subtract").clicked() {
                         // TODO: Implement subtract
-                        ui.close_menu();
+                        ui.close();
                     }
                 });
 
@@ -1794,11 +1793,15 @@ impl DesignerState {
     }
 
     fn shape_to_path(&self, shape: &Shape) -> Option<Path> {
-        use lyon::path::builder::*;
         let mut builder = Path::builder();
 
         match shape {
-            Shape::Rectangle { x, y, width, height } => {
+            Shape::Rectangle {
+                x,
+                y,
+                width,
+                height,
+            } => {
                 builder.begin(point(*x, *y));
                 builder.line_to(point(x + width, *y));
                 builder.line_to(point(x + width, y + height));
@@ -1845,7 +1848,12 @@ impl DesignerState {
         for &idx in indices {
             if let Some(shape) = self.shapes.get(idx) {
                 match shape {
-                    Shape::Rectangle { x, y, width, height } => {
+                    Shape::Rectangle {
+                        x,
+                        y,
+                        width,
+                        height,
+                    } => {
                         min_x = min_x.min(*x);
                         min_y = min_y.min(*y);
                         max_x = max_x.max(x + width);

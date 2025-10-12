@@ -200,222 +200,6 @@ impl SmoothiewareCommunication {
                                 self.response_queue.push_back(line.to_string());
                             }
                         }
-
-                        impl CncController for SmoothiewareCommunication {
-                            fn as_any(&self) -> &dyn Any {
-                                self
-                            }
-
-                            fn set_port(&mut self, port: String) {
-                                self.selected_port = port;
-                            }
-
-                            fn connect(&mut self) -> Result<(), Box<dyn Error>> {
-                                self.connect_to_device();
-                                Ok(())
-                            }
-
-                            fn disconnect(&mut self) {
-                                self.disconnect_from_device();
-                            }
-
-                            fn send_gcode_line(
-                                &mut self,
-                                line: &str,
-                            ) -> Result<(), Box<dyn Error>> {
-                                self.send_gcode_line(line).map_err(|e| e)
-                            }
-
-                            fn read_response(&mut self) -> Option<String> {
-                                self.read_smoothieware_responses().first().cloned()
-                            }
-
-                            fn is_connected(&self) -> bool {
-                                self.connection_state == ConnectionState::Connected
-                            }
-
-                            fn get_status(&self) -> String {
-                                format!("{:?}", self.connection_state)
-                            }
-
-                            fn refresh_ports(&mut self) {
-                                self.refresh_ports();
-                            }
-
-                            fn get_available_ports(&self) -> &Vec<String> {
-                                &self.available_ports
-                            }
-
-                            fn get_selected_port(&self) -> &str {
-                                &self.selected_port
-                            }
-
-                            fn get_connection_state(&self) -> &ConnectionState {
-                                &self.connection_state
-                            }
-
-                            fn get_status_message(&self) -> &str {
-                                &self.status_message
-                            }
-
-                            fn jog_axis(&mut self, axis: char, distance: f32) {
-                                self.jog_axis(axis, distance);
-                            }
-
-                            fn home_all_axes(&mut self) {
-                                self.home_all_axes();
-                            }
-
-                            fn send_spindle_override(&mut self, percentage: f32) {
-                                self.send_spindle_override(percentage);
-                            }
-
-                            fn send_feed_override(&mut self, percentage: f32) {
-                                self.send_feed_override(percentage);
-                            }
-
-                            fn get_version(&self) -> &str {
-                                &self.grbl_version
-                            }
-
-                            fn handle_response(
-                                &mut self,
-                                _response: &str,
-                            ) -> Option<crate::MachinePosition> {
-                                // For now, do nothing. Could parse Smoothieware responses in the future.
-                                None
-                            }
-
-                            // Error recovery methods
-                            fn get_recovery_config(
-                                &self,
-                            ) -> &crate::communication::ErrorRecoveryConfig
-                            {
-                                &self.recovery_config
-                            }
-
-                            fn get_recovery_state(&self) -> &crate::communication::RecoveryState {
-                                &self.recovery_state
-                            }
-
-                            fn set_recovery_config(
-                                &mut self,
-                                config: crate::communication::ErrorRecoveryConfig,
-                            ) {
-                                self.recovery_config = config;
-                            }
-
-                            fn attempt_recovery(
-                                &mut self,
-                                error: &str,
-                            ) -> Result<crate::communication::RecoveryAction, String>
-                            {
-                                if !self.recovery_config.auto_recovery_enabled {
-                                    println!(
-                                        "[RECOVERY] Auto recovery disabled for error: {}",
-                                        error
-                                    );
-                                    return Err("Auto recovery disabled".to_string());
-                                }
-
-                                self.recovery_state.last_error = Some(error.to_string());
-                                println!("[RECOVERY] Attempting recovery for error: {}", error);
-
-                                // Classify error and determine recovery action
-                                let action = if error.contains("connection")
-                                    || error.contains("timeout")
-                                {
-                                    // Connection-related errors
-                                    println!(
-                                        "[RECOVERY] Classified as connection error (attempts: {}/{})",
-                                        self.recovery_state.reconnect_attempts,
-                                        self.recovery_config.max_reconnect_attempts
-                                    );
-                                    if self.recovery_state.reconnect_attempts
-                                        < self.recovery_config.max_reconnect_attempts
-                                    {
-                                        self.recovery_state.reconnect_attempts += 1;
-                                        self.recovery_state.last_reconnect_attempt =
-                                            Some(std::time::Instant::now());
-                                        self.connection_state = ConnectionState::Recovering;
-                                        println!(
-                                            "[RECOVERY] Initiating reconnection attempt {}",
-                                            self.recovery_state.reconnect_attempts
-                                        );
-                                        crate::communication::RecoveryAction::Reconnect
-                                    } else {
-                                        println!(
-                                            "[RECOVERY] Max reconnection attempts reached, aborting job"
-                                        );
-                                        crate::communication::RecoveryAction::AbortJob
-                                    }
-                                } else if error.contains("command") || error.contains("syntax") {
-                                    // Command-related errors
-                                    println!(
-                                        "[RECOVERY] Classified as command error (retries: {}/{})",
-                                        self.recovery_state.command_retry_count,
-                                        self.recovery_config.max_command_retries
-                                    );
-                                    if self.recovery_state.command_retry_count
-                                        < self.recovery_config.max_command_retries
-                                    {
-                                        self.recovery_state.command_retry_count += 1;
-                                        println!(
-                                            "[RECOVERY] Retrying command (attempt {})",
-                                            self.recovery_state.command_retry_count
-                                        );
-                                        crate::communication::RecoveryAction::RetryCommand
-                                    } else {
-                                        println!(
-                                            "[RECOVERY] Max command retries reached, skipping command"
-                                        );
-                                        crate::communication::RecoveryAction::SkipCommand
-                                    }
-                                } else if error.contains("alarm") || error.contains("emergency") {
-                                    // Critical errors
-                                    println!(
-                                        "[RECOVERY] Classified as critical error (reset_on_critical: {})",
-                                        self.recovery_config.reset_on_critical_error
-                                    );
-                                    if self.recovery_config.reset_on_critical_error {
-                                        println!(
-                                            "[RECOVERY] Resetting controller due to critical error"
-                                        );
-                                        crate::communication::RecoveryAction::ResetController
-                                    } else {
-                                        println!("[RECOVERY] Aborting job due to critical error");
-                                        crate::communication::RecoveryAction::AbortJob
-                                    }
-                                } else {
-                                    // Unknown errors - try reset
-                                    println!(
-                                        "[RECOVERY] Classified as unknown error, attempting controller reset"
-                                    );
-                                    crate::communication::RecoveryAction::ResetController
-                                };
-
-                                self.recovery_state
-                                    .recovery_actions_taken
-                                    .push(action.clone());
-                                println!("[RECOVERY] Recovery action taken: {:?}", action);
-                                Ok(action)
-                            }
-
-                            fn reset_recovery_state(&mut self) {
-                                self.recovery_state = crate::communication::RecoveryState {
-                                    reconnect_attempts: 0,
-                                    last_reconnect_attempt: None,
-                                    command_retry_count: 0,
-                                    last_error: None,
-                                    recovery_actions_taken: Vec::new(),
-                                };
-                            }
-
-                            fn is_recovering(&self) -> bool {
-                                self.connection_state == ConnectionState::Recovering
-                                    || self.recovery_state.reconnect_attempts > 0
-                            }
-                        }
                     }
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {
@@ -578,5 +362,189 @@ impl SmoothiewareCommunication {
         } else {
             self.status_message = format!("Feed override: {}%", override_percent);
         }
+    }
+}
+
+impl CncController for SmoothiewareCommunication {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn set_port(&mut self, port: String) {
+        self.selected_port = port;
+    }
+
+    fn connect(&mut self) -> Result<(), Box<dyn Error>> {
+        self.connect_to_device();
+        Ok(())
+    }
+
+    fn disconnect(&mut self) {
+        self.disconnect_from_device();
+    }
+
+    fn send_gcode_line(&mut self, line: &str) -> Result<(), Box<dyn Error>> {
+        self.send_gcode_line(line).map_err(|e| e)
+    }
+
+    fn read_response(&mut self) -> Option<String> {
+        self.read_smoothieware_responses().first().cloned()
+    }
+
+    fn is_connected(&self) -> bool {
+        self.connection_state == ConnectionState::Connected
+    }
+
+    fn get_status(&self) -> String {
+        format!("{:?}", self.connection_state)
+    }
+
+    fn refresh_ports(&mut self) {
+        self.refresh_ports();
+    }
+
+    fn get_available_ports(&self) -> &Vec<String> {
+        &self.available_ports
+    }
+
+    fn get_selected_port(&self) -> &str {
+        &self.selected_port
+    }
+
+    fn get_connection_state(&self) -> &ConnectionState {
+        &self.connection_state
+    }
+
+    fn get_status_message(&self) -> &str {
+        &self.status_message
+    }
+
+    fn jog_axis(&mut self, axis: char, distance: f32) {
+        self.jog_axis(axis, distance);
+    }
+
+    fn home_all_axes(&mut self) {
+        self.home_all_axes();
+    }
+
+    fn send_spindle_override(&mut self, percentage: f32) {
+        self.send_spindle_override(percentage);
+    }
+
+    fn send_feed_override(&mut self, percentage: f32) {
+        self.send_feed_override(percentage);
+    }
+
+    fn get_version(&self) -> &str {
+        &self.grbl_version
+    }
+
+    fn handle_response(&mut self, _response: &str) -> Option<crate::MachinePosition> {
+        // For now, do nothing. Could parse Smoothieware responses in the future.
+        None
+    }
+
+    // Error recovery methods
+    fn get_recovery_config(&self) -> &crate::communication::ErrorRecoveryConfig {
+        &self.recovery_config
+    }
+
+    fn get_recovery_state(&self) -> &crate::communication::RecoveryState {
+        &self.recovery_state
+    }
+
+    fn set_recovery_config(&mut self, config: crate::communication::ErrorRecoveryConfig) {
+        self.recovery_config = config;
+    }
+
+    fn attempt_recovery(
+        &mut self,
+        error: &str,
+    ) -> Result<crate::communication::RecoveryAction, String> {
+        if !self.recovery_config.auto_recovery_enabled {
+            println!("[RECOVERY] Auto recovery disabled for error: {}", error);
+            return Err("Auto recovery disabled".to_string());
+        }
+
+        self.recovery_state.last_error = Some(error.to_string());
+        println!("[RECOVERY] Attempting recovery for error: {}", error);
+
+        // Classify error and determine recovery action
+        let action = if error.contains("connection") || error.contains("timeout") {
+            // Connection-related errors
+            println!(
+                "[RECOVERY] Classified as connection error (attempts: {}/{})",
+                self.recovery_state.reconnect_attempts, self.recovery_config.max_reconnect_attempts
+            );
+            if self.recovery_state.reconnect_attempts < self.recovery_config.max_reconnect_attempts
+            {
+                self.recovery_state.reconnect_attempts += 1;
+                self.recovery_state.last_reconnect_attempt = Some(std::time::Instant::now());
+                self.connection_state = ConnectionState::Recovering;
+                println!(
+                    "[RECOVERY] Initiating reconnection attempt {}",
+                    self.recovery_state.reconnect_attempts
+                );
+                crate::communication::RecoveryAction::Reconnect
+            } else {
+                println!("[RECOVERY] Max reconnection attempts reached, aborting job");
+                crate::communication::RecoveryAction::AbortJob
+            }
+        } else if error.contains("command") || error.contains("syntax") {
+            // Command-related errors
+            println!(
+                "[RECOVERY] Classified as command error (retries: {}/{})",
+                self.recovery_state.command_retry_count, self.recovery_config.max_command_retries
+            );
+            if self.recovery_state.command_retry_count < self.recovery_config.max_command_retries {
+                self.recovery_state.command_retry_count += 1;
+                println!(
+                    "[RECOVERY] Retrying command (attempt {})",
+                    self.recovery_state.command_retry_count
+                );
+                crate::communication::RecoveryAction::RetryCommand
+            } else {
+                println!("[RECOVERY] Max command retries reached, skipping command");
+                crate::communication::RecoveryAction::SkipCommand
+            }
+        } else if error.contains("alarm") || error.contains("emergency") {
+            // Critical errors
+            println!(
+                "[RECOVERY] Classified as critical error (reset_on_critical: {})",
+                self.recovery_config.reset_on_critical_error
+            );
+            if self.recovery_config.reset_on_critical_error {
+                println!("[RECOVERY] Resetting controller due to critical error");
+                crate::communication::RecoveryAction::ResetController
+            } else {
+                println!("[RECOVERY] Aborting job due to critical error");
+                crate::communication::RecoveryAction::AbortJob
+            }
+        } else {
+            // Unknown errors - try reset
+            println!("[RECOVERY] Classified as unknown error, attempting controller reset");
+            crate::communication::RecoveryAction::ResetController
+        };
+
+        self.recovery_state
+            .recovery_actions_taken
+            .push(action.clone());
+        println!("[RECOVERY] Recovery action taken: {:?}", action);
+        Ok(action)
+    }
+
+    fn reset_recovery_state(&mut self) {
+        self.recovery_state = crate::communication::RecoveryState {
+            reconnect_attempts: 0,
+            last_reconnect_attempt: None,
+            command_retry_count: 0,
+            last_error: None,
+            recovery_actions_taken: Vec::new(),
+        };
+    }
+
+    fn is_recovering(&self) -> bool {
+        self.connection_state == ConnectionState::Recovering
+            || self.recovery_state.reconnect_attempts > 0
     }
 }

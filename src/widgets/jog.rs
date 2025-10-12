@@ -19,10 +19,10 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         // Z axis (up/down)
         ui.horizontal(|ui| {
             ui.label("Z");
-            if ui.button("⬆").clicked() {
+            if ui.button("⬆##z_up").clicked() {
                 app.jog_axis('Z', app.jog_step_size);
             }
-            if ui.button("⬇").clicked() {
+            if ui.button("⬇##z_down").clicked() {
                 app.jog_axis('Z', -app.jog_step_size);
             }
         });
@@ -30,10 +30,10 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         // Y axis (forward/back)
         ui.horizontal(|ui| {
             ui.label("Y");
-            if ui.button("⬅").clicked() {
+            if ui.button("⬅##y_left").clicked() {
                 app.jog_axis('Y', -app.jog_step_size);
             }
-            if ui.button("⮕").clicked() {
+            if ui.button("⮕##y_right").clicked() {
                 app.jog_axis('Y', app.jog_step_size);
             }
         });
@@ -41,10 +41,10 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         // X axis (left/right)
         ui.horizontal(|ui| {
             ui.label("X");
-            if ui.button("⬅").clicked() {
+            if ui.button("⬅##x_left").clicked() {
                 app.jog_axis('X', -app.jog_step_size);
             }
-            if ui.button("⮕").clicked() {
+            if ui.button("⮕##x_right").clicked() {
                 app.jog_axis('X', app.jog_step_size);
             }
         });
@@ -63,10 +63,10 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             if app.current_position.a.is_some() {
                 ui.horizontal(|ui| {
                     ui.label("A");
-                    if ui.button("⟲").clicked() {
+                    if ui.button("⟲##a_left").clicked() {
                         app.jog_axis('A', -app.jog_step_size);
                     }
-                    if ui.button("⟳").clicked() {
+                    if ui.button("⟳##a_right").clicked() {
                         app.jog_axis('A', app.jog_step_size);
                     }
                 });
@@ -76,10 +76,10 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             if app.current_position.b.is_some() {
                 ui.horizontal(|ui| {
                     ui.label("B");
-                    if ui.button("⟲").clicked() {
+                    if ui.button("⟲##b_left").clicked() {
                         app.jog_axis('B', -app.jog_step_size);
                     }
-                    if ui.button("⟳").clicked() {
+                    if ui.button("⟳##b_right").clicked() {
                         app.jog_axis('B', app.jog_step_size);
                     }
                 });
@@ -89,10 +89,10 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             if app.current_position.c.is_some() {
                 ui.horizontal(|ui| {
                     ui.label("C");
-                    if ui.button("⟲").clicked() {
+                    if ui.button("⟲##c_left").clicked() {
                         app.jog_axis('C', -app.jog_step_size);
                     }
-                    if ui.button("⟳").clicked() {
+                    if ui.button("⟳##c_right").clicked() {
                         app.jog_axis('C', app.jog_step_size);
                     }
                 });
@@ -102,10 +102,10 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             if app.current_position.d.is_some() {
                 ui.horizontal(|ui| {
                     ui.label("D");
-                    if ui.button("⟲").clicked() {
+                    if ui.button("⟲##d_left").clicked() {
                         app.jog_axis('D', -app.jog_step_size);
                     }
-                    if ui.button("⟳").clicked() {
+                    if ui.button("⟳##d_right").clicked() {
                         app.jog_axis('D', app.jog_step_size);
                     }
                 });

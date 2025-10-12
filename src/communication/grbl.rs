@@ -584,7 +584,16 @@ impl GrblCommunication {
         self.probe_axis('Z', -distance.abs(), feed)
     }
 
-    pub fn auto_level_grid(&mut self, x_start: f32, y_start: f32, x_end: f32, y_end: f32, grid_size: usize, probe_depth: f32, feed: f32) -> Result<Vec<(f32, f32, f32)>, String> {
+    pub fn auto_level_grid(
+        &mut self,
+        x_start: f32,
+        y_start: f32,
+        x_end: f32,
+        y_end: f32,
+        grid_size: usize,
+        probe_depth: f32,
+        feed: f32,
+    ) -> Result<Vec<(f32, f32, f32)>, String> {
         if self.connection_state != ConnectionState::Connected {
             return Err("Not connected".to_string());
         }
@@ -617,7 +626,12 @@ impl GrblCommunication {
         Ok(probe_points)
     }
 
-    pub fn measure_workpiece(&mut self, axis: char, direction: f32, feed: f32) -> Result<f32, String> {
+    pub fn measure_workpiece(
+        &mut self,
+        axis: char,
+        direction: f32,
+        feed: f32,
+    ) -> Result<f32, String> {
         if self.connection_state != ConnectionState::Connected {
             return Err("Not connected".to_string());
         }

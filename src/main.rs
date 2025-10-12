@@ -247,25 +247,139 @@ impl Default for GcodeKitApp {
             ],
             keybindings: {
                 let mut map = HashMap::new();
-                map.insert(Action::OpenFile, KeyBinding { key: egui::Key::O, modifiers: egui::Modifiers::CTRL });
-                map.insert(Action::SaveFile, KeyBinding { key: egui::Key::S, modifiers: egui::Modifiers::CTRL });
-                map.insert(Action::ExportGcode, KeyBinding { key: egui::Key::E, modifiers: egui::Modifiers::CTRL });
-                map.insert(Action::ImportVector, KeyBinding { key: egui::Key::I, modifiers: egui::Modifiers::CTRL });
-                map.insert(Action::Undo, KeyBinding { key: egui::Key::Z, modifiers: egui::Modifiers::CTRL });
-                map.insert(Action::Redo, KeyBinding { key: egui::Key::Y, modifiers: egui::Modifiers::CTRL });
-                map.insert(Action::ZoomIn, KeyBinding { key: egui::Key::Plus, modifiers: egui::Modifiers::CTRL });
-                map.insert(Action::ZoomOut, KeyBinding { key: egui::Key::Minus, modifiers: egui::Modifiers::CTRL });
-                map.insert(Action::Home, KeyBinding { key: egui::Key::H, modifiers: egui::Modifiers::ALT });
-                map.insert(Action::JogXPlus, KeyBinding { key: egui::Key::ArrowRight, modifiers: egui::Modifiers::SHIFT });
-                map.insert(Action::JogXMinus, KeyBinding { key: egui::Key::ArrowLeft, modifiers: egui::Modifiers::SHIFT });
-                map.insert(Action::JogYPlus, KeyBinding { key: egui::Key::ArrowUp, modifiers: egui::Modifiers::SHIFT });
-                map.insert(Action::JogYMinus, KeyBinding { key: egui::Key::ArrowDown, modifiers: egui::Modifiers::SHIFT });
-                map.insert(Action::JogZPlus, KeyBinding { key: egui::Key::PageUp, modifiers: egui::Modifiers::SHIFT });
-                map.insert(Action::JogZMinus, KeyBinding { key: egui::Key::PageDown, modifiers: egui::Modifiers::SHIFT });
-                map.insert(Action::ProbeZ, KeyBinding { key: egui::Key::P, modifiers: egui::Modifiers::ALT });
-                map.insert(Action::FeedHold, KeyBinding { key: egui::Key::Space, modifiers: egui::Modifiers::NONE });
-                map.insert(Action::Resume, KeyBinding { key: egui::Key::Space, modifiers: egui::Modifiers::SHIFT });
-                map.insert(Action::Reset, KeyBinding { key: egui::Key::R, modifiers: egui::Modifiers::ALT });
+                map.insert(
+                    Action::OpenFile,
+                    KeyBinding {
+                        key: egui::Key::O,
+                        modifiers: egui::Modifiers::CTRL,
+                    },
+                );
+                map.insert(
+                    Action::SaveFile,
+                    KeyBinding {
+                        key: egui::Key::S,
+                        modifiers: egui::Modifiers::CTRL,
+                    },
+                );
+                map.insert(
+                    Action::ExportGcode,
+                    KeyBinding {
+                        key: egui::Key::E,
+                        modifiers: egui::Modifiers::CTRL,
+                    },
+                );
+                map.insert(
+                    Action::ImportVector,
+                    KeyBinding {
+                        key: egui::Key::I,
+                        modifiers: egui::Modifiers::CTRL,
+                    },
+                );
+                map.insert(
+                    Action::Undo,
+                    KeyBinding {
+                        key: egui::Key::Z,
+                        modifiers: egui::Modifiers::CTRL,
+                    },
+                );
+                map.insert(
+                    Action::Redo,
+                    KeyBinding {
+                        key: egui::Key::Y,
+                        modifiers: egui::Modifiers::CTRL,
+                    },
+                );
+                map.insert(
+                    Action::ZoomIn,
+                    KeyBinding {
+                        key: egui::Key::Plus,
+                        modifiers: egui::Modifiers::CTRL,
+                    },
+                );
+                map.insert(
+                    Action::ZoomOut,
+                    KeyBinding {
+                        key: egui::Key::Minus,
+                        modifiers: egui::Modifiers::CTRL,
+                    },
+                );
+                map.insert(
+                    Action::Home,
+                    KeyBinding {
+                        key: egui::Key::H,
+                        modifiers: egui::Modifiers::ALT,
+                    },
+                );
+                map.insert(
+                    Action::JogXPlus,
+                    KeyBinding {
+                        key: egui::Key::ArrowRight,
+                        modifiers: egui::Modifiers::SHIFT,
+                    },
+                );
+                map.insert(
+                    Action::JogXMinus,
+                    KeyBinding {
+                        key: egui::Key::ArrowLeft,
+                        modifiers: egui::Modifiers::SHIFT,
+                    },
+                );
+                map.insert(
+                    Action::JogYPlus,
+                    KeyBinding {
+                        key: egui::Key::ArrowUp,
+                        modifiers: egui::Modifiers::SHIFT,
+                    },
+                );
+                map.insert(
+                    Action::JogYMinus,
+                    KeyBinding {
+                        key: egui::Key::ArrowDown,
+                        modifiers: egui::Modifiers::SHIFT,
+                    },
+                );
+                map.insert(
+                    Action::JogZPlus,
+                    KeyBinding {
+                        key: egui::Key::PageUp,
+                        modifiers: egui::Modifiers::SHIFT,
+                    },
+                );
+                map.insert(
+                    Action::JogZMinus,
+                    KeyBinding {
+                        key: egui::Key::PageDown,
+                        modifiers: egui::Modifiers::SHIFT,
+                    },
+                );
+                map.insert(
+                    Action::ProbeZ,
+                    KeyBinding {
+                        key: egui::Key::P,
+                        modifiers: egui::Modifiers::ALT,
+                    },
+                );
+                map.insert(
+                    Action::FeedHold,
+                    KeyBinding {
+                        key: egui::Key::Space,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                );
+                map.insert(
+                    Action::Resume,
+                    KeyBinding {
+                        key: egui::Key::Space,
+                        modifiers: egui::Modifiers::SHIFT,
+                    },
+                );
+                map.insert(
+                    Action::Reset,
+                    KeyBinding {
+                        key: egui::Key::R,
+                        modifiers: egui::Modifiers::ALT,
+                    },
+                );
                 map
             },
             designer: designer::DesignerState::default(),
@@ -978,7 +1092,7 @@ impl GcodeKitApp {
                             ui.text_edit_singleline(&mut self.new_job_name);
 
                             ui.label("Job Type:");
-                            egui::ComboBox::from_label("")
+                            egui::ComboBox::from_id_salt("job_type_combobox")
                                 .selected_text(format!("{:?}", self.new_job_type))
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(
@@ -1023,7 +1137,7 @@ impl GcodeKitApp {
                                 .unwrap_or(&"None".to_string())
                                 .clone();
 
-                            egui::ComboBox::from_label("")
+                            egui::ComboBox::from_id_salt("material_combobox")
                                 .selected_text(&current_selection)
                                 .show_ui(ui, |ui| {
                                     for material_name in &material_names {
@@ -1101,29 +1215,39 @@ impl GcodeKitApp {
                                     // Control buttons - collect actions instead of executing immediately
                                     match job.status {
                                         jobs::JobStatus::Pending => {
-                                            if ui.button("▶️ Start").clicked() {
+                                            if ui.button(format!("▶️ Start##{}", job.id)).clicked()
+                                            {
                                                 jobs_to_start.push(job.id.clone());
                                             }
                                         }
                                         jobs::JobStatus::Running => {
-                                            if ui.button("⏸️ Pause").clicked() {
+                                            if ui.button(format!("⏸️ Pause##{}", job.id)).clicked()
+                                            {
                                                 jobs_to_pause.push(job.id.clone());
                                             }
-                                            if ui.button("⏹️ Stop").clicked() {
+                                            if ui.button(format!("⏹️ Stop##{}", job.id)).clicked()
+                                            {
                                                 jobs_to_cancel.push(job.id.clone());
                                             }
                                         }
                                         jobs::JobStatus::Paused => {
                                             if job.can_resume_job() {
-                                                if ui.button("🔄 Resume").clicked() {
+                                                if ui
+                                                    .button(format!("🔄 Resume##{}", job.id))
+                                                    .clicked()
+                                                {
                                                     jobs_to_resume_interrupted.push(job.id.clone());
                                                 }
-                                            } else if ui.button("▶️ Resume").clicked() {
+                                            } else if ui
+                                                .button(format!("▶️ Resume##{}", job.id))
+                                                .clicked()
+                                            {
                                                 jobs_to_resume.push(job.id.clone());
                                             }
                                         }
                                         _ => {
-                                            if ui.button("🗑️ Remove").clicked() {
+                                            if ui.button(format!("🗑️ Remove##{}", job.id)).clicked()
+                                            {
                                                 jobs_to_remove.push(job.id.clone());
                                             }
                                         }
@@ -1530,118 +1654,128 @@ impl eframe::App for GcodeKitApp {
         // Top menu bar
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.menu_button("File", |ui| {
-                    if ui.button("Open G-code...").clicked() {
-                        self.load_gcode_file();
-                    }
-                    if ui.button("Save G-code...").clicked() {
-                        self.save_gcode_file();
-                    }
-                    ui.separator();
-                    if ui.button("Import Vector...").clicked() {
-                        self.import_vector_file();
-                    }
-                    if ui.button("Export G-code...").clicked() {
-                        self.save_gcode_file();
-                    }
-                    ui.separator();
-                    if ui.button("Exit").clicked() {
-                        std::process::exit(0);
-                    }
-                });
-                ui.menu_button("Machine", |ui| {
-                    ui.menu_button("Controller Type", |ui| {
-                        if ui
-                            .selectable_value(
-                                &mut self.controller_type,
-                                ControllerType::Grbl,
-                                "GRBL",
-                            )
-                            .clicked()
-                        {
-                            self.communication =
-                                Box::new(communication::GrblCommunication::default());
-                            self.refresh_ports();
+                ui.push_id("file_menu", |ui| {
+                    ui.menu_button("File", |ui| {
+                        if ui.button("Open G-code...").clicked() {
+                            self.load_gcode_file();
                         }
-                        if ui
-                            .selectable_value(
-                                &mut self.controller_type,
-                                ControllerType::Smoothieware,
-                                "Smoothieware",
-                            )
-                            .clicked()
-                        {
-                            self.communication =
-                                Box::new(communication::SmoothiewareCommunication::default());
+                        if ui.button("Save G-code...").clicked() {
+                            self.save_gcode_file();
+                        }
+                        ui.separator();
+                        if ui.button("Import Vector...").clicked() {
+                            self.import_vector_file();
+                        }
+                        if ui.button("Export G-code...").clicked() {
+                            self.save_gcode_file();
+                        }
+                        ui.separator();
+                        if ui.button("Exit").clicked() {
+                            std::process::exit(0);
+                        }
+                    });
+                });
+                ui.push_id("machine_menu", |ui| {
+                    ui.menu_button("Machine", |ui| {
+                        ui.menu_button("Controller Type", |ui| {
+                            if ui
+                                .selectable_value(
+                                    &mut self.controller_type,
+                                    ControllerType::Grbl,
+                                    "GRBL",
+                                )
+                                .clicked()
+                            {
+                                self.communication =
+                                    Box::new(communication::GrblCommunication::default());
+                                self.refresh_ports();
+                            }
+                            if ui
+                                .selectable_value(
+                                    &mut self.controller_type,
+                                    ControllerType::Smoothieware,
+                                    "Smoothieware",
+                                )
+                                .clicked()
+                            {
+                                self.communication =
+                                    Box::new(communication::SmoothiewareCommunication::default());
+                                self.refresh_ports();
+                            }
+                        });
+                        ui.separator();
+                        if ui.button("Connect").clicked() {
+                            self.connect_to_device();
+                        }
+                        if ui.button("Disconnect").clicked() {
+                            self.disconnect_from_device();
+                        }
+                        ui.separator();
+                        if ui.button("Home All").clicked() {
+                            self.home_all_axes();
+                        }
+                        if ui.button("Reset").clicked() {
+                            // TODO: Reset machine
+                        }
+                        ui.separator();
+                        if self.controller_type == ControllerType::Grbl {
+                            ui.menu_button("Work Coordinate System", |_ui| {
+                                // This is GRBL-specific, need to handle properly
+                                // For now, skip
+                            });
+                        }
+                    });
+                });
+                ui.push_id("view_menu", |ui| {
+                    ui.menu_button("View", |ui| {
+                        if ui.button("G-code Editor").clicked() {
+                            self.selected_tab = Tab::GcodeEditor;
+                        }
+                        if ui.button("3D Visualizer").clicked() {
+                            self.selected_tab = Tab::Visualizer3D;
+                        }
+                        if ui.button("Device Console").clicked() {
+                            self.selected_tab = Tab::DeviceConsole;
+                        }
+                        ui.separator();
+                        if ui.button("Refresh Ports").clicked() {
                             self.refresh_ports();
                         }
                     });
-                    ui.separator();
-                    if ui.button("Connect").clicked() {
-                        self.connect_to_device();
-                    }
-                    if ui.button("Disconnect").clicked() {
-                        self.disconnect_from_device();
-                    }
-                    ui.separator();
-                    if ui.button("Home All").clicked() {
-                        self.home_all_axes();
-                    }
-                    if ui.button("Reset").clicked() {
-                        // TODO: Reset machine
-                    }
-                    ui.separator();
-                    if self.controller_type == ControllerType::Grbl {
-                        ui.menu_button("Work Coordinate System", |ui| {
-                            // This is GRBL-specific, need to handle properly
-                            // For now, skip
-                        });
-                    }
                 });
-                ui.menu_button("View", |ui| {
-                    if ui.button("G-code Editor").clicked() {
-                        self.selected_tab = Tab::GcodeEditor;
-                    }
-                    if ui.button("3D Visualizer").clicked() {
-                        self.selected_tab = Tab::Visualizer3D;
-                    }
-                    if ui.button("Device Console").clicked() {
-                        self.selected_tab = Tab::DeviceConsole;
-                    }
-                    ui.separator();
-                    if ui.button("Refresh Ports").clicked() {
-                        self.refresh_ports();
-                    }
+                ui.push_id("tools_menu", |ui| {
+                    ui.menu_button("Tools", |ui| {
+                        if ui.button("Generate Rectangle").clicked() {
+                            self.generate_rectangle();
+                        }
+                        if ui.button("Generate Circle").clicked() {
+                            self.generate_circle();
+                        }
+                        ui.separator();
+                        if ui.button("Image Engraving").clicked() {
+                            self.load_image_for_engraving();
+                        }
+                        if ui.button("Tabbed Box").clicked() {
+                            self.generate_tabbed_box();
+                        }
+                        if ui.button("Jigsaw Puzzle").clicked() {
+                            self.generate_jigsaw();
+                        }
+                        ui.separator();
+                        if ui.button("Optimize G-code").clicked() {
+                            self.optimize_gcode();
+                        }
+                    });
                 });
-                ui.menu_button("Tools", |ui| {
-                    if ui.button("Generate Rectangle").clicked() {
-                        self.generate_rectangle();
-                    }
-                    if ui.button("Generate Circle").clicked() {
-                        self.generate_circle();
-                    }
-                    ui.separator();
-                    if ui.button("Image Engraving").clicked() {
-                        self.load_image_for_engraving();
-                    }
-                    if ui.button("Tabbed Box").clicked() {
-                        self.generate_tabbed_box();
-                    }
-                    if ui.button("Jigsaw Puzzle").clicked() {
-                        self.generate_jigsaw();
-                    }
-                    ui.separator();
-                    if ui.button("Optimize G-code").clicked() {
-                        self.optimize_gcode();
-                    }
-                });
-                ui.menu_button("Help", |ui| {
-                    if ui.button("About gcodekit").clicked() {
-                        // TODO: Show about dialog
-                    }
-                    if ui.button("GRBL Documentation").clicked() {
-                        // TODO: Open GRBL docs
-                    }
+                ui.push_id("help_menu", |ui| {
+                    ui.menu_button("Help", |ui| {
+                        if ui.button("About gcodekit").clicked() {
+                            // TODO: Show about dialog
+                        }
+                        if ui.button("GRBL Documentation").clicked() {
+                            // TODO: Open GRBL docs
+                        }
+                    });
                 });
             });
         });
@@ -1761,13 +1895,13 @@ impl eframe::App for GcodeKitApp {
                             ui.label("No G-code file loaded. Use 'Load File' in the left panel.");
                         });
                     } else {
-                        let changed = false;
+                        let _changed = false;
                         egui::ScrollArea::vertical().show(ui, |ui| {
                             let response = ui.add(
                                 egui::TextEdit::multiline(&mut self.gcode_content)
                                     .font(egui::TextStyle::Monospace)
                                     .desired_rows(20)
-                                    .layouter(&mut |ui: &egui::Ui, string: &dyn TextBuffer, wrap_width| {
+                                    .layouter(&mut |ui: &egui::Ui, string: &dyn TextBuffer, _wrap_width| {
                                         let mut job = LayoutJob::default();
                                         for (i, line) in string.as_str().lines().enumerate() {
                                             // Line number

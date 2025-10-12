@@ -19,7 +19,10 @@ pub fn show_tool_management_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
     ui.label("Tool Length Offsets");
 
     if ui.button("Apply Tool Length Offset (G43)").clicked() {
-        let cmd = format!("G43 H{} ; Apply tool length offset for tool {}", app.current_tool, app.current_tool);
+        let cmd = format!(
+            "G43 H{} ; Apply tool length offset for tool {}",
+            app.current_tool, app.current_tool
+        );
         app.send_gcode(&cmd);
     }
 
@@ -72,10 +75,10 @@ pub fn show_tool_management_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                     ui.add(egui::DragValue::new(&mut tool.max_rpm).range(1000..=30000));
                 });
                 ui.horizontal(|ui| {
-                    if ui.button("Select").clicked() {
+                    if ui.button(format!("Select##tool_{}", i)).clicked() {
                         app.current_tool = i as i32 + 1;
                     }
-                    if ui.button("Remove").clicked() {
+                    if ui.button(format!("Remove##tool_{}", i)).clicked() {
                         // Mark for removal by setting diameter to negative
                         tool.diameter = -1.0;
                     }
