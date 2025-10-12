@@ -26,7 +26,7 @@ The device should supply the following features:
  	f. Jigsaw widget (jigsaw.rs): Generate laser cutting paths for interlocking puzzle pieces with adjustable piece count, size, and complexity
 3. Status bar, shows the connection/disconnection status, device state (idle/alarmed), current position (X/Y/Z), and GRBL version when connected.
  4. Communication module (communication/grbl.rs): Handles all GRBL protocol communication including serial port management, command sending, response parsing, version detection, and real-time status monitoring.
- 5. 3D Visualizer: Interactive G-code visualization with color-coded paths (rapid moves blue, feed moves green, arcs yellow), right-click jog to position, real-time machine position overlay, and 6-axis support (XYZ parsing, 2D visualization).
+ 5. 3D Visualizer: Interactive G-code visualization with color-coded paths (rapid moves blue, feed moves green, arcs yellow), right-click jog to position, left-click path selection with highlighting, real-time machine position overlay, and 6-axis support (XYZ parsing, 2D visualization).
 
 Technology: Use the Rust language (2024 edition), use cargo build and cargo test for compilation and testing, use egui version 0.33 crate for the GUI interface. Additional dependencies include:
 - serialport (4.2) for serial communication
@@ -70,7 +70,7 @@ Additional Requirements:
 
  Future Enhancements (UGS Feature Parity):
 13. **Designer Editor**: Import SVG/DXF/C2D files, draw shapes/text, boolean operations (union/intersect/subtract), undo/redo, shape manipulation (move/scale/rotate/mirror), grid multiplication, clipart library, bitmap tracing
-14. **G-code Editor Enhancements**: Highlight selected rows in visualizer, run from selected line, model rotation/mirroring, move to zero location
+ 14. **G-code Editor Enhancements**: Highlight selected rows in visualizer ✓, run from selected line, model rotation/mirroring, move to zero location
 15. **G-code Optimization**: Remove comments, truncate decimal precision, convert arcs to line segments, remove whitespace
 16. **Work Coordinate System (WCS)**: G54-G59 coordinate system management and switching
 17. **Probing Routines**: Z-probing, auto-leveling, workpiece measurement with G38.x commands
