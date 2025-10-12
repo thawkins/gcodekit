@@ -5,6 +5,8 @@ use std::thread;
 use std::io::{Read, Write};
 use chrono::Utc;
 
+mod widgets;
+
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -636,210 +638,13 @@ impl eframe::App for GcodeKitApp {
                 ui.heading("Machine Control");
                 ui.separator();
 
-                // Connection widget
-                ui.group(|ui| {
-                    ui.label("Connection");
-
-                    // Refresh ports button
-                    if ui.button("🔄 Refresh Ports").clicked() {
-                        self.refresh_ports();
-                    }
-
-                    // Port selection
-                    egui::ComboBox::from_label("Serial Port")
-                        .selected_text(&self.selected_port)
-                        .show_ui(ui, |ui| {
-                            for port in &self.available_ports {
-                                ui.selectable_value(&mut self.selected_port, port.clone(), port);
-                            }
-                        });
-
-                    ui.horizontal(|ui| {
-                        let connect_enabled = !self.selected_port.is_empty()
-                            && self.connection_state != ConnectionState::Connected
-                            && self.connection_state != ConnectionState::Connecting;
-
-                        let disconnect_enabled = self.connection_state == ConnectionState::Connected;
-
-                        if ui.add_enabled(connect_enabled, egui::Button::new("Connect")).clicked() {
-                            self.connect_to_device();
-                        }
-
-                        if ui.add_enabled(disconnect_enabled, egui::Button::new("Disconnect")).clicked() {
-                            self.disconnect_from_device();
-                        }
-                    });
-
-                    // Status display
-                    let status_text = match self.connection_state {
-                        ConnectionState::Disconnected => "Disconnected",
-                        ConnectionState::Connecting => "Connecting...",
-                        ConnectionState::Connected => "Connected",
-                        ConnectionState::Error => "Connection Error",
-                    };
-                    ui.colored_label(
-                        match self.connection_state {
-                            ConnectionState::Connected => egui::Color32::GREEN,
-                            ConnectionState::Error => egui::Color32::RED,
-                            _ => egui::Color32::YELLOW,
-                        },
-                        format!("Status: {}", status_text)
-                    );
-
-                    if !self.status_message.is_empty() {
-                        ui.label(&self.status_message);
-                    }
-                });
-
+                widgets::show_connection_widget(ui, self);
                 ui.separator();
-
-                // Gcode loading widget
-                ui.group(|ui| {
-                    ui.label("G-code");
-
-                    // File loading
-                    ui.horizontal(|ui| {
-                        if ui.button("📁 Load File").clicked() {
-                            self.load_gcode_file();
-                        }
-                        ui.label(if self.gcode_filename.is_empty() {
-                            "No file loaded"
-                        } else {
-                            &self.gcode_filename
-                        });
-                    });
-
-                    // Send controls
-                    ui.horizontal(|ui| {
-                        if ui.button("📤 Send to Device").clicked() {
-                            self.send_gcode_to_device();
-                        }
-                        if ui.button("⏹️ Stop").clicked() {
-                            // TODO: Implement stop sending
-                        }
-                    });
-
-                    // Progress/status
-                    if !self.gcode_content.is_empty() {
-                        let lines = self.gcode_content.lines().count();
-                        ui.label(format!("{} lines loaded", lines));
-                    }
-                });
-
+                widgets::show_gcode_loading_widget(ui, self);
                 ui.separator();
-
-                // Jog widget
-                ui.group(|ui| {
-                    ui.label("Jog Control");
-
-                    // Step size selection
-                    ui.horizontal(|ui| {
-                        ui.label("Step:");
-                        ui.selectable_value(&mut self.jog_step_size, 0.1, "0.1mm");
-                        ui.selectable_value(&mut self.jog_step_size, 1.0, "1mm");
-                        ui.selectable_value(&mut self.jog_step_size, 10.0, "10mm");
-                        ui.selectable_value(&mut self.jog_step_size, 50.0, "50mm");
-                    });
-
-                    ui.separator();
-
-                    // Z axis (up/down)
-                    ui.horizontal(|ui| {
-                        ui.label("Z");
-                        if ui.button("⬆").clicked() {
-                            self.jog_axis('Z', self.jog_step_size);
-                        }
-                        if ui.button("⬇").clicked() {
-                            self.jog_axis('Z', -self.jog_step_size);
-                        }
-                    });
-
-                    // Y axis (forward/back)
-                    ui.horizontal(|ui| {
-                        ui.label("Y");
-                        if ui.button("⬅").clicked() {
-                            self.jog_axis('Y', -self.jog_step_size);
-                        }
-                        if ui.button("⮕").clicked() {
-                            self.jog_axis('Y', self.jog_step_size);
-                        }
-                    });
-
-                    // X axis (left/right)
-                    ui.horizontal(|ui| {
-                        ui.label("X");
-                        if ui.button("⬅").clicked() {
-                            self.jog_axis('X', -self.jog_step_size);
-                        }
-                        if ui.button("⮕").clicked() {
-                            self.jog_axis('X', self.jog_step_size);
-                        }
-                    });
-
-                    // Home button
-                    ui.horizontal(|ui| {
-                        if ui.button("🏠 Home All").clicked() {
-                            self.home_all_axes();
-                        }
-                    });
-                });
-
+                widgets::show_jog_widget(ui, self);
                 ui.separator();
-
-                // Overrides widget
-                ui.group(|ui| {
-                    ui.label("Overrides");
-
-                    // Machine mode selection
-                    ui.horizontal(|ui| {
-                        ui.label("Mode:");
-                        ui.selectable_value(&mut self.machine_mode, MachineMode::CNC, "CNC");
-                        ui.selectable_value(&mut self.machine_mode, MachineMode::Laser, "Laser");
-                    });
-
-                    ui.separator();
-
-                    // Spindle/Laser control
-                    let spindle_label = match self.machine_mode {
-                        MachineMode::CNC => "Spindle Speed:",
-                        MachineMode::Laser => "Laser Power:",
-                    };
-                    let spindle_suffix = match self.machine_mode {
-                        MachineMode::CNC => "% RPM",
-                        MachineMode::Laser => "% Power",
-                    };
-
-                    ui.horizontal(|ui| {
-                        ui.label(spindle_label);
-                        if ui.add(egui::DragValue::new(&mut self.spindle_override)
-                            .suffix(spindle_suffix)
-                            .range(0.0..=200.0)
-                            .speed(1.0)).changed() {
-                            self.send_spindle_override();
-                        }
-                    });
-
-                    // Feed rate control
-                    ui.horizontal(|ui| {
-                        ui.label("Feed Rate:");
-                        if ui.add(egui::DragValue::new(&mut self.feed_override)
-                            .suffix("%")
-                            .range(0.0..=200.0)
-                            .speed(1.0)).changed() {
-                            self.send_feed_override();
-                        }
-                    });
-
-                    // Reset button
-                    ui.horizontal(|ui| {
-                        if ui.button("Reset to 100%").clicked() {
-                            self.spindle_override = 100.0;
-                            self.feed_override = 100.0;
-                            self.send_spindle_override();
-                            self.send_feed_override();
-                        }
-                    });
-                });
+                widgets::show_overrides_widget(ui, self);
             });
 
         // Right panel - CAM functions
@@ -850,128 +655,17 @@ impl eframe::App for GcodeKitApp {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.heading("CAM Functions");
 
-                    // Shape Generation Widget
-                    ui.group(|ui| {
-                        ui.label("Shape Generation");
-                        ui.horizontal(|ui| {
-                            ui.label("Width:");
-                            ui.add(egui::DragValue::new(&mut self.shape_width).suffix("mm"));
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Height:");
-                            ui.add(egui::DragValue::new(&mut self.shape_height).suffix("mm"));
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Radius:");
-                            ui.add(egui::DragValue::new(&mut self.shape_radius).suffix("mm"));
-                        });
-
-                        ui.horizontal(|ui| {
-                            if ui.button("Rectangle").clicked() {
-                                self.generate_rectangle();
-                            }
-                            if ui.button("Circle").clicked() {
-                                self.generate_circle();
-                            }
-                        });
-                    });
-
+                    widgets::show_shape_generation_widget(ui, self);
                     ui.separator();
-
-                    // Toolpath Generation Widget
-                    ui.group(|ui| {
-                        ui.label("Toolpath Generation");
-                        ui.horizontal(|ui| {
-                            ui.label("Feed Rate:");
-                            ui.add(egui::DragValue::new(&mut self.tool_feed_rate).suffix("mm/min"));
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Spindle:");
-                            ui.add(egui::DragValue::new(&mut self.tool_spindle_speed).suffix("RPM"));
-                        });
-
-                        if ui.button("Generate Toolpath").clicked() {
-                            self.generate_toolpath();
-                        }
-                    });
-
+                    widgets::show_toolpath_generation_widget(ui, self);
                     ui.separator();
-
-                    // Vector Import Widget
-                    ui.group(|ui| {
-                        ui.label("Vector Import");
-                        if ui.button("Import SVG/DXF").clicked() {
-                            self.import_vector_file();
-                        }
-                    });
-
+                    widgets::show_vector_import_widget(ui, self);
                     ui.separator();
-
-                    // Image Engraving Widget
-                    ui.group(|ui| {
-                        ui.label("Image Engraving");
-                        ui.horizontal(|ui| {
-                            ui.label("Resolution:");
-                            ui.add(egui::DragValue::new(&mut self.image_resolution).suffix("dpi"));
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Max Power:");
-                            ui.add(egui::DragValue::new(&mut self.image_max_power).suffix("%"));
-                        });
-
-                        if ui.button("Load Image").clicked() {
-                            self.load_image_for_engraving();
-                        }
-                        if ui.button("Generate Engraving").clicked() {
-                            self.generate_image_engraving();
-                        }
-                    });
-
+                    widgets::show_image_engraving_widget(ui, self);
                     ui.separator();
-
-                    // Tabbed Box Widget
-                    ui.group(|ui| {
-                        ui.label("Tabbed Box");
-                        ui.horizontal(|ui| {
-                            ui.label("Length:");
-                            ui.add(egui::DragValue::new(&mut self.box_length).suffix("mm"));
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Width:");
-                            ui.add(egui::DragValue::new(&mut self.box_width).suffix("mm"));
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Height:");
-                            ui.add(egui::DragValue::new(&mut self.box_height).suffix("mm"));
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Tab Size:");
-                            ui.add(egui::DragValue::new(&mut self.tab_size).suffix("mm"));
-                        });
-
-                        if ui.button("Generate Box").clicked() {
-                            self.generate_tabbed_box();
-                        }
-                    });
-
+                    widgets::show_tabbed_box_widget(ui, self);
                     ui.separator();
-
-                    // Jigsaw Widget
-                    ui.group(|ui| {
-                        ui.label("Jigsaw Puzzle");
-                        ui.horizontal(|ui| {
-                            ui.label("Pieces:");
-                            ui.add(egui::DragValue::new(&mut self.jigsaw_pieces).range(4..=100));
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Complexity:");
-                            ui.add(egui::DragValue::new(&mut self.jigsaw_complexity).range(1..=5));
-                        });
-
-                        if ui.button("Generate Jigsaw").clicked() {
-                            self.generate_jigsaw();
-                        }
-                    });
+                    widgets::show_jigsaw_widget(ui, self);
                 });
             });
 
