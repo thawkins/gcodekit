@@ -70,7 +70,7 @@ Additional Requirements:
 
  Future Enhancements (UGS Feature Parity):
 13. **Designer Editor**: Import SVG/DXF/C2D files, draw shapes/text, boolean operations (union/intersect/subtract), undo/redo, shape manipulation (move/scale/rotate/mirror), grid multiplication, clipart library, bitmap tracing
- 14. **G-code Editor Enhancements**: Highlight selected rows in visualizer ✓, run from selected line, model rotation/mirroring, move to zero location
+ 14. **G-code Editor Enhancements**: Highlight selected rows in visualizer ✓, run from selected line ✓, model rotation/mirroring, move to zero location
 15. **G-code Optimization**: Remove comments, truncate decimal precision, convert arcs to line segments, remove whitespace
 16. **Work Coordinate System (WCS)**: G54-G59 coordinate system management and switching
 17. **Probing Routines**: Z-probing, auto-leveling, workpiece measurement with G38.x commands
