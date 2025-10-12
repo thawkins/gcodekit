@@ -27,7 +27,7 @@ The device should supply the following features:
 3. Status bar, shows the connection/disconnection status, device state (idle/alarmed), current position (X/Y/Z), and GRBL version when connected.
 4. Communication module (communication/grbl.rs): Handles all GRBL protocol communication including serial port management, command sending, response parsing, version detection, and real-time status monitoring. 
 
-Technology: Use the Rust language (2024 edition), use cargo build and cargo test, use egui version 0.33 crate for the GUI interface. Additional dependencies include:
+Technology: Use the Rust language (2024 edition), use cargo build and cargo test for compilation and testing, use egui version 0.33 crate for the GUI interface. Additional dependencies include:
 - serialport (4.2) for serial communication
 - tokio (1.0) for async runtime
 - tracing (0.1) and tracing-subscriber (0.3) for logging
@@ -45,6 +45,7 @@ Development Tools:
 - cargo clippy: Linting with clippy
 - cargo fmt: Code formatting with rustfmt
 - cargo check: Fast compilation checking
+- cargo test: Run unit tests and integration tests
 
 System Requirements:
 - Rust 1.70+ (2024 edition)
@@ -61,6 +62,7 @@ Additional Requirements:
 8. Code Style: Follow Rust formatting (4 spaces, max 100 width), snake_case naming, structured error handling with anyhow
 9. Logging: Use tracing for structured logging, avoid println! in production code
 10. Modular Architecture: Separate communication logic from UI components for maintainability
+11. Testing: Implement comprehensive unit tests for all components using `cargo test`. Tests should cover core functionality, edge cases, and error conditions. Unit tests must pass as part of the build process and CI/CD pipeline.
 
 References
 1. The existing application called "Candle" written in C++ can be found at: https://github.com/Denvi/Candle
