@@ -772,6 +772,81 @@ impl eframe::App for GcodeKitApp {
                     if ui.button("Reset").clicked() {
                         // TODO: Reset machine
                     }
+                    ui.separator();
+                    ui.menu_button("Work Coordinate System", |ui| {
+                        if ui
+                            .selectable_value(
+                                &mut self.communication.current_wcs,
+                                communication::grbl::WcsCoordinate::G54,
+                                "G54",
+                            )
+                            .clicked()
+                        {
+                            let _ = self
+                                .communication
+                                .set_wcs(communication::grbl::WcsCoordinate::G54);
+                        }
+                        if ui
+                            .selectable_value(
+                                &mut self.communication.current_wcs,
+                                communication::grbl::WcsCoordinate::G55,
+                                "G55",
+                            )
+                            .clicked()
+                        {
+                            let _ = self
+                                .communication
+                                .set_wcs(communication::grbl::WcsCoordinate::G55);
+                        }
+                        if ui
+                            .selectable_value(
+                                &mut self.communication.current_wcs,
+                                communication::grbl::WcsCoordinate::G56,
+                                "G56",
+                            )
+                            .clicked()
+                        {
+                            let _ = self
+                                .communication
+                                .set_wcs(communication::grbl::WcsCoordinate::G56);
+                        }
+                        if ui
+                            .selectable_value(
+                                &mut self.communication.current_wcs,
+                                communication::grbl::WcsCoordinate::G57,
+                                "G57",
+                            )
+                            .clicked()
+                        {
+                            let _ = self
+                                .communication
+                                .set_wcs(communication::grbl::WcsCoordinate::G57);
+                        }
+                        if ui
+                            .selectable_value(
+                                &mut self.communication.current_wcs,
+                                communication::grbl::WcsCoordinate::G58,
+                                "G58",
+                            )
+                            .clicked()
+                        {
+                            let _ = self
+                                .communication
+                                .set_wcs(communication::grbl::WcsCoordinate::G58);
+                        }
+                        if ui
+                            .selectable_value(
+                                &mut self.communication.current_wcs,
+                                communication::grbl::WcsCoordinate::G59,
+                                "G59",
+                            )
+                            .clicked()
+                        {
+                            let _ = self
+                                .communication
+                                .set_wcs(communication::grbl::WcsCoordinate::G59);
+                        }
+                    });
                 });
                 ui.menu_button("View", |ui| {
                     if ui.button("G-code Editor").clicked() {
@@ -845,6 +920,11 @@ impl eframe::App for GcodeKitApp {
 
                 // Device state (locked/alarmed)
                 ui.label("State: Idle"); // TODO: Track actual GRBL state
+
+                ui.separator();
+
+                // Current WCS
+                ui.label(format!("WCS: {:?}", self.communication.current_wcs));
 
                 ui.separator();
 

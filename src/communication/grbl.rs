@@ -32,6 +32,22 @@ impl Default for MachineState {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum WcsCoordinate {
+    G54,
+    G55,
+    G56,
+    G57,
+    G58,
+    G59,
+}
+
+impl Default for WcsCoordinate {
+    fn default() -> Self {
+        WcsCoordinate::G54
+    }
+}
+
 impl From<&str> for MachineState {
     fn from(s: &str) -> Self {
         match s {
@@ -89,6 +105,7 @@ pub struct GrblCommunication {
     pub current_status: GrblStatus,
     pub gcode_queue: VecDeque<String>,
     pub last_response: Option<GrblResponse>,
+    pub current_wcs: WcsCoordinate,
     serial_port: Option<Box<dyn SerialPort>>,
 }
 
@@ -103,6 +120,7 @@ impl Default for GrblCommunication {
             current_status: GrblStatus::default(),
             gcode_queue: VecDeque::new(),
             last_response: None,
+            current_wcs: WcsCoordinate::default(),
             serial_port: None,
         }
     }
@@ -111,6 +129,26 @@ impl Default for GrblCommunication {
 impl GrblCommunication {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn set_wcs(&mut self, wcs: WcsCoordinate) -> Result<(), String> {
+        if self.connection_state != ConnectionState::Connected {
+            return Err("Not connected to device".to_string());
+        }
+
+        let gcode = match wcs {
+            WcsCoordinate::G54 => "G54",
+            WcsCoordinate::G55 => "G55",
+            WcsCoordinate::G56 => "G56",
+            WcsCoordinate::G57 => "G57",
+            WcsCoordinate::G58 => "G58",
+            WcsCoordinate::G59 => "G59",
+        };
+
+        self.send_grbl_command(gcode);
+        self.current_wcs = wcs.clone();
+        self.status_message = format!("Switched to {:?}", wcs);
+        Ok(())
     }
 
     pub fn refresh_ports(&mut self) {
