@@ -72,7 +72,7 @@ Additional Requirements:
 13. **Designer Editor**: Import SVG/DXF/C2D files, draw shapes/text, boolean operations (union/intersect/subtract), undo/redo, shape manipulation (move/scale/rotate/mirror), grid multiplication, clipart library, bitmap tracing
  14. **G-code Editor Enhancements**: Highlight selected rows in visualizer ✓, run from selected line ✓, model rotation/mirroring, move to zero location
  15. **G-code Optimization**: Remove comments ✓, truncate decimal precision, convert arcs to line segments, remove whitespace ✓
-16. **Work Coordinate System (WCS)**: G54-G59 coordinate system management and switching
+ 16. **Work Coordinate System (WCS)**: G54-G59 coordinate system management and switching ✓
 17. **Probing Routines**: Z-probing, auto-leveling, workpiece measurement with G38.x commands
 18. **Tool Management**: Tool length offsets (G43/G49), tool change support
 19. **Machine Calibration**: Step calibration, backlash compensation, homing sequence configuration
