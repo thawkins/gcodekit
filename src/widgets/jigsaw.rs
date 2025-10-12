@@ -1,5 +1,5 @@
-use eframe::egui;
 use crate::GcodeKitApp;
+use eframe::egui;
 
 pub fn show_jigsaw_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
     ui.group(|ui| {

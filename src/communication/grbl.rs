@@ -1,7 +1,7 @@
-use serialport::{available_ports, SerialPort};
-use std::io::{Read, Write};
 use chrono::Utc;
+use serialport::{SerialPort, available_ports};
 use std::collections::VecDeque;
+use std::io::{Read, Write};
 
 #[derive(Default, PartialEq, Debug, Clone)]
 pub enum ConnectionState {
@@ -59,8 +59,8 @@ pub struct Position {
 #[derive(Debug, Clone, Default)]
 pub struct GrblStatus {
     pub machine_state: MachineState,
-    pub machine_position: Position,  // MPos
-    pub work_position: Position,     // WPos
+    pub machine_position: Position, // MPos
+    pub work_position: Position,    // WPos
     pub feed_rate: Option<f32>,
     pub spindle_speed: Option<f32>,
     pub line_number: Option<u32>,
@@ -287,8 +287,6 @@ impl GrblCommunication {
         self.send_grbl_command("$H\n");
         self.status_message = "Homing all axes".to_string();
     }
-
-
 
     pub fn send_feed_override(&mut self, value: f32) {
         if self.connection_state != ConnectionState::Connected {
@@ -609,7 +607,8 @@ mod tests {
         let mut comm = GrblCommunication::new();
 
         // Test complete status response
-        let status_str = "<Idle|MPos:10.000,20.000,30.000|WPos:5.000,15.000,25.000|F:1000.0|S:12000.0>";
+        let status_str =
+            "<Idle|MPos:10.000,20.000,30.000|WPos:5.000,15.000,25.000|F:1000.0|S:12000.0>";
         let status = comm.parse_grbl_status(status_str).unwrap();
 
         assert_eq!(status.machine_state, MachineState::Idle);

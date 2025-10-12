@@ -1,8 +1,8 @@
-use eframe::egui;
 use chrono::Utc;
+use eframe::egui;
 
-mod widgets;
 mod communication;
+mod widgets;
 
 use communication::grbl::GrblResponse;
 
@@ -33,6 +33,8 @@ struct GcodeKitApp {
     feed_override: f32,
     machine_mode: MachineMode,
     console_messages: Vec<String>,
+    parsed_paths: Vec<PathSegment>,
+    current_position: (f32, f32, f32),
     // CAM parameters
     shape_width: f32,
     shape_height: f32,
@@ -64,6 +66,20 @@ enum MachineMode {
     Laser,
 }
 
+#[derive(Clone, Debug)]
+struct PathSegment {
+    start: (f32, f32, f32),
+    end: (f32, f32, f32),
+    move_type: MoveType,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum MoveType {
+    Rapid,
+    Feed,
+    Arc,
+}
+
 impl GcodeKitApp {
     // Communication wrapper methods
     fn refresh_ports(&mut self) {
@@ -93,10 +109,12 @@ impl GcodeKitApp {
             match std::fs::read_to_string(&path) {
                 Ok(content) => {
                     self.gcode_content = content;
-                    self.gcode_filename = path.file_name()
+                    self.gcode_filename = path
+                        .file_name()
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
+                    self.parse_gcode();
                     self.status_message = format!("Loaded {}", self.gcode_filename);
                 }
                 Err(e) => {
@@ -132,7 +150,8 @@ impl GcodeKitApp {
     }
 
     fn send_spindle_override(&mut self) {
-        self.communication.send_spindle_override(self.spindle_override);
+        self.communication
+            .send_spindle_override(self.spindle_override);
         self.status_message = self.communication.status_message.clone();
     }
 
@@ -145,11 +164,64 @@ impl GcodeKitApp {
 
     fn log_console(&mut self, message: &str) {
         let timestamp = Utc::now().format("%H:%M:%S");
-        self.console_messages.push(format!("[{}] {}", timestamp, message));
+        self.console_messages
+            .push(format!("[{}] {}", timestamp, message));
 
         // Keep only last 1000 messages
         if self.console_messages.len() > 1000 {
             self.console_messages.remove(0);
+        }
+    }
+
+    fn parse_gcode(&mut self) {
+        self.parsed_paths.clear();
+        let mut current_pos = (0.0f32, 0.0f32, 0.0f32);
+        let mut current_move_type = MoveType::Rapid;
+
+        for line in self.gcode_content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with(';') {
+                continue;
+            }
+
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            let mut new_pos = current_pos;
+            let mut move_type = current_move_type.clone();
+
+            for part in parts {
+                if part.starts_with('G') {
+                    if let Ok(code) = part[1..].parse::<u32>() {
+                        match code {
+                            0 => move_type = MoveType::Rapid,
+                            1 => move_type = MoveType::Feed,
+                            2 | 3 => move_type = MoveType::Arc,
+                            _ => {}
+                        }
+                    }
+                } else if part.starts_with('X') {
+                    if let Ok(x) = part[1..].parse::<f32>() {
+                        new_pos.0 = x;
+                    }
+                } else if part.starts_with('Y') {
+                    if let Ok(y) = part[1..].parse::<f32>() {
+                        new_pos.1 = y;
+                    }
+                } else if part.starts_with('Z') {
+                    if let Ok(z) = part[1..].parse::<f32>() {
+                        new_pos.2 = z;
+                    }
+                }
+            }
+
+            if new_pos != current_pos {
+                self.parsed_paths.push(PathSegment {
+                    start: current_pos,
+                    end: new_pos,
+                    move_type: move_type.clone(),
+                });
+                current_pos = new_pos;
+            }
+            current_move_type = move_type;
         }
     }
 
@@ -164,13 +236,18 @@ impl GcodeKitApp {
              G1 X0 Y{} F{} ; Top edge\n\
              G1 X0 Y0 F{} ; Left edge\n\
              M30 ; End program\n",
-            self.shape_width, self.tool_feed_rate,
-            self.shape_width, self.shape_height, self.tool_feed_rate,
-            self.shape_height, self.tool_feed_rate,
+            self.shape_width,
+            self.tool_feed_rate,
+            self.shape_width,
+            self.shape_height,
+            self.tool_feed_rate,
+            self.shape_height,
+            self.tool_feed_rate,
             self.tool_feed_rate
         );
         self.gcode_content = gcode;
         self.gcode_filename = "generated_rectangle.gcode".to_string();
+        self.parse_gcode();
         self.status_message = "Rectangle G-code generated".to_string();
     }
 
@@ -181,12 +258,15 @@ impl GcodeKitApp {
              G0 X{} Y{} ; Go to circle center\n\
              G2 I-{} J-{} F{} ; Clockwise circle\n\
              M30 ; End program\n",
-            self.shape_radius, self.shape_radius,
-            self.shape_radius, self.shape_radius,
+            self.shape_radius,
+            self.shape_radius,
+            self.shape_radius,
+            self.shape_radius,
             self.tool_feed_rate
         );
         self.gcode_content = gcode;
         self.gcode_filename = "generated_circle.gcode".to_string();
+        self.parse_gcode();
         self.status_message = "Circle G-code generated".to_string();
     }
 
@@ -200,6 +280,7 @@ impl GcodeKitApp {
                 self.tool_spindle_speed, self.tool_feed_rate
             );
             self.gcode_content = header + &self.gcode_content;
+            self.parse_gcode();
             self.status_message = "Toolpath parameters added".to_string();
         } else {
             self.status_message = "No G-code to modify".to_string();
@@ -215,8 +296,13 @@ impl GcodeKitApp {
             // For now, just load as text
             match std::fs::read_to_string(&path) {
                 Ok(content) => {
-                    self.gcode_content = format!("; Imported from: {}\n; TODO: Convert to G-code\n{}", path.display(), content);
-                    self.gcode_filename = path.file_name()
+                    self.gcode_content = format!(
+                        "; Imported from: {}\n; TODO: Convert to G-code\n{}",
+                        path.display(),
+                        content
+                    );
+                    self.gcode_filename = path
+                        .file_name()
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
@@ -242,7 +328,8 @@ impl GcodeKitApp {
         {
             match std::fs::write(&path, &self.gcode_content) {
                 Ok(_) => {
-                    self.gcode_filename = path.file_name()
+                    self.gcode_filename = path
+                        .file_name()
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
@@ -361,8 +448,14 @@ mod tests {
 
         assert!(app.gcode_content.contains("G21 ; Set units to mm"));
         assert!(app.gcode_content.contains("G90 ; Absolute positioning"));
-        assert!(app.gcode_content.contains("G0 X25 Y25 ; Go to circle center"));
-        assert!(app.gcode_content.contains("G2 I-25 J-25 F300 ; Clockwise circle"));
+        assert!(
+            app.gcode_content
+                .contains("G0 X25 Y25 ; Go to circle center")
+        );
+        assert!(
+            app.gcode_content
+                .contains("G2 I-25 J-25 F300 ; Clockwise circle")
+        );
         assert!(app.gcode_content.contains("M30 ; End program"));
         assert_eq!(app.gcode_filename, "generated_circle.gcode");
         assert_eq!(app.status_message, "Circle G-code generated".to_string());
@@ -436,10 +529,16 @@ mod tests {
         assert!(app.gcode_content.contains("; Image engraving G-code"));
         assert!(app.gcode_content.contains("; Resolution: 300 dpi"));
         assert!(app.gcode_content.contains("; Max Power: 80%"));
-        assert!(app.gcode_content.contains("; TODO: Implement actual image processing"));
+        assert!(
+            app.gcode_content
+                .contains("; TODO: Implement actual image processing")
+        );
         assert!(app.gcode_content.contains("M30 ; End program"));
         assert_eq!(app.gcode_filename, "image_engraving.gcode");
-        assert_eq!(app.status_message, "Image engraving G-code generated (placeholder)".to_string());
+        assert_eq!(
+            app.status_message,
+            "Image engraving G-code generated (placeholder)".to_string()
+        );
     }
 
     #[test]
@@ -455,10 +554,16 @@ mod tests {
         assert!(app.gcode_content.contains("; Tabbed box G-code"));
         assert!(app.gcode_content.contains("; Dimensions: 100x80x50mm"));
         assert!(app.gcode_content.contains("; Tab size: 10mm"));
-        assert!(app.gcode_content.contains("; TODO: Implement actual box cutting paths"));
+        assert!(
+            app.gcode_content
+                .contains("; TODO: Implement actual box cutting paths")
+        );
         assert!(app.gcode_content.contains("M30 ; End program"));
         assert_eq!(app.gcode_filename, "tabbed_box.gcode");
-        assert_eq!(app.status_message, "Tabbed box G-code generated (placeholder)".to_string());
+        assert_eq!(
+            app.status_message,
+            "Tabbed box G-code generated (placeholder)".to_string()
+        );
     }
 
     #[test]
@@ -472,17 +577,25 @@ mod tests {
         assert!(app.gcode_content.contains("; Jigsaw puzzle G-code"));
         assert!(app.gcode_content.contains("; Pieces: 50"));
         assert!(app.gcode_content.contains("; Complexity: 3"));
-        assert!(app.gcode_content.contains("; TODO: Implement actual puzzle piece cutting"));
+        assert!(
+            app.gcode_content
+                .contains("; TODO: Implement actual puzzle piece cutting")
+        );
         assert!(app.gcode_content.contains("M30 ; End program"));
         assert_eq!(app.gcode_filename, "jigsaw_puzzle.gcode");
-        assert_eq!(app.status_message, "Jigsaw G-code generated (placeholder)".to_string());
+        assert_eq!(
+            app.status_message,
+            "Jigsaw G-code generated (placeholder)".to_string()
+        );
     }
 }
 
 impl eframe::App for GcodeKitApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Initialize ports on first run
-        if self.communication.available_ports.is_empty() && self.communication.connection_state == communication::ConnectionState::Disconnected {
+        if self.communication.available_ports.is_empty()
+            && self.communication.connection_state == communication::ConnectionState::Disconnected
+        {
             self.refresh_ports();
         }
 
@@ -495,11 +608,18 @@ impl eframe::App for GcodeKitApp {
                 match response {
                     GrblResponse::Status(status) => {
                         // Update status display with real-time information
-                        self.log_console(&format!("Status: {:?} | Pos: {:.3},{:.3},{:.3}",
+                        self.current_position = (
+                            status.work_position.x,
+                            status.work_position.y,
+                            status.work_position.z,
+                        );
+                        self.log_console(&format!(
+                            "Status: {:?} | Pos: {:.3},{:.3},{:.3}",
                             status.machine_state,
                             status.work_position.x,
                             status.work_position.y,
-                            status.work_position.z));
+                            status.work_position.z
+                        ));
                     }
                     GrblResponse::Error(err) => {
                         self.log_console(&format!("GRBL Error: {}", err));
@@ -615,7 +735,7 @@ impl eframe::App for GcodeKitApp {
                         communication::ConnectionState::Connecting => egui::Color32::YELLOW,
                         _ => egui::Color32::GRAY,
                     },
-                    format!("Status: {}", status_text)
+                    format!("Status: {}", status_text),
                 );
 
                 ui.separator();
@@ -727,21 +847,84 @@ impl eframe::App for GcodeKitApp {
 
                         ui.separator();
 
-                        // Basic 2D visualization area (placeholder for 3D)
+                        // 2D visualization area
                         let available_size = ui.available_size();
-                        let (_rect, _) = ui.allocate_exact_size(available_size, egui::Sense::hover());
+                        let (rect, response) = ui.allocate_exact_size(available_size, egui::Sense::click());
 
-                        // Basic visualization placeholder
-                        ui.centered_and_justified(|ui| {
-                            ui.label("3D Visualizer");
-                            ui.separator();
-                            if self.gcode_content.is_empty() {
+                        if self.gcode_content.is_empty() {
+                            ui.centered_and_justified(|ui| {
                                 ui.label("Load G-code to visualize toolpath");
-                            } else {
-                                ui.label("G-code loaded - 3D visualization coming soon");
-                                ui.label(format!("Lines: {}", self.gcode_content.lines().count()));
+                            });
+                        } else {
+                            // Draw the paths
+                            let painter = ui.painter();
+                            let bounds = rect;
+
+                            // Find min/max for scaling
+                            let mut min_x = f32::INFINITY;
+                            let mut max_x = f32::NEG_INFINITY;
+                            let mut min_y = f32::INFINITY;
+                            let mut max_y = f32::NEG_INFINITY;
+
+                            for segment in &self.parsed_paths {
+                                min_x = min_x.min(segment.start.0).min(segment.end.0);
+                                max_x = max_x.max(segment.start.0).max(segment.end.0);
+                                min_y = min_y.min(segment.start.1).min(segment.end.1);
+                                max_y = max_y.max(segment.start.1).max(segment.end.1);
                             }
-                        });
+
+                            if !self.parsed_paths.is_empty() {
+                                let scale_x = bounds.width() / (max_x - min_x).max(1.0);
+                                let scale_y = bounds.height() / (max_y - min_y).max(1.0);
+                                let scale = scale_x.min(scale_y) * 0.9; // Leave some margin
+
+                                let offset_x = bounds.min.x + (bounds.width() - (max_x - min_x) * scale) / 2.0 - min_x * scale;
+                                let offset_y = bounds.min.y + (bounds.height() - (max_y - min_y) * scale) / 2.0 - min_y * scale;
+
+                                for segment in &self.parsed_paths {
+                                    let start_pos = egui::pos2(
+                                        offset_x + segment.start.0 * scale,
+                                        offset_y + segment.start.1 * scale,
+                                    );
+                                    let end_pos = egui::pos2(
+                                        offset_x + segment.end.0 * scale,
+                                        offset_y + segment.end.1 * scale,
+                                    );
+
+                                    let color = match segment.move_type {
+                                        MoveType::Rapid => egui::Color32::BLUE,
+                                        MoveType::Feed => egui::Color32::GREEN,
+                                        MoveType::Arc => egui::Color32::YELLOW,
+                                    };
+
+                                    painter.line_segment([start_pos, end_pos], egui::Stroke::new(2.0, color));
+                                }
+
+                                // Draw current machine position
+                                let current_screen_x = offset_x + self.current_position.0 * scale;
+                                let current_screen_y = offset_y + self.current_position.1 * scale;
+                                painter.circle_filled(egui::pos2(current_screen_x, current_screen_y), 5.0, egui::Color32::RED);
+
+                                // Right-click to jog
+                                if response.clicked_by(egui::PointerButton::Secondary) {
+                                    if self.communication.connection_state == communication::ConnectionState::Connected {
+                                        if let Some(click_pos) = response.interact_pointer_pos() {
+                                            let gcode_x = (click_pos.x - offset_x) / scale;
+                                            let gcode_y = (click_pos.y - offset_y) / scale;
+                                            let delta_x = gcode_x - self.current_position.0;
+                                            let delta_y = gcode_y - self.current_position.1;
+                                            self.jog_axis('X', delta_x);
+                                            self.jog_axis('Y', delta_y);
+                                            self.status_message = format!("Jogging to X:{:.3} Y:{:.3}", gcode_x, gcode_y);
+                                        }
+                                    } else {
+                                        self.status_message = "Not connected - cannot jog".to_string();
+                                    }
+                                }
+                            }
+
+                            ui.label(format!("Segments: {}", self.parsed_paths.len()));
+                        }
 
                         ui.separator();
                         ui.label("Note: Full 3D visualization requires additional 3D rendering libraries.");

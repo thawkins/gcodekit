@@ -1,3 +1,3 @@
 pub mod grbl;
 
-pub use grbl::{GrblCommunication, ConnectionState};
+pub use grbl::{ConnectionState, GrblCommunication};

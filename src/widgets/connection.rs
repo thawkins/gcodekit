@@ -1,5 +1,5 @@
+use crate::communication::{ConnectionState, GrblCommunication};
 use eframe::egui;
-use crate::communication::{GrblCommunication, ConnectionState};
 
 pub fn show_connection_widget(ui: &mut egui::Ui, communication: &mut GrblCommunication) {
     ui.group(|ui| {
@@ -26,11 +26,17 @@ pub fn show_connection_widget(ui: &mut egui::Ui, communication: &mut GrblCommuni
 
             let disconnect_enabled = communication.connection_state == ConnectionState::Connected;
 
-            if ui.add_enabled(connect_enabled, egui::Button::new("Connect")).clicked() {
+            if ui
+                .add_enabled(connect_enabled, egui::Button::new("Connect"))
+                .clicked()
+            {
                 communication.connect_to_device();
             }
 
-            if ui.add_enabled(disconnect_enabled, egui::Button::new("Disconnect")).clicked() {
+            if ui
+                .add_enabled(disconnect_enabled, egui::Button::new("Disconnect"))
+                .clicked()
+            {
                 communication.disconnect_from_device();
             }
         });
@@ -49,7 +55,7 @@ pub fn show_connection_widget(ui: &mut egui::Ui, communication: &mut GrblCommuni
                 ConnectionState::Connecting => egui::Color32::YELLOW,
                 _ => egui::Color32::GRAY,
             },
-            format!("Status: {}", status_text)
+            format!("Status: {}", status_text),
         );
 
         if !communication.status_message.is_empty() {

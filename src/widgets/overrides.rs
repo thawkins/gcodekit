@@ -1,5 +1,5 @@
-use eframe::egui;
 use crate::{GcodeKitApp, MachineMode};
+use eframe::egui;
 
 pub fn show_overrides_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
     ui.group(|ui| {
@@ -26,10 +26,15 @@ pub fn show_overrides_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
 
         ui.horizontal(|ui| {
             ui.label(spindle_label);
-            if ui.add(egui::DragValue::new(&mut app.spindle_override)
-                .suffix(spindle_suffix)
-                .range(0.0..=200.0)
-                .speed(1.0)).changed() {
+            if ui
+                .add(
+                    egui::DragValue::new(&mut app.spindle_override)
+                        .suffix(spindle_suffix)
+                        .range(0.0..=200.0)
+                        .speed(1.0),
+                )
+                .changed()
+            {
                 app.send_spindle_override();
             }
         });
@@ -37,10 +42,15 @@ pub fn show_overrides_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         // Feed rate control
         ui.horizontal(|ui| {
             ui.label("Feed Rate:");
-            if ui.add(egui::DragValue::new(&mut app.feed_override)
-                .suffix("%")
-                .range(0.0..=200.0)
-                .speed(1.0)).changed() {
+            if ui
+                .add(
+                    egui::DragValue::new(&mut app.feed_override)
+                        .suffix("%")
+                        .range(0.0..=200.0)
+                        .speed(1.0),
+                )
+                .changed()
+            {
                 app.send_feed_override();
             }
         });

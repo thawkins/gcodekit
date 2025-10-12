@@ -8,7 +8,7 @@ The device should supply the following features:
 	b. The application will have a combined menu and title bar attached to the top of the application window. This will be known as the "Menu Bar"
 	c. The application will have a left hand tool pannel dedicated to machine connect and control. all the widgets in this pannel will as wide as the tool pannel and will be stacked ontop of each other. 
 	d. The Application will have a right hand tool pannel dedicated to CAM functions, all the widgets in this pannel will be as wide as the tool pannel and will be stacked ontop of each other.
-	e. The Application will have a centeral pannel that is tabbed the tabs will run across the top and they will show "gcode editor", "3d Visualizer and "device console"
+	e. The Application will have a central panel that is tabbed the tabs will run across the top and they will show "gcode editor", "3d Visualizer" and "device console"
 
 
 2. Widget functions
@@ -25,7 +25,8 @@ The device should supply the following features:
  	e. Tabbed box widget (tabbed_box.rs): Generate cutting paths for boxes with interlocking tabs, with adjustable dimensions, tab size, and material thickness
  	f. Jigsaw widget (jigsaw.rs): Generate laser cutting paths for interlocking puzzle pieces with adjustable piece count, size, and complexity
 3. Status bar, shows the connection/disconnection status, device state (idle/alarmed), current position (X/Y/Z), and GRBL version when connected.
-4. Communication module (communication/grbl.rs): Handles all GRBL protocol communication including serial port management, command sending, response parsing, version detection, and real-time status monitoring. 
+ 4. Communication module (communication/grbl.rs): Handles all GRBL protocol communication including serial port management, command sending, response parsing, version detection, and real-time status monitoring.
+ 5. 3D Visualizer: Interactive G-code visualization with color-coded paths (rapid moves blue, feed moves green, arcs yellow), right-click jog to position, real-time machine position overlay, and 6-axis support (XYZ parsing, 2D visualization).
 
 Technology: Use the Rust language (2024 edition), use cargo build and cargo test for compilation and testing, use egui version 0.33 crate for the GUI interface. Additional dependencies include:
 - serialport (4.2) for serial communication
@@ -64,8 +65,10 @@ Additional Requirements:
 10. Modular Architecture: Separate communication logic from UI components for maintainability
 11. Testing: Implement comprehensive unit tests for all components using `cargo test`. Tests should cover core functionality, edge cases, and error conditions. Unit tests must pass as part of the build process and CI/CD pipeline.
 
-Future Enhancements (UGS Feature Parity):
-12. **Advanced Visualizer**: Right-click jog to location, customizable colors for G0/G1/G2/G3 paths, 6-axis visualization (XYZABC), outline gcode functionality
+ Current Features:
+ 12. **Advanced Visualizer**: Right-click jog to location ✓, color-coded paths for G0/G1/G2/G3 moves ✓, 6-axis support (XYZ parsing ✓, ABC planned), real-time machine position overlay ✓, outline gcode functionality (planned)
+
+ Future Enhancements (UGS Feature Parity):
 13. **Designer Editor**: Import SVG/DXF/C2D files, draw shapes/text, boolean operations (union/intersect/subtract), undo/redo, shape manipulation (move/scale/rotate/mirror), grid multiplication, clipart library, bitmap tracing
 14. **G-code Editor Enhancements**: Highlight selected rows in visualizer, run from selected line, model rotation/mirroring, move to zero location
 15. **G-code Optimization**: Remove comments, truncate decimal precision, convert arcs to line segments, remove whitespace
