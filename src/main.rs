@@ -1,11 +1,8 @@
 use eframe::egui;
-use serialport::{available_ports, SerialPort, SerialPortBuilder};
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::thread;
-use std::io::{Read, Write};
 use chrono::Utc;
 
 mod widgets;
+mod communication;
 
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
@@ -25,9 +22,7 @@ fn main() -> Result<(), eframe::Error> {
 #[derive(Default)]
 struct GcodeKitApp {
     selected_tab: Tab,
-    connection_state: ConnectionState,
-    selected_port: String,
-    available_ports: Vec<String>,
+    communication: communication::GrblCommunication,
     status_message: String,
     gcode_content: String,
     gcode_filename: String,
@@ -36,8 +31,6 @@ struct GcodeKitApp {
     feed_override: f32,
     machine_mode: MachineMode,
     console_messages: Vec<String>,
-    serial_port: Option<Box<dyn SerialPort>>,
-    grbl_version: String,
     // CAM parameters
     shape_width: f32,
     shape_height: f32,
@@ -63,15 +56,6 @@ enum Tab {
 }
 
 #[derive(Default, PartialEq)]
-enum ConnectionState {
-    #[default]
-    Disconnected,
-    Connecting,
-    Connected,
-    Error,
-}
-
-#[derive(Default, PartialEq)]
 enum MachineMode {
     #[default]
     CNC,
@@ -79,165 +63,24 @@ enum MachineMode {
 }
 
 impl GcodeKitApp {
+    // Communication wrapper methods
     fn refresh_ports(&mut self) {
-        self.available_ports.clear();
-        match available_ports() {
-            Ok(ports) => {
-                for port in ports {
-                    self.available_ports.push(port.port_name);
-                }
-                if self.available_ports.is_empty() {
-                    self.status_message = "No serial ports found".to_string();
-                } else {
-                    self.status_message = format!("Found {} ports", self.available_ports.len());
-                }
-            }
-            Err(e) => {
-                self.status_message = format!("Error listing ports: {}", e);
-                self.connection_state = ConnectionState::Error;
-            }
-        }
+        self.communication.refresh_ports();
     }
 
     fn connect_to_device(&mut self) {
-        if self.selected_port.is_empty() {
-            self.status_message = "No port selected".to_string();
-            return;
-        }
-
-        self.connection_state = ConnectionState::Connecting;
-        self.status_message = format!("Connecting to {}...", self.selected_port);
-
-        match serialport::new(&self.selected_port, 115200)
-            .timeout(std::time::Duration::from_millis(100))
-            .open()
-        {
-            Ok(port) => {
-                self.serial_port = Some(port);
-                self.connection_state = ConnectionState::Connected;
-
-                // Read initial GRBL response to get version
-                std::thread::sleep(std::time::Duration::from_millis(100)); // Wait for GRBL to be ready
-                self.read_grbl_version();
-
-                let msg = format!("Connected to {} at 115200 baud", self.selected_port);
-                self.log_console(&msg);
-                self.status_message = msg;
-
-                // Send initial commands to wake up GRBL
-                self.send_grbl_command("\r\n\r\n");
-                std::thread::sleep(std::time::Duration::from_millis(2000));
-                self.send_grbl_command("$$\n"); // Get settings
-            }
-            Err(e) => {
-                self.connection_state = ConnectionState::Error;
-                let msg = format!("Failed to connect: {}", e);
-                self.log_console(&msg);
-                self.status_message = msg;
-            }
+        self.communication.connect_to_device();
+        // Log connection messages to console
+        if self.communication.connection_state == communication::ConnectionState::Connected {
+            self.log_console(&self.communication.status_message.clone());
+        } else if self.communication.connection_state == communication::ConnectionState::Error {
+            self.log_console(&self.communication.status_message.clone());
         }
     }
 
     fn disconnect_from_device(&mut self) {
-        self.serial_port = None;
-        self.connection_state = ConnectionState::Disconnected;
-        self.grbl_version.clear();
-        let msg = "Disconnected from device".to_string();
-        self.log_console(&msg);
-        self.status_message = msg;
-    }
-
-    fn send_grbl_command(&mut self, command: &str) {
-        if let Some(ref mut port) = self.serial_port {
-            match port.write_all(command.as_bytes()) {
-                Ok(_) => {
-                    self.log_console(&format!("Sent: {}", command.trim()));
-                }
-                Err(e) => {
-                    self.log_console(&format!("Send error: {}", e));
-                }
-            }
-        }
-    }
-
-    fn read_grbl_responses(&mut self) {
-        let mut response_data = None;
-
-        if let Some(ref mut port) = self.serial_port {
-            let mut buffer = [0; 1024];
-            match port.read(&mut buffer) {
-                Ok(bytes_read) if bytes_read > 0 => {
-                    if let Ok(response) = std::str::from_utf8(&buffer[..bytes_read]) {
-                        let clean_response = response.trim();
-                        if !clean_response.is_empty() {
-                            response_data = Some(clean_response.to_string());
-                        }
-                    }
-                }
-                _ => {} // No data or error, ignore for now
-            }
-        }
-
-        // Handle response outside the borrow scope
-        if let Some(clean_response) = response_data {
-            self.log_console(&format!("Recv: {}", clean_response));
-
-            // Check if this is a version response
-            if clean_response.contains("Grbl") {
-                self.parse_grbl_version(&clean_response);
-            }
-        }
-    }
-
-    fn read_grbl_version(&mut self) {
-        let mut version_response = None;
-
-        if let Some(ref mut port) = self.serial_port {
-            let mut buffer = [0; 1024];
-            // Try to read version info multiple times in case GRBL sends it slowly
-            for _ in 0..5 {
-                match port.read(&mut buffer) {
-                    Ok(bytes_read) if bytes_read > 0 => {
-                        if let Ok(response) = std::str::from_utf8(&buffer[..bytes_read]) {
-                            let clean_response = response.trim();
-                            if !clean_response.is_empty() {
-                                version_response = Some(clean_response.to_string());
-                                break;
-                            }
-                        }
-                    }
-                    _ => {
-                        std::thread::sleep(std::time::Duration::from_millis(100));
-                    }
-                }
-            }
-        }
-
-        // Handle version response outside the borrow scope
-        if let Some(clean_response) = version_response {
-            self.log_console(&format!("Recv: {}", clean_response));
-
-            // Check if this is a version response
-            if clean_response.contains("Grbl") {
-                self.parse_grbl_version(&clean_response);
-            }
-        }
-    }
-
-    fn parse_grbl_version(&mut self, response: &str) {
-        // GRBL typically responds with something like: "Grbl 1.1f ['$' for help]"
-        if let Some(version_start) = response.find("Grbl ") {
-            let version_part = &response[version_start..];
-            if let Some(end_pos) = version_part.find(" ") {
-                let version = version_part[..end_pos].to_string();
-                self.grbl_version = version;
-                self.log_console(&format!("Detected GRBL version: {}", self.grbl_version));
-            } else {
-                // If no space found, take the whole "Grbl X.X" part
-                self.grbl_version = version_part.to_string();
-                self.log_console(&format!("Detected GRBL version: {}", self.grbl_version));
-            }
-        }
+        self.communication.disconnect_from_device();
+        self.log_console(&self.communication.status_message.clone());
     }
 
     fn load_gcode_file(&mut self) {
@@ -262,7 +105,7 @@ impl GcodeKitApp {
     }
 
     fn send_gcode_to_device(&mut self) {
-        if self.connection_state != ConnectionState::Connected {
+        if self.communication.connection_state != communication::ConnectionState::Connected {
             self.status_message = "Not connected to device".to_string();
             return;
         }
@@ -277,46 +120,25 @@ impl GcodeKitApp {
     }
 
     fn jog_axis(&mut self, axis: char, distance: f32) {
-        if self.connection_state != ConnectionState::Connected {
-            self.status_message = "Not connected to device".to_string();
-            return;
-        }
-
-        // Send GRBL jog command ($J=G91 X10 F1000)
-        let command = format!("$J=G91 {} {:.1} F1000\n", axis, distance);
-        self.send_grbl_command(&command);
-
-        let msg = format!("Jogging {} axis by {:.1}mm", axis, distance);
-        self.status_message = msg;
+        self.communication.jog_axis(axis, distance);
+        self.status_message = self.communication.status_message.clone();
     }
 
     fn home_all_axes(&mut self) {
-        if self.connection_state != ConnectionState::Connected {
-            self.status_message = "Not connected to device".to_string();
-            return;
-        }
-
-        // Send GRBL home command ($H)
-        self.send_grbl_command("$H\n");
-        self.status_message = "Homing all axes".to_string();
+        self.communication.home_all_axes();
+        self.status_message = self.communication.status_message.clone();
     }
 
     fn send_spindle_override(&mut self) {
-        if self.connection_state != ConnectionState::Connected {
-            return;
-        }
-        // TODO: Send spindle override command to GRBL
-        self.status_message = format!("Spindle override: {:.0}%", self.spindle_override);
+        self.communication.send_spindle_override(self.spindle_override);
+        self.status_message = self.communication.status_message.clone();
     }
 
     fn send_feed_override(&mut self) {
-        if self.connection_state != ConnectionState::Connected {
-            return;
-        }
-        // TODO: Send feed override command to GRBL
-        let msg = format!("Feed override: {:.0}%", self.feed_override);
-        self.log_console(&msg);
-        self.status_message = msg;
+        self.communication.send_feed_override(self.feed_override);
+        self.status_message = self.communication.status_message.clone();
+        let message = self.status_message.clone();
+        self.log_console(&message);
     }
 
     fn log_console(&mut self, message: &str) {
@@ -490,13 +312,16 @@ impl GcodeKitApp {
 impl eframe::App for GcodeKitApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Initialize ports on first run
-        if self.available_ports.is_empty() && self.connection_state == ConnectionState::Disconnected {
+        if self.communication.available_ports.is_empty() && self.communication.connection_state == communication::ConnectionState::Disconnected {
             self.refresh_ports();
         }
 
         // Read GRBL responses
-        if self.connection_state == ConnectionState::Connected {
-            self.read_grbl_responses();
+        if self.communication.connection_state == communication::ConnectionState::Connected {
+            let messages = self.communication.read_grbl_responses();
+            for message in messages {
+                self.log_console(&message);
+            }
         }
 
         // Top menu bar
@@ -584,17 +409,17 @@ impl eframe::App for GcodeKitApp {
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 // Connection status
-                let status_text = match self.connection_state {
-                    ConnectionState::Disconnected => "Disconnected",
-                    ConnectionState::Connecting => "Connecting...",
-                    ConnectionState::Connected => "Connected",
-                    ConnectionState::Error => "Error",
+                let status_text = match self.communication.connection_state {
+                    communication::ConnectionState::Disconnected => "Disconnected",
+                    communication::ConnectionState::Connecting => "Connecting...",
+                    communication::ConnectionState::Connected => "Connected",
+                    communication::ConnectionState::Error => "Error",
                 };
                 ui.colored_label(
-                    match self.connection_state {
-                        ConnectionState::Connected => egui::Color32::GREEN,
-                        ConnectionState::Error => egui::Color32::RED,
-                        ConnectionState::Connecting => egui::Color32::YELLOW,
+                    match self.communication.connection_state {
+                        communication::ConnectionState::Connected => egui::Color32::GREEN,
+                        communication::ConnectionState::Error => egui::Color32::RED,
+                        communication::ConnectionState::Connecting => egui::Color32::YELLOW,
                         _ => egui::Color32::GRAY,
                     },
                     format!("Status: {}", status_text)
@@ -613,14 +438,14 @@ impl eframe::App for GcodeKitApp {
                 ui.separator();
 
                 // GRBL version
-                if !self.grbl_version.is_empty() {
-                    ui.label(format!("GRBL: {}", self.grbl_version));
+                if !self.communication.grbl_version.is_empty() {
+                    ui.label(format!("GRBL: {}", self.communication.grbl_version));
                     ui.separator();
                 }
 
                 // Selected port
-                if !self.selected_port.is_empty() {
-                    ui.label(format!("Port: {}", self.selected_port));
+                if !self.communication.selected_port.is_empty() {
+                    ui.label(format!("Port: {}", self.communication.selected_port));
                 }
 
                 // Version info on the right
@@ -638,7 +463,7 @@ impl eframe::App for GcodeKitApp {
                 ui.heading("Machine Control");
                 ui.separator();
 
-                widgets::show_connection_widget(ui, self);
+                widgets::show_connection_widget(ui, &mut self.communication);
                 ui.separator();
                 widgets::show_gcode_loading_widget(ui, self);
                 ui.separator();
@@ -711,7 +536,7 @@ impl eframe::App for GcodeKitApp {
 
                         // Basic 2D visualization area (placeholder for 3D)
                         let available_size = ui.available_size();
-                        let (rect, _) = ui.allocate_exact_size(available_size, egui::Sense::hover());
+                        let (_rect, _) = ui.allocate_exact_size(available_size, egui::Sense::hover());
 
                         // Basic visualization placeholder
                         ui.centered_and_justified(|ui| {

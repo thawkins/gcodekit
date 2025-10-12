@@ -12,21 +12,43 @@ The device should supply the following features:
 
 
 2. Widget functions
-1. A lefthand tool panel that allows has a number of "Widgets: stacked inside of it that do the following: 
-	a. a "Connection" widget that allows the user to select a device and connect to it, the connection status will be shown in a status bar anchored to the bottomr. 	 
-	b. a gcode selection and loading widget, it will allow the user to select a gcode file. load into the gcode editor widget, and send it to the device if one is connected, all text sent to the device will be queued so we dont get character overruns or underruns. 
-	c. a Jog widget, this widjet allows the user to control the device, moving it in each axis X.Y and Z. by pressing left/right, forward/bacl and updown buttins. the pannel maintains a drop down of mm values (0.1. 1, 10, 50) that are the stepsize used for each job.
-	d. an overrides pannel, this pannel allows spindle speed and feed rate to be altered in real time, for a laser engraver, the spindle speed is the laser intensity.
-2. A righthand tool panel dedicated to CAM functions with the following widgets:
-	a. Shape generation widget: create basic shapes (rectangles, circles) with adjustable dimensions
-	b. Toolpath generation widget: convert shapes to GRBL-compatible G-code with feed rates and spindle/laser controls
-	c. Vector import widget: load SVG/DXF files and convert to G-code for engraving/cutting
-	d. Image engraving widget: convert bitmap images to GRBL-compatible G-code for laser engraving with adjustable resolution and intensity
-	e. Tabbed box widget: generate cutting paths for boxes with interlocking tabs, with adjustable dimensions, tab size, and material thickness
-	f. Jigsaw widget: generate laser cutting paths for interlocking puzzle pieces with adjustable piece count, size, and complexity
-3. Status bar, shows the connection/disconection status, wether the devic is locked, {alarmed} and if the device is connected, its current position and GRBL version. 
+1. A lefthand tool panel with modular widgets stacked vertically:
+ 	a. Connection widget (connection.rs): Device selection and connection management with status display
+ 	b. G-code loading widget (gcode_loading.rs): File selection, loading, and queued sending to prevent buffer overruns
+ 	c. Jog widget (jog.rs): Real-time axis control (X/Y/Z) with configurable step sizes (0.1, 1, 10, 50mm)
+ 	d. Overrides widget (overrides.rs): Real-time spindle/laser power and feed rate adjustments
+2. A righthand tool panel dedicated to CAM functions with modular widgets:
+ 	a. Shape generation widget (shape_generation.rs): Create basic shapes (rectangles, circles) with adjustable dimensions
+ 	b. Toolpath generation widget (toolpath_generation.rs): Convert shapes to GRBL-compatible G-code with feed rates and spindle/laser controls
+ 	c. Vector import widget (vector_import.rs): Load SVG/DXF files and convert to G-code for engraving/cutting
+ 	d. Image engraving widget (image_engraving.rs): Convert bitmap images to GRBL-compatible G-code for laser engraving with adjustable resolution and intensity
+ 	e. Tabbed box widget (tabbed_box.rs): Generate cutting paths for boxes with interlocking tabs, with adjustable dimensions, tab size, and material thickness
+ 	f. Jigsaw widget (jigsaw.rs): Generate laser cutting paths for interlocking puzzle pieces with adjustable piece count, size, and complexity
+3. Status bar, shows the connection/disconnection status, device state (idle/alarmed), current position (X/Y/Z), and GRBL version when connected.
+4. Communication module (communication/grbl.rs): Handles all GRBL protocol communication including serial port management, command sending, response parsing, version detection, and real-time status monitoring. 
 
-Technology: Use the Rust language, use cargo build and cargo test, use egui version 0.33 crate for the GUI interface.
+Technology: Use the Rust language (2024 edition), use cargo build and cargo test, use egui version 0.33 crate for the GUI interface. Additional dependencies include:
+- serialport (4.2) for serial communication
+- tokio (1.0) for async runtime
+- tracing (0.1) and tracing-subscriber (0.3) for logging
+- rfd (0.14) for file dialogs
+- anyhow (1.0) for error handling
+- serde (1.0) and serde_json (1.0) for serialization
+- chrono (0.4) for timestamps
+
+Architecture: Modular design with separate modules for:
+- communication: GRBL protocol handling and serial communication
+- widgets: Individual UI components for different functions
+- main: Application state and UI orchestration
+
+Development Tools:
+- cargo clippy: Linting with clippy
+- cargo fmt: Code formatting with rustfmt
+- cargo check: Fast compilation checking
+
+System Requirements:
+- Rust 1.70+ (2024 edition)
+- GRBL v1.1+ compatible device
 
 Additional Requirements:
 1. GRBL Version Support: Prioritize GRBL v1.1 and v1.2 features including real-time overrides and jogging
@@ -36,6 +58,9 @@ Additional Requirements:
 5. G-code Compatibility: Implement only G-code features supported by GRBL firmware
 6. CAM Functions: Include basic Computer-Aided Manufacturing capabilities for generating G-code from shapes and images
 7. Version Detection: Capture and display GRBL firmware version on the status bar during connection
+8. Code Style: Follow Rust formatting (4 spaces, max 100 width), snake_case naming, structured error handling with anyhow
+9. Logging: Use tracing for structured logging, avoid println! in production code
+10. Modular Architecture: Separate communication logic from UI components for maintainability
 
 References
 1. The existing application called "Candle" written in C++ can be found at: https://github.com/Denvi/Candle
