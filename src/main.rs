@@ -191,6 +191,52 @@ impl GcodeKitApp {
         ));
     }
 
+    fn optimize_gcode(&mut self) {
+        if self.gcode_content.is_empty() {
+            self.status_message = "No G-code to optimize".to_string();
+            return;
+        }
+
+        let original_lines = self.gcode_content.lines().count();
+        let mut optimized_lines = Vec::new();
+
+        for line in self.gcode_content.lines() {
+            let line = line.trim();
+
+            // Skip empty lines and comments
+            if line.is_empty() || line.starts_with(';') {
+                continue;
+            }
+
+            // Remove inline comments
+            let line = if let Some(comment_pos) = line.find(';') {
+                line[..comment_pos].trim()
+            } else {
+                line
+            };
+
+            if line.is_empty() {
+                continue;
+            }
+
+            // For now, just keep the line as-is (decimal truncation would be more complex)
+            optimized_lines.push(line.to_string());
+        }
+
+        self.gcode_content = optimized_lines.join("\n");
+        self.parse_gcode(); // Re-parse the optimized G-code
+
+        let optimized_line_count = optimized_lines.len();
+        self.status_message = format!(
+            "G-code optimized: {} -> {} lines",
+            original_lines, optimized_line_count
+        );
+        self.log_console(&format!(
+            "Optimized G-code: removed {} lines",
+            original_lines - optimized_line_count
+        ));
+    }
+
     fn jog_axis(&mut self, axis: char, distance: f32) {
         self.communication.jog_axis(axis, distance);
         self.status_message = self.communication.status_message.clone();
@@ -758,6 +804,10 @@ impl eframe::App for GcodeKitApp {
                     }
                     if ui.button("Jigsaw Puzzle").clicked() {
                         self.generate_jigsaw();
+                    }
+                    ui.separator();
+                    if ui.button("Optimize G-code").clicked() {
+                        self.optimize_gcode();
                     }
                 });
                 ui.menu_button("Help", |ui| {
