@@ -1,6 +1,7 @@
 use serialport::{available_ports, SerialPort};
 use std::io::{Read, Write};
 use chrono::Utc;
+use std::collections::VecDeque;
 
 #[derive(Default, PartialEq, Debug, Clone)]
 pub enum ConnectionState {
@@ -11,12 +12,83 @@ pub enum ConnectionState {
     Error,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum MachineState {
+    Idle,
+    Run,
+    Hold,
+    Jog,
+    Alarm,
+    Door,
+    Check,
+    Home,
+    Sleep,
+    Unknown,
+}
+
+impl Default for MachineState {
+    fn default() -> Self {
+        MachineState::Unknown
+    }
+}
+
+impl From<&str> for MachineState {
+    fn from(s: &str) -> Self {
+        match s {
+            "Idle" => MachineState::Idle,
+            "Run" => MachineState::Run,
+            "Hold" => MachineState::Hold,
+            "Jog" => MachineState::Jog,
+            "Alarm" => MachineState::Alarm,
+            "Door" => MachineState::Door,
+            "Check" => MachineState::Check,
+            "Home" => MachineState::Home,
+            "Sleep" => MachineState::Sleep,
+            _ => MachineState::Unknown,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Position {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct GrblStatus {
+    pub machine_state: MachineState,
+    pub machine_position: Position,  // MPos
+    pub work_position: Position,     // WPos
+    pub feed_rate: Option<f32>,
+    pub spindle_speed: Option<f32>,
+    pub line_number: Option<u32>,
+    pub input_pin_state: Option<String>,
+    pub override_values: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum GrblResponse {
+    Ok,
+    Error(String),
+    Status(GrblStatus),
+    Feedback(String),
+    Alarm(String),
+    Version(String),
+    Settings(String),
+    Other(String),
+}
+
 pub struct GrblCommunication {
     pub connection_state: ConnectionState,
     pub selected_port: String,
     pub available_ports: Vec<String>,
     pub status_message: String,
     pub grbl_version: String,
+    pub current_status: GrblStatus,
+    pub gcode_queue: VecDeque<String>,
+    pub last_response: Option<GrblResponse>,
     serial_port: Option<Box<dyn SerialPort>>,
 }
 
@@ -28,6 +100,9 @@ impl Default for GrblCommunication {
             available_ports: Vec::new(),
             status_message: String::new(),
             grbl_version: String::new(),
+            current_status: GrblStatus::default(),
+            gcode_queue: VecDeque::new(),
+            last_response: None,
             serial_port: None,
         }
     }
@@ -213,20 +288,202 @@ impl GrblCommunication {
         self.status_message = "Homing all axes".to_string();
     }
 
-    pub fn send_spindle_override(&mut self, value: f32) {
-        if self.connection_state != ConnectionState::Connected {
-            return;
-        }
-        // TODO: Send spindle override command to GRBL
-        self.status_message = format!("Spindle override: {:.0}%", value);
-    }
+
 
     pub fn send_feed_override(&mut self, value: f32) {
         if self.connection_state != ConnectionState::Connected {
             return;
         }
-        // TODO: Send feed override command to GRBL
+        // Send real-time feed override command (0x90 + percentage)
+        let override_value = (value.clamp(10.0, 200.0) as u8).saturating_sub(100);
+        let command = format!("{}{}", char::from(0x90), override_value as char);
+        self.send_grbl_command(&command);
         self.status_message = format!("Feed override: {:.0}%", value);
+    }
+
+    pub fn send_spindle_override(&mut self, value: f32) {
+        if self.connection_state != ConnectionState::Connected {
+            return;
+        }
+        // Send real-time spindle override command (0x9A + percentage)
+        let override_value = (value.clamp(10.0, 200.0) as u8).saturating_sub(100);
+        let command = format!("{}{}", char::from(0x9A), override_value as char);
+        self.send_grbl_command(&command);
+        self.status_message = format!("Spindle override: {:.0}%", value);
+    }
+
+    pub fn query_realtime_status(&mut self) {
+        if self.connection_state != ConnectionState::Connected {
+            return;
+        }
+        // Send real-time status query command (?)
+        self.send_grbl_command("?");
+    }
+
+    pub fn parse_grbl_status(&mut self, response: &str) -> Option<GrblStatus> {
+        // GRBL status response format: <State|MPos:X,Y,Z|WPos:X,Y,Z|F:feed|S:speed>
+        if !response.starts_with('<') || !response.ends_with('>') {
+            return None;
+        }
+
+        let content = &response[1..response.len() - 1];
+        let parts: Vec<&str> = content.split('|').collect();
+
+        if parts.is_empty() {
+            return None;
+        }
+
+        let mut status = GrblStatus::default();
+        status.machine_state = MachineState::from(parts[0]);
+
+        for part in &parts[1..] {
+            if let Some(colon_pos) = part.find(':') {
+                let key = &part[..colon_pos];
+                let value = &part[colon_pos + 1..];
+
+                match key {
+                    "MPos" => {
+                        if let Some(pos) = self.parse_position(value) {
+                            status.machine_position = pos;
+                        }
+                    }
+                    "WPos" => {
+                        if let Some(pos) = self.parse_position(value) {
+                            status.work_position = pos;
+                        }
+                    }
+                    "F" => {
+                        if let Ok(feed) = value.parse::<f32>() {
+                            status.feed_rate = Some(feed);
+                        }
+                    }
+                    "S" => {
+                        if let Ok(speed) = value.parse::<f32>() {
+                            status.spindle_speed = Some(speed);
+                        }
+                    }
+                    "Ln" => {
+                        if let Ok(line) = value.parse::<u32>() {
+                            status.line_number = Some(line);
+                        }
+                    }
+                    "Pn" => {
+                        status.input_pin_state = Some(value.to_string());
+                    }
+                    "Ov" => {
+                        status.override_values = Some(value.to_string());
+                    }
+                    _ => {} // Unknown field, ignore
+                }
+            }
+        }
+
+        Some(status)
+    }
+
+    fn parse_position(&self, pos_str: &str) -> Option<Position> {
+        let coords: Vec<&str> = pos_str.split(',').collect();
+        if coords.len() >= 3 {
+            if let (Ok(x), Ok(y), Ok(z)) = (
+                coords[0].parse::<f32>(),
+                coords[1].parse::<f32>(),
+                coords[2].parse::<f32>(),
+            ) {
+                return Some(Position { x, y, z });
+            }
+        }
+        None
+    }
+
+    pub fn parse_grbl_response(&mut self, response: &str) -> GrblResponse {
+        let trimmed = response.trim();
+
+        if trimmed == "ok" {
+            GrblResponse::Ok
+        } else if trimmed.starts_with("error:") {
+            GrblResponse::Error(trimmed[6..].to_string())
+        } else if trimmed.starts_with("ALARM:") {
+            GrblResponse::Alarm(trimmed[6..].to_string())
+        } else if trimmed.starts_with('[') && trimmed.ends_with(']') {
+            // Feedback message
+            GrblResponse::Feedback(trimmed[1..trimmed.len() - 1].to_string())
+        } else if trimmed.starts_with("Grbl ") {
+            GrblResponse::Version(trimmed.to_string())
+        } else if trimmed.starts_with('$') || trimmed.contains('=') {
+            // Settings response
+            GrblResponse::Settings(trimmed.to_string())
+        } else if trimmed.starts_with('<') && trimmed.ends_with('>') {
+            // Status response
+            if let Some(status) = self.parse_grbl_status(trimmed) {
+                self.current_status = status.clone();
+                GrblResponse::Status(status)
+            } else {
+                GrblResponse::Other(trimmed.to_string())
+            }
+        } else {
+            GrblResponse::Other(trimmed.to_string())
+        }
+    }
+
+    pub fn send_gcode_line(&mut self, line: &str) -> Result<(), String> {
+        if self.connection_state != ConnectionState::Connected {
+            return Err("Not connected to device".to_string());
+        }
+
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            return Ok(());
+        }
+
+        // Add to queue for flow control
+        self.gcode_queue.push_back(trimmed.to_string());
+
+        // For now, send immediately (TODO: implement proper queuing)
+        self.send_grbl_command(trimmed);
+
+        Ok(())
+    }
+
+    pub fn get_grbl_settings(&mut self) {
+        if self.connection_state != ConnectionState::Connected {
+            return;
+        }
+        self.send_grbl_command("$$\n");
+    }
+
+    pub fn set_grbl_setting(&mut self, setting: u32, value: f32) {
+        if self.connection_state != ConnectionState::Connected {
+            return;
+        }
+        let command = format!("${}={}\n", setting, value);
+        self.send_grbl_command(&command);
+    }
+
+    pub fn feed_hold(&mut self) {
+        if self.connection_state != ConnectionState::Connected {
+            return;
+        }
+        // Send feed hold command (!)
+        self.send_grbl_command("!");
+        self.status_message = "Feed hold activated".to_string();
+    }
+
+    pub fn resume(&mut self) {
+        if self.connection_state != ConnectionState::Connected {
+            return;
+        }
+        // Send resume command (~)
+        self.send_grbl_command("~");
+        self.status_message = "Resumed operation".to_string();
+    }
+
+    pub fn reset_grbl(&mut self) {
+        if self.connection_state != ConnectionState::Connected {
+            return;
+        }
+        // Send reset command (Ctrl+X = 0x18)
+        self.send_grbl_command(&format!("{}", char::from(0x18)));
+        self.status_message = "GRBL reset sent".to_string();
     }
 
     fn log_console(&mut self, message: &str) {
@@ -345,5 +602,143 @@ mod tests {
         let original_message = comm.status_message.clone();
         comm.send_spindle_override(50.0);
         assert_eq!(comm.status_message, original_message); // Should remain unchanged
+    }
+
+    #[test]
+    fn test_parse_grbl_status() {
+        let mut comm = GrblCommunication::new();
+
+        // Test complete status response
+        let status_str = "<Idle|MPos:10.000,20.000,30.000|WPos:5.000,15.000,25.000|F:1000.0|S:12000.0>";
+        let status = comm.parse_grbl_status(status_str).unwrap();
+
+        assert_eq!(status.machine_state, MachineState::Idle);
+        assert_eq!(status.machine_position.x, 10.0);
+        assert_eq!(status.machine_position.y, 20.0);
+        assert_eq!(status.machine_position.z, 30.0);
+        assert_eq!(status.work_position.x, 5.0);
+        assert_eq!(status.work_position.y, 15.0);
+        assert_eq!(status.work_position.z, 25.0);
+        assert_eq!(status.feed_rate, Some(1000.0));
+        assert_eq!(status.spindle_speed, Some(12000.0));
+    }
+
+    #[test]
+    fn test_parse_grbl_status_minimal() {
+        let mut comm = GrblCommunication::new();
+
+        // Test minimal status response
+        let status_str = "<Run|MPos:1.000,2.000,3.000>";
+        let status = comm.parse_grbl_status(status_str).unwrap();
+
+        assert_eq!(status.machine_state, MachineState::Run);
+        assert_eq!(status.machine_position.x, 1.0);
+        assert_eq!(status.machine_position.y, 2.0);
+        assert_eq!(status.machine_position.z, 3.0);
+        assert_eq!(status.work_position.x, 0.0); // Default
+        assert_eq!(status.feed_rate, None);
+    }
+
+    #[test]
+    fn test_parse_grbl_response_types() {
+        let mut comm = GrblCommunication::new();
+
+        // Test OK response
+        let response = comm.parse_grbl_response("ok");
+        assert!(matches!(response, GrblResponse::Ok));
+
+        // Test error response
+        let response = comm.parse_grbl_response("error: Invalid command");
+        assert!(matches!(response, GrblResponse::Error(_)));
+
+        // Test alarm response
+        let response = comm.parse_grbl_response("ALARM: Hard limit");
+        assert!(matches!(response, GrblResponse::Alarm(_)));
+
+        // Test feedback response
+        let response = comm.parse_grbl_response("[MSG: Test message]");
+        assert!(matches!(response, GrblResponse::Feedback(_)));
+
+        // Test version response
+        let response = comm.parse_grbl_response("Grbl 1.1f");
+        assert!(matches!(response, GrblResponse::Version(_)));
+
+        // Test settings response
+        let response = comm.parse_grbl_response("$0=10");
+        assert!(matches!(response, GrblResponse::Settings(_)));
+    }
+
+    #[test]
+    fn test_machine_state_parsing() {
+        assert_eq!(MachineState::from("Idle"), MachineState::Idle);
+        assert_eq!(MachineState::from("Run"), MachineState::Run);
+        assert_eq!(MachineState::from("Hold"), MachineState::Hold);
+        assert_eq!(MachineState::from("Jog"), MachineState::Jog);
+        assert_eq!(MachineState::from("Alarm"), MachineState::Alarm);
+        assert_eq!(MachineState::from("Door"), MachineState::Door);
+        assert_eq!(MachineState::from("Check"), MachineState::Check);
+        assert_eq!(MachineState::from("Home"), MachineState::Home);
+        assert_eq!(MachineState::from("Sleep"), MachineState::Sleep);
+        assert_eq!(MachineState::from("UnknownState"), MachineState::Unknown);
+    }
+
+    #[test]
+    fn test_realtime_override_commands() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test feed override 150%
+        comm.send_feed_override(150.0);
+        // Should send 0x91 (145) which is 150 - 100 = 50, but clamped and adjusted
+        assert_eq!(comm.status_message, "Feed override: 150%");
+
+        // Test spindle override 50%
+        comm.send_spindle_override(50.0);
+        assert_eq!(comm.status_message, "Spindle override: 50%");
+
+        // Test boundary values
+        comm.send_feed_override(10.0); // Minimum
+        assert_eq!(comm.status_message, "Feed override: 10%");
+
+        comm.send_feed_override(200.0); // Maximum
+        assert_eq!(comm.status_message, "Feed override: 200%");
+    }
+
+    #[test]
+    fn test_control_commands() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test feed hold
+        comm.feed_hold();
+        assert_eq!(comm.status_message, "Feed hold activated");
+
+        // Test resume
+        comm.resume();
+        assert_eq!(comm.status_message, "Resumed operation");
+
+        // Test reset
+        comm.reset_grbl();
+        assert_eq!(comm.status_message, "GRBL reset sent");
+    }
+
+    #[test]
+    fn test_gcode_line_sending() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test successful sending
+        let result = comm.send_gcode_line("G1 X10 Y20 F100");
+        assert!(result.is_ok());
+
+        // Test empty line
+        let result = comm.send_gcode_line("");
+        assert!(result.is_ok());
+
+        // Test disconnected state
+        comm.connection_state = ConnectionState::Disconnected;
+        let result = comm.send_gcode_line("G1 X10");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Not connected to device");
     }
 }

@@ -4,6 +4,8 @@ use chrono::Utc;
 mod widgets;
 mod communication;
 
+use communication::grbl::GrblResponse;
+
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -488,7 +490,30 @@ impl eframe::App for GcodeKitApp {
         if self.communication.connection_state == communication::ConnectionState::Connected {
             let messages = self.communication.read_grbl_responses();
             for message in messages {
-                self.log_console(&message);
+                // Parse GRBL response and handle appropriately
+                let response = self.communication.parse_grbl_response(&message);
+                match response {
+                    GrblResponse::Status(status) => {
+                        // Update status display with real-time information
+                        self.log_console(&format!("Status: {:?} | Pos: {:.3},{:.3},{:.3}",
+                            status.machine_state,
+                            status.work_position.x,
+                            status.work_position.y,
+                            status.work_position.z));
+                    }
+                    GrblResponse::Error(err) => {
+                        self.log_console(&format!("GRBL Error: {}", err));
+                    }
+                    GrblResponse::Alarm(alarm) => {
+                        self.log_console(&format!("GRBL Alarm: {}", alarm));
+                    }
+                    GrblResponse::Ok => {
+                        // Command acknowledged
+                    }
+                    _ => {
+                        self.log_console(&message);
+                    }
+                }
             }
         }
 
