@@ -34,6 +34,10 @@ impl Default for GrblCommunication {
 }
 
 impl GrblCommunication {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn refresh_ports(&mut self) {
         self.available_ports.clear();
         match available_ports() {
@@ -173,16 +177,16 @@ impl GrblCommunication {
     pub fn parse_grbl_version(&mut self, response: &str) {
         // GRBL typically responds with something like: "Grbl 1.1f ['$' for help]"
         if let Some(version_start) = response.find("Grbl ") {
-            let version_part = &response[version_start..];
-            if let Some(end_pos) = version_part.find(" ") {
-                let version = version_part[..end_pos].to_string();
-                self.grbl_version = version;
-                self.log_console(&format!("Detected GRBL version: {}", self.grbl_version));
-            } else {
-                // If no space found, take the whole "Grbl X.X" part
-                self.grbl_version = version_part.to_string();
-                self.log_console(&format!("Detected GRBL version: {}", self.grbl_version));
-            }
+            let after_grbl = &response[version_start + 5..]; // Skip "Grbl "
+            // Find the end of the version (space, bracket, or end of string)
+            let end_pos = after_grbl
+                .find(' ')
+                .or_else(|| after_grbl.find('['))
+                .unwrap_or(after_grbl.len());
+
+            let version = format!("Grbl {}", &after_grbl[..end_pos]);
+            self.grbl_version = version;
+            self.log_console(&format!("Detected GRBL version: {}", self.grbl_version));
         }
     }
 
@@ -230,5 +234,116 @@ impl GrblCommunication {
         // Note: Console logging is handled by the main app now
         // This is just for internal communication logging
         println!("[{}] {}", timestamp, message);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_grbl_communication_new() {
+        let comm = GrblCommunication::new();
+        assert_eq!(comm.connection_state, ConnectionState::Disconnected);
+        assert!(comm.selected_port.is_empty());
+        assert!(comm.available_ports.is_empty());
+        assert!(comm.status_message.is_empty());
+        assert!(comm.grbl_version.is_empty());
+        assert!(comm.serial_port.is_none());
+    }
+
+    #[test]
+    fn test_parse_grbl_version() {
+        let mut comm = GrblCommunication::new();
+
+        // Test standard GRBL version response
+        comm.parse_grbl_version("Grbl 1.1f ['$' for help]");
+        assert_eq!(comm.grbl_version, "Grbl 1.1f");
+
+        // Test version without space
+        comm.parse_grbl_version("Grbl 1.2");
+        assert_eq!(comm.grbl_version, "Grbl 1.2");
+
+        // Test no version found
+        comm.parse_grbl_version("Some other response");
+        assert_eq!(comm.grbl_version, "Grbl 1.2"); // Should remain unchanged
+    }
+
+    #[test]
+    fn test_jog_command_formatting() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test X axis jog
+        comm.jog_axis('X', 10.0);
+        assert_eq!(comm.status_message, "Jogging X axis by 10.0mm");
+
+        // Test Y axis jog with decimal
+        comm.jog_axis('Y', -5.5);
+        assert_eq!(comm.status_message, "Jogging Y axis by -5.5mm");
+
+        // Test Z axis jog
+        comm.jog_axis('Z', 2.25);
+        assert_eq!(comm.status_message, "Jogging Z axis by 2.2mm");
+    }
+
+    #[test]
+    fn test_connection_state_management() {
+        let mut comm = GrblCommunication::new();
+
+        // Initial state
+        assert_eq!(comm.connection_state, ConnectionState::Disconnected);
+
+        // Test disconnect when already disconnected
+        comm.disconnect_from_device();
+        assert_eq!(comm.connection_state, ConnectionState::Disconnected);
+        assert_eq!(comm.status_message, "Disconnected from device".to_string());
+    }
+
+    #[test]
+    fn test_home_command() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        comm.home_all_axes();
+        assert_eq!(comm.status_message, "Homing all axes".to_string());
+    }
+
+    #[test]
+    fn test_override_commands() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test spindle override
+        comm.send_spindle_override(75.0);
+        assert_eq!(comm.status_message, "Spindle override: 75%");
+
+        // Test feed override
+        comm.send_feed_override(120.0);
+        assert_eq!(comm.status_message, "Feed override: 120%");
+
+        // Test decimal values
+        comm.send_spindle_override(33.7);
+        assert_eq!(comm.status_message, "Spindle override: 34%");
+    }
+
+    #[test]
+    fn test_disconnected_operations() {
+        let mut comm = GrblCommunication::new();
+        // Ensure disconnected
+        comm.connection_state = ConnectionState::Disconnected;
+
+        // Test jog when disconnected
+        comm.jog_axis('X', 10.0);
+        assert_eq!(comm.status_message, "Not connected to device".to_string());
+
+        // Test home when disconnected
+        comm.home_all_axes();
+        assert_eq!(comm.status_message, "Not connected to device".to_string());
+
+        // Test overrides when disconnected (should not change status)
+        let original_message = comm.status_message.clone();
+        comm.send_spindle_override(50.0);
+        assert_eq!(comm.status_message, original_message); // Should remain unchanged
     }
 }

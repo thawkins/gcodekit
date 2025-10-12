@@ -47,7 +47,7 @@ struct GcodeKitApp {
     jigsaw_complexity: i32,
 }
 
-#[derive(Default, PartialEq)]
+#[derive(Default, PartialEq, Debug)]
 enum Tab {
     #[default]
     GcodeEditor,
@@ -55,7 +55,7 @@ enum Tab {
     DeviceConsole,
 }
 
-#[derive(Default, PartialEq)]
+#[derive(Default, PartialEq, Debug)]
 enum MachineMode {
     #[default]
     CNC,
@@ -306,6 +306,174 @@ impl GcodeKitApp {
         self.gcode_content = gcode;
         self.gcode_filename = "jigsaw_puzzle.gcode".to_string();
         self.status_message = "Jigsaw G-code generated (placeholder)".to_string();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gcode_app_initialization() {
+        let app = GcodeKitApp::default();
+
+        assert_eq!(app.selected_tab, Tab::GcodeEditor);
+        assert!(app.gcode_content.is_empty());
+        assert!(app.gcode_filename.is_empty());
+        assert_eq!(app.jog_step_size, 0.0); // Default f32 is 0.0
+        assert_eq!(app.spindle_override, 0.0);
+        assert_eq!(app.feed_override, 0.0);
+        assert_eq!(app.machine_mode, MachineMode::CNC);
+        assert!(app.console_messages.is_empty());
+        assert_eq!(app.status_message, String::new());
+    }
+
+    #[test]
+    fn test_generate_rectangle_gcode() {
+        let mut app = GcodeKitApp::default();
+        app.shape_width = 100.0;
+        app.shape_height = 50.0;
+        app.tool_feed_rate = 500.0;
+
+        app.generate_rectangle();
+
+        assert!(app.gcode_content.contains("G21 ; Set units to mm"));
+        assert!(app.gcode_content.contains("G90 ; Absolute positioning"));
+        assert!(app.gcode_content.contains("G0 X0 Y0 ; Go to origin"));
+        assert!(app.gcode_content.contains("G1 X100 Y0 F500 ; Bottom edge"));
+        assert!(app.gcode_content.contains("G1 X100 Y50 F500 ; Right edge"));
+        assert!(app.gcode_content.contains("G1 X0 Y50 F500 ; Top edge"));
+        assert!(app.gcode_content.contains("G1 X0 Y0 F500 ; Left edge"));
+        assert!(app.gcode_content.contains("M30 ; End program"));
+        assert_eq!(app.gcode_filename, "generated_rectangle.gcode");
+        assert_eq!(app.status_message, "Rectangle G-code generated".to_string());
+    }
+
+    #[test]
+    fn test_generate_circle_gcode() {
+        let mut app = GcodeKitApp::default();
+        app.shape_radius = 25.0;
+        app.tool_feed_rate = 300.0;
+
+        app.generate_circle();
+
+        assert!(app.gcode_content.contains("G21 ; Set units to mm"));
+        assert!(app.gcode_content.contains("G90 ; Absolute positioning"));
+        assert!(app.gcode_content.contains("G0 X25 Y25 ; Go to circle center"));
+        assert!(app.gcode_content.contains("G2 I-25 J-25 F300 ; Clockwise circle"));
+        assert!(app.gcode_content.contains("M30 ; End program"));
+        assert_eq!(app.gcode_filename, "generated_circle.gcode");
+        assert_eq!(app.status_message, "Circle G-code generated".to_string());
+    }
+
+    #[test]
+    fn test_generate_toolpath_with_existing_gcode() {
+        let mut app = GcodeKitApp::default();
+        app.gcode_content = "G1 X10 Y10\nG1 X20 Y20".to_string();
+        app.tool_spindle_speed = 1000.0;
+        app.tool_feed_rate = 400.0;
+
+        app.generate_toolpath();
+
+        assert!(app.gcode_content.contains("G21 ; Set units to mm"));
+        assert!(app.gcode_content.contains("M3 S1000 ; Spindle on"));
+        assert!(app.gcode_content.contains("G1 F400 ; Set feed rate"));
+        assert!(app.gcode_content.contains("G1 X10 Y10"));
+        assert!(app.gcode_content.contains("G1 X20 Y20"));
+        assert_eq!(app.status_message, "Toolpath parameters added".to_string());
+    }
+
+    #[test]
+    fn test_generate_toolpath_without_gcode() {
+        let mut app = GcodeKitApp::default();
+        // gcode_content is empty by default
+        app.tool_spindle_speed = 1000.0;
+        app.tool_feed_rate = 400.0;
+
+        app.generate_toolpath();
+
+        assert_eq!(app.status_message, "No G-code to modify".to_string());
+        assert!(app.gcode_content.is_empty());
+    }
+
+    #[test]
+    fn test_log_console_functionality() {
+        let mut app = GcodeKitApp::default();
+
+        app.log_console("Test message");
+
+        assert_eq!(app.console_messages.len(), 1);
+        assert!(app.console_messages[0].contains("Test message"));
+        assert!(app.console_messages[0].contains("[")); // Should contain timestamp
+        assert!(app.console_messages[0].contains("]"));
+    }
+
+    #[test]
+    fn test_console_message_limit() {
+        let mut app = GcodeKitApp::default();
+
+        // Add more than 1000 messages
+        for i in 0..1010 {
+            app.log_console(&format!("Message {}", i));
+        }
+
+        // Should only keep the last 1000 messages
+        assert_eq!(app.console_messages.len(), 1000);
+        assert!(app.console_messages[0].contains("Message 10")); // First message should be removed
+        assert!(app.console_messages[999].contains("Message 1009")); // Last message should be kept
+    }
+
+    #[test]
+    fn test_generate_image_engraving_placeholder() {
+        let mut app = GcodeKitApp::default();
+        app.image_resolution = 300.0;
+        app.image_max_power = 80.0;
+
+        app.generate_image_engraving();
+
+        assert!(app.gcode_content.contains("; Image engraving G-code"));
+        assert!(app.gcode_content.contains("; Resolution: 300 dpi"));
+        assert!(app.gcode_content.contains("; Max Power: 80%"));
+        assert!(app.gcode_content.contains("; TODO: Implement actual image processing"));
+        assert!(app.gcode_content.contains("M30 ; End program"));
+        assert_eq!(app.gcode_filename, "image_engraving.gcode");
+        assert_eq!(app.status_message, "Image engraving G-code generated (placeholder)".to_string());
+    }
+
+    #[test]
+    fn test_generate_tabbed_box_placeholder() {
+        let mut app = GcodeKitApp::default();
+        app.box_length = 100.0;
+        app.box_width = 80.0;
+        app.box_height = 50.0;
+        app.tab_size = 10.0;
+
+        app.generate_tabbed_box();
+
+        assert!(app.gcode_content.contains("; Tabbed box G-code"));
+        assert!(app.gcode_content.contains("; Dimensions: 100x80x50mm"));
+        assert!(app.gcode_content.contains("; Tab size: 10mm"));
+        assert!(app.gcode_content.contains("; TODO: Implement actual box cutting paths"));
+        assert!(app.gcode_content.contains("M30 ; End program"));
+        assert_eq!(app.gcode_filename, "tabbed_box.gcode");
+        assert_eq!(app.status_message, "Tabbed box G-code generated (placeholder)".to_string());
+    }
+
+    #[test]
+    fn test_generate_jigsaw_placeholder() {
+        let mut app = GcodeKitApp::default();
+        app.jigsaw_pieces = 50;
+        app.jigsaw_complexity = 3;
+
+        app.generate_jigsaw();
+
+        assert!(app.gcode_content.contains("; Jigsaw puzzle G-code"));
+        assert!(app.gcode_content.contains("; Pieces: 50"));
+        assert!(app.gcode_content.contains("; Complexity: 3"));
+        assert!(app.gcode_content.contains("; TODO: Implement actual puzzle piece cutting"));
+        assert!(app.gcode_content.contains("M30 ; End program"));
+        assert_eq!(app.gcode_filename, "jigsaw_puzzle.gcode");
+        assert_eq!(app.status_message, "Jigsaw G-code generated (placeholder)".to_string());
     }
 }
 
