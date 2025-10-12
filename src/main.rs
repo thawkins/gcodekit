@@ -35,6 +35,7 @@ struct GcodeKitApp {
     console_messages: Vec<String>,
     parsed_paths: Vec<PathSegment>,
     current_position: (f32, f32, f32),
+    selected_line: Option<usize>,
     // CAM parameters
     shape_width: f32,
     shape_height: f32,
@@ -71,6 +72,7 @@ struct PathSegment {
     start: (f32, f32, f32),
     end: (f32, f32, f32),
     move_type: MoveType,
+    line_number: usize,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -178,7 +180,7 @@ impl GcodeKitApp {
         let mut current_pos = (0.0f32, 0.0f32, 0.0f32);
         let mut current_move_type = MoveType::Rapid;
 
-        for line in self.gcode_content.lines() {
+        for (line_idx, line) in self.gcode_content.lines().enumerate() {
             let line = line.trim();
             if line.is_empty() || line.starts_with(';') {
                 continue;
@@ -218,6 +220,7 @@ impl GcodeKitApp {
                     start: current_pos,
                     end: new_pos,
                     move_type: move_type.clone(),
+                    line_number: line_idx,
                 });
                 current_pos = new_pos;
             }
@@ -897,13 +900,54 @@ impl eframe::App for GcodeKitApp {
                                         MoveType::Arc => egui::Color32::YELLOW,
                                     };
 
-                                    painter.line_segment([start_pos, end_pos], egui::Stroke::new(2.0, color));
+                                    let is_selected = self.selected_line == Some(segment.line_number);
+                                    let stroke_width = if is_selected { 4.0 } else { 2.0 };
+                                    let stroke_color = if is_selected { egui::Color32::WHITE } else { color };
+
+                                    painter.line_segment([start_pos, end_pos], egui::Stroke::new(stroke_width, stroke_color));
                                 }
 
                                 // Draw current machine position
                                 let current_screen_x = offset_x + self.current_position.0 * scale;
                                 let current_screen_y = offset_y + self.current_position.1 * scale;
                                 painter.circle_filled(egui::pos2(current_screen_x, current_screen_y), 5.0, egui::Color32::RED);
+
+                                // Left-click to select segment
+                                if response.clicked_by(egui::PointerButton::Primary) {
+                                    if let Some(click_pos) = response.interact_pointer_pos() {
+                                        // Find closest segment to click position
+                                        let mut closest_segment = None;
+                                        let mut min_distance = f32::INFINITY;
+
+                                        for segment in &self.parsed_paths {
+                                            let start_screen = egui::pos2(
+                                                offset_x + segment.start.0 * scale,
+                                                offset_y + segment.start.1 * scale,
+                                            );
+                                            let end_screen = egui::pos2(
+                                                offset_x + segment.end.0 * scale,
+                                                offset_y + segment.end.1 * scale,
+                                            );
+
+                                            // Distance to line segment (simplified as distance to midpoint)
+                                            let mid_x = (start_screen.x + end_screen.x) / 2.0;
+                                            let mid_y = (start_screen.y + end_screen.y) / 2.0;
+                                            let dx = click_pos.x - mid_x;
+                                            let dy = click_pos.y - mid_y;
+                                            let distance = (dx * dx + dy * dy).sqrt();
+
+                                            if distance < min_distance && distance < 20.0 { // Within 20 pixels
+                                                min_distance = distance;
+                                                closest_segment = Some(segment.line_number);
+                                            }
+                                        }
+
+                                        self.selected_line = closest_segment;
+                                        if let Some(line) = self.selected_line {
+                                            self.status_message = format!("Selected line {}", line + 1);
+                                        }
+                                    }
+                                }
 
                                 // Right-click to jog
                                 if response.clicked_by(egui::PointerButton::Secondary) {
