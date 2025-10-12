@@ -3,9 +3,11 @@ pub mod gcode_loading;
 pub mod image_engraving;
 pub mod jigsaw;
 pub mod jog;
+pub mod machine_control;
 pub mod overrides;
 pub mod shape_generation;
 pub mod tabbed_box;
+pub mod tool_management;
 pub mod toolpath_generation;
 pub mod vector_import;
 

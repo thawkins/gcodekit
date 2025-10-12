@@ -1,18 +1,13 @@
 use chrono::Utc;
 use serialport::{SerialPort, available_ports};
+use std::any::Any;
 use std::collections::VecDeque;
+use std::error::Error;
 use std::io::{Read, Write};
 
-#[derive(Default, PartialEq, Debug, Clone)]
-pub enum ConnectionState {
-    #[default]
-    Disconnected,
-    Connecting,
-    Connected,
-    Error,
-}
+use super::{CncController, ConnectionState};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum MachineState {
     Idle,
     Run,
@@ -23,29 +18,19 @@ pub enum MachineState {
     Check,
     Home,
     Sleep,
+    #[default]
     Unknown,
 }
 
-impl Default for MachineState {
-    fn default() -> Self {
-        MachineState::Unknown
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum WcsCoordinate {
+    #[default]
     G54,
     G55,
     G56,
     G57,
     G58,
     G59,
-}
-
-impl Default for WcsCoordinate {
-    fn default() -> Self {
-        WcsCoordinate::G54
-    }
 }
 
 impl From<&str> for MachineState {
@@ -70,6 +55,10 @@ pub struct Position {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+    pub a: Option<f32>,
+    pub b: Option<f32>,
+    pub c: Option<f32>,
+    pub d: Option<f32>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -106,6 +95,8 @@ pub struct GrblCommunication {
     pub gcode_queue: VecDeque<String>,
     pub last_response: Option<GrblResponse>,
     pub current_wcs: WcsCoordinate,
+    pub recovery_config: crate::communication::ErrorRecoveryConfig,
+    pub recovery_state: crate::communication::RecoveryState,
     serial_port: Option<Box<dyn SerialPort>>,
 }
 
@@ -120,7 +111,15 @@ impl Default for GrblCommunication {
             current_status: GrblStatus::default(),
             gcode_queue: VecDeque::new(),
             last_response: None,
-            current_wcs: WcsCoordinate::default(),
+            current_wcs: WcsCoordinate::G54,
+            recovery_config: crate::communication::ErrorRecoveryConfig::default(),
+            recovery_state: crate::communication::RecoveryState {
+                reconnect_attempts: 0,
+                last_reconnect_attempt: None,
+                command_retry_count: 0,
+                last_error: None,
+                recovery_actions_taken: Vec::new(),
+            },
             serial_port: None,
         }
     }
@@ -128,7 +127,26 @@ impl Default for GrblCommunication {
 
 impl GrblCommunication {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            connection_state: ConnectionState::Disconnected,
+            selected_port: String::new(),
+            available_ports: Vec::new(),
+            status_message: String::new(),
+            grbl_version: String::new(),
+            current_status: GrblStatus::default(),
+            gcode_queue: VecDeque::new(),
+            last_response: None,
+            current_wcs: WcsCoordinate::G54,
+            recovery_config: crate::communication::ErrorRecoveryConfig::default(),
+            recovery_state: crate::communication::RecoveryState {
+                reconnect_attempts: 0,
+                last_reconnect_attempt: None,
+                command_retry_count: 0,
+                last_error: None,
+                recovery_actions_taken: Vec::new(),
+            },
+            serial_port: None,
+        }
     }
 
     pub fn set_wcs(&mut self, wcs: WcsCoordinate) -> Result<(), String> {
@@ -419,14 +437,46 @@ impl GrblCommunication {
 
     fn parse_position(&self, pos_str: &str) -> Option<Position> {
         let coords: Vec<&str> = pos_str.split(',').collect();
-        if coords.len() >= 3 {
-            if let (Ok(x), Ok(y), Ok(z)) = (
+        if coords.len() >= 3
+            && let (Ok(x), Ok(y), Ok(z)) = (
                 coords[0].parse::<f32>(),
                 coords[1].parse::<f32>(),
                 coords[2].parse::<f32>(),
-            ) {
-                return Some(Position { x, y, z });
+            )
+        {
+            let mut pos = Position {
+                x,
+                y,
+                z,
+                a: None,
+                b: None,
+                c: None,
+                d: None,
+            };
+
+            // Parse additional axes if available
+            if coords.len() >= 4
+                && let Ok(a) = coords[3].parse::<f32>()
+            {
+                pos.a = Some(a);
             }
+            if coords.len() >= 5
+                && let Ok(b) = coords[4].parse::<f32>()
+            {
+                pos.b = Some(b);
+            }
+            if coords.len() >= 6
+                && let Ok(c) = coords[5].parse::<f32>()
+            {
+                pos.c = Some(c);
+            }
+            if coords.len() >= 7
+                && let Ok(d) = coords[6].parse::<f32>()
+            {
+                pos.d = Some(d);
+            }
+
+            return Some(pos);
         }
         None
     }
@@ -522,11 +572,273 @@ impl GrblCommunication {
         self.status_message = "GRBL reset sent".to_string();
     }
 
+    pub fn probe_axis(&mut self, axis: char, distance: f32, feed: f32) -> Result<(), String> {
+        if self.connection_state != ConnectionState::Connected {
+            return Err("Not connected".to_string());
+        }
+        let command = format!("G38.2 {}{:.3} F{:.0}", axis, distance, feed);
+        self.send_gcode_line(&command)
+    }
+
+    pub fn probe_z_down(&mut self, distance: f32, feed: f32) -> Result<(), String> {
+        self.probe_axis('Z', -distance.abs(), feed)
+    }
+
+    pub fn auto_level_grid(&mut self, x_start: f32, y_start: f32, x_end: f32, y_end: f32, grid_size: usize, probe_depth: f32, feed: f32) -> Result<Vec<(f32, f32, f32)>, String> {
+        if self.connection_state != ConnectionState::Connected {
+            return Err("Not connected".to_string());
+        }
+
+        let mut probe_points = Vec::new();
+
+        let x_step = (x_end - x_start) / (grid_size - 1) as f32;
+        let y_step = (y_end - y_start) / (grid_size - 1) as f32;
+
+        for i in 0..grid_size {
+            for j in 0..grid_size {
+                let x = x_start + i as f32 * x_step;
+                let y = y_start + j as f32 * y_step;
+
+                // Move to probe position
+                self.send_gcode_line(&format!("G0 X{:.3} Y{:.3}", x, y))?;
+
+                // Probe Z
+                self.probe_z_down(probe_depth, feed)?;
+
+                // Get probe result (this would need to parse the response)
+                // For now, assume we get the Z position
+                // In real implementation, parse the probe result from status
+                let z = 0.0; // Placeholder
+
+                probe_points.push((x, y, z));
+            }
+        }
+
+        Ok(probe_points)
+    }
+
+    pub fn measure_workpiece(&mut self, axis: char, direction: f32, feed: f32) -> Result<f32, String> {
+        if self.connection_state != ConnectionState::Connected {
+            return Err("Not connected".to_string());
+        }
+
+        let command = format!("G38.2 {}{:.3} F{:.0}", axis, direction, feed);
+        self.send_gcode_line(&command)?;
+
+        // Parse the probe result
+        // This would need to read the status and extract the probed position
+        // For now, return a placeholder
+        Ok(0.0)
+    }
+
     fn log_console(&mut self, message: &str) {
         let timestamp = Utc::now().format("%H:%M:%S");
         // Note: Console logging is handled by the main app now
         // This is just for internal communication logging
         println!("[{}] {}", timestamp, message);
+    }
+}
+
+impl CncController for GrblCommunication {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn set_port(&mut self, port: String) {
+        self.selected_port = port;
+    }
+
+    fn connect(&mut self) -> Result<(), Box<dyn Error>> {
+        self.connect_to_device();
+        Ok(())
+    }
+
+    fn disconnect(&mut self) {
+        self.disconnect_from_device();
+    }
+
+    fn send_gcode_line(&mut self, line: &str) -> Result<(), Box<dyn Error>> {
+        self.send_gcode_line(line).map_err(|e| e.into())
+    }
+
+    fn read_response(&mut self) -> Option<String> {
+        self.read_grbl_responses().first().cloned()
+    }
+
+    fn is_connected(&self) -> bool {
+        self.connection_state == ConnectionState::Connected
+    }
+
+    fn get_status(&self) -> String {
+        format!("{:?}", self.connection_state)
+    }
+
+    fn refresh_ports(&mut self) {
+        self.refresh_ports();
+    }
+
+    fn get_available_ports(&self) -> &Vec<String> {
+        &self.available_ports
+    }
+
+    fn get_selected_port(&self) -> &str {
+        &self.selected_port
+    }
+
+    fn get_connection_state(&self) -> &ConnectionState {
+        &self.connection_state
+    }
+
+    fn get_status_message(&self) -> &str {
+        &self.status_message
+    }
+
+    fn jog_axis(&mut self, axis: char, distance: f32) {
+        self.jog_axis(axis, distance);
+    }
+
+    fn home_all_axes(&mut self) {
+        self.home_all_axes();
+    }
+
+    fn send_spindle_override(&mut self, percentage: f32) {
+        self.send_spindle_override(percentage);
+    }
+
+    fn send_feed_override(&mut self, percentage: f32) {
+        self.send_feed_override(percentage);
+    }
+
+    fn get_version(&self) -> &str {
+        &self.grbl_version
+    }
+
+    fn handle_response(&mut self, response: &str) -> Option<crate::MachinePosition> {
+        let parsed = self.parse_grbl_response(response);
+        // Handle the response as needed, e.g., update status
+        match parsed {
+            GrblResponse::Status(status) => {
+                self.current_status = status.clone();
+                let pos = status.work_position;
+                Some(crate::MachinePosition {
+                    x: pos.x,
+                    y: pos.y,
+                    z: pos.z,
+                    a: pos.a,
+                    b: pos.b,
+                    c: pos.c,
+                    d: pos.d,
+                })
+            }
+            _ => None,
+        }
+    }
+
+    // Error recovery methods
+    fn get_recovery_config(&self) -> &crate::communication::ErrorRecoveryConfig {
+        &self.recovery_config
+    }
+
+    fn get_recovery_state(&self) -> &crate::communication::RecoveryState {
+        &self.recovery_state
+    }
+
+    fn set_recovery_config(&mut self, config: crate::communication::ErrorRecoveryConfig) {
+        self.recovery_config = config;
+    }
+
+    fn attempt_recovery(
+        &mut self,
+        error: &str,
+    ) -> Result<crate::communication::RecoveryAction, String> {
+        if !self.recovery_config.auto_recovery_enabled {
+            println!("[RECOVERY] Auto recovery disabled for error: {}", error);
+            return Err("Auto recovery disabled".to_string());
+        }
+
+        self.recovery_state.last_error = Some(error.to_string());
+        println!("[RECOVERY] Attempting recovery for error: {}", error);
+
+        // Classify error and determine recovery action
+        let action = if error.contains("connection") || error.contains("timeout") {
+            // Connection-related errors
+            println!(
+                "[RECOVERY] Classified as connection error (attempts: {}/{})",
+                self.recovery_state.reconnect_attempts, self.recovery_config.max_reconnect_attempts
+            );
+            if self.recovery_state.reconnect_attempts < self.recovery_config.max_reconnect_attempts
+            {
+                self.recovery_state.reconnect_attempts += 1;
+                self.recovery_state.last_reconnect_attempt = Some(std::time::Instant::now());
+                self.connection_state = ConnectionState::Recovering;
+                println!(
+                    "[RECOVERY] Initiating reconnection attempt {}",
+                    self.recovery_state.reconnect_attempts
+                );
+                crate::communication::RecoveryAction::Reconnect
+            } else {
+                println!("[RECOVERY] Max reconnection attempts reached, aborting job");
+                crate::communication::RecoveryAction::AbortJob
+            }
+        } else if error.contains("command") || error.contains("syntax") {
+            // Command-related errors
+            println!(
+                "[RECOVERY] Classified as command error (retries: {}/{})",
+                self.recovery_state.command_retry_count, self.recovery_config.max_command_retries
+            );
+            if self.recovery_state.command_retry_count < self.recovery_config.max_command_retries {
+                self.recovery_state.command_retry_count += 1;
+                println!(
+                    "[RECOVERY] Retrying command (attempt {})",
+                    self.recovery_state.command_retry_count
+                );
+                crate::communication::RecoveryAction::RetryCommand
+            } else {
+                println!("[RECOVERY] Max command retries reached, skipping command");
+                crate::communication::RecoveryAction::SkipCommand
+            }
+        } else if error.contains("alarm") || error.contains("emergency") {
+            // Critical errors
+            println!(
+                "[RECOVERY] Classified as critical error (reset_on_critical: {})",
+                self.recovery_config.reset_on_critical_error
+            );
+            if self.recovery_config.reset_on_critical_error {
+                println!("[RECOVERY] Resetting controller due to critical error");
+                crate::communication::RecoveryAction::ResetController
+            } else {
+                println!("[RECOVERY] Aborting job due to critical error");
+                crate::communication::RecoveryAction::AbortJob
+            }
+        } else {
+            // Unknown errors - try reset
+            println!("[RECOVERY] Classified as unknown error, attempting controller reset");
+            crate::communication::RecoveryAction::ResetController
+        };
+
+        self.recovery_state
+            .recovery_actions_taken
+            .push(action.clone());
+        println!("[RECOVERY] Recovery action taken: {:?}", action);
+        Ok(action)
+    }
+
+    fn reset_recovery_state(&mut self) {
+        self.recovery_state = crate::communication::RecoveryState {
+            reconnect_attempts: 0,
+            last_reconnect_attempt: None,
+            command_retry_count: 0,
+            last_error: None,
+            recovery_actions_taken: Vec::new(),
+        };
+        if self.connection_state == ConnectionState::Recovering {
+            self.connection_state = ConnectionState::Connected;
+        }
+    }
+
+    fn is_recovering(&self) -> bool {
+        self.connection_state == ConnectionState::Recovering
+            || self.recovery_state.reconnect_attempts > 0
     }
 }
 
@@ -777,5 +1089,210 @@ mod tests {
         let result = comm.send_gcode_line("G1 X10");
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Not connected to device");
+    }
+
+    #[test]
+    fn test_error_recovery_config() {
+        let mut comm = GrblCommunication::new();
+        let config = comm.get_recovery_config();
+        assert_eq!(config.max_reconnect_attempts, 3);
+        assert_eq!(config.reconnect_delay_ms, 2000);
+        assert_eq!(config.max_command_retries, 3);
+        assert_eq!(config.command_retry_delay_ms, 1000);
+        assert!(config.reset_on_critical_error);
+        assert!(config.auto_recovery_enabled);
+
+        // Test setting custom config
+        let custom_config = crate::communication::ErrorRecoveryConfig {
+            max_reconnect_attempts: 5,
+            reconnect_delay_ms: 3000,
+            max_command_retries: 2,
+            command_retry_delay_ms: 1500,
+            reset_on_critical_error: false,
+            auto_recovery_enabled: false,
+        };
+        comm.set_recovery_config(custom_config.clone());
+        let retrieved_config = comm.get_recovery_config();
+        assert_eq!(retrieved_config.max_reconnect_attempts, 5);
+        assert_eq!(retrieved_config.reconnect_delay_ms, 3000);
+        assert_eq!(retrieved_config.max_command_retries, 2);
+        assert_eq!(retrieved_config.command_retry_delay_ms, 1500);
+        assert!(!retrieved_config.reset_on_critical_error);
+        assert!(!retrieved_config.auto_recovery_enabled);
+    }
+
+    #[test]
+    fn test_recovery_state_initialization() {
+        let comm = GrblCommunication::new();
+        let state = comm.get_recovery_state();
+        assert_eq!(state.reconnect_attempts, 0);
+        assert!(state.last_reconnect_attempt.is_none());
+        assert_eq!(state.command_retry_count, 0);
+        assert!(state.last_error.is_none());
+        assert!(state.recovery_actions_taken.is_empty());
+    }
+
+    #[test]
+    fn test_recovery_connection_error() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Error;
+
+        // Test recovery for connection error
+        let result = comm.attempt_recovery("connection lost");
+        assert!(result.is_ok());
+        let action = result.unwrap();
+        assert_eq!(action, crate::communication::RecoveryAction::Reconnect);
+
+        let state = comm.get_recovery_state();
+        assert_eq!(state.reconnect_attempts, 1);
+        assert!(state.last_reconnect_attempt.is_some());
+        assert_eq!(state.last_error.as_ref().unwrap(), "connection lost");
+        assert_eq!(state.recovery_actions_taken.len(), 1);
+        assert_eq!(
+            state.recovery_actions_taken[0],
+            crate::communication::RecoveryAction::Reconnect
+        );
+    }
+
+    #[test]
+    fn test_recovery_command_error() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test recovery for command error
+        let result = comm.attempt_recovery("Command syntax error");
+        assert!(result.is_ok());
+        let action = result.unwrap();
+        assert_eq!(action, crate::communication::RecoveryAction::RetryCommand);
+
+        let state = comm.get_recovery_state();
+        assert_eq!(state.command_retry_count, 1);
+        assert_eq!(state.last_error.as_ref().unwrap(), "Command syntax error");
+        assert_eq!(state.recovery_actions_taken.len(), 1);
+        assert_eq!(
+            state.recovery_actions_taken[0],
+            crate::communication::RecoveryAction::RetryCommand
+        );
+    }
+
+    #[test]
+    fn test_recovery_max_attempts_exceeded() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Error;
+
+        // Exhaust reconnect attempts
+        for _ in 0..3 {
+            let _ = comm.attempt_recovery("connection lost");
+        }
+
+        // Next attempt should abort job
+        let result = comm.attempt_recovery("connection lost");
+        assert!(result.is_ok());
+        let action = result.unwrap();
+        assert_eq!(action, crate::communication::RecoveryAction::AbortJob);
+
+        let state = comm.get_recovery_state();
+        assert_eq!(state.reconnect_attempts, 3);
+    }
+
+    #[test]
+    fn test_recovery_command_max_retries_exceeded() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Exhaust command retries
+        for _ in 0..3 {
+            let _ = comm.attempt_recovery("Command syntax error");
+        }
+
+        // Next attempt should skip command
+        let result = comm.attempt_recovery("Command syntax error");
+        assert!(result.is_ok());
+        let action = result.unwrap();
+        assert_eq!(action, crate::communication::RecoveryAction::SkipCommand);
+
+        let state = comm.get_recovery_state();
+        assert_eq!(state.command_retry_count, 3);
+    }
+
+    #[test]
+    fn test_recovery_critical_error() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test recovery for critical error
+        let result = comm.attempt_recovery("alarm: hard limit triggered");
+        assert!(result.is_ok());
+        let action = result.unwrap();
+        assert_eq!(
+            action,
+            crate::communication::RecoveryAction::ResetController
+        );
+
+        let state = comm.get_recovery_state();
+        assert_eq!(
+            state.last_error.as_ref().unwrap(),
+            "alarm: hard limit triggered"
+        );
+        assert_eq!(state.recovery_actions_taken.len(), 1);
+        assert_eq!(
+            state.recovery_actions_taken[0],
+            crate::communication::RecoveryAction::ResetController
+        );
+    }
+
+    #[test]
+    fn test_recovery_disabled() {
+        let mut comm = GrblCommunication::new();
+        let mut config = comm.get_recovery_config().clone();
+        config.auto_recovery_enabled = false;
+        comm.set_recovery_config(config);
+
+        // Test that recovery is disabled
+        let result = comm.attempt_recovery("connection lost");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Auto recovery disabled");
+    }
+
+    #[test]
+    fn test_recovery_state_reset() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Error;
+
+        // Perform some recovery actions
+        let _ = comm.attempt_recovery("connection lost");
+        let _ = comm.attempt_recovery("command timeout");
+
+        let state = comm.get_recovery_state();
+        assert_eq!(state.reconnect_attempts, 2);
+        assert_eq!(state.command_retry_count, 0);
+        assert_eq!(state.recovery_actions_taken.len(), 2);
+
+        // Reset recovery state
+        comm.reset_recovery_state();
+
+        let state = comm.get_recovery_state();
+        assert_eq!(state.reconnect_attempts, 0);
+        assert!(state.last_reconnect_attempt.is_none());
+        assert_eq!(state.command_retry_count, 0);
+        assert!(state.last_error.is_none());
+        assert!(state.recovery_actions_taken.is_empty());
+    }
+
+    #[test]
+    fn test_recovery_is_recovering() {
+        let mut comm = GrblCommunication::new();
+
+        // Initially not recovering
+        assert!(!comm.is_recovering());
+
+        // After recovery attempt, should be recovering
+        comm.connection_state = ConnectionState::Error;
+        let _ = comm.attempt_recovery("connection lost");
+        assert!(comm.is_recovering());
+
+        // After reset, should not be recovering
+        comm.reset_recovery_state();
+        assert!(!comm.is_recovering());
     }
 }

@@ -15,3 +15,9 @@ anyhow = "1.0"  # Error handling
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+usvg = "0.37"  # SVG parsing
+dxf = "0.4"  # DXF file parsing
+lyon = "1.0"  # 2D graphics and path operations for boolean operations
+image = "0.24"  # Image processing for bitmap vectorization
+rhai = "1.17"  # Scripting engine for parametric design

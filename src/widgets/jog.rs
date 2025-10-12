@@ -49,6 +49,69 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             }
         });
 
+        ui.separator();
+
+        // Additional axes (A, B, C, D) - shown conditionally if supported
+        if app.current_position.a.is_some()
+            || app.current_position.b.is_some()
+            || app.current_position.c.is_some()
+            || app.current_position.d.is_some()
+        {
+            ui.label("Rotary Axes");
+
+            // A axis
+            if app.current_position.a.is_some() {
+                ui.horizontal(|ui| {
+                    ui.label("A");
+                    if ui.button("⟲").clicked() {
+                        app.jog_axis('A', -app.jog_step_size);
+                    }
+                    if ui.button("⟳").clicked() {
+                        app.jog_axis('A', app.jog_step_size);
+                    }
+                });
+            }
+
+            // B axis
+            if app.current_position.b.is_some() {
+                ui.horizontal(|ui| {
+                    ui.label("B");
+                    if ui.button("⟲").clicked() {
+                        app.jog_axis('B', -app.jog_step_size);
+                    }
+                    if ui.button("⟳").clicked() {
+                        app.jog_axis('B', app.jog_step_size);
+                    }
+                });
+            }
+
+            // C axis
+            if app.current_position.c.is_some() {
+                ui.horizontal(|ui| {
+                    ui.label("C");
+                    if ui.button("⟲").clicked() {
+                        app.jog_axis('C', -app.jog_step_size);
+                    }
+                    if ui.button("⟳").clicked() {
+                        app.jog_axis('C', app.jog_step_size);
+                    }
+                });
+            }
+
+            // D axis
+            if app.current_position.d.is_some() {
+                ui.horizontal(|ui| {
+                    ui.label("D");
+                    if ui.button("⟲").clicked() {
+                        app.jog_axis('D', -app.jog_step_size);
+                    }
+                    if ui.button("⟳").clicked() {
+                        app.jog_axis('D', app.jog_step_size);
+                    }
+                });
+            }
+        }
+
         // Home button
         ui.horizontal(|ui| {
             if ui.button("🏠 Home All").clicked() {
