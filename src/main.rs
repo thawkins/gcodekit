@@ -12,6 +12,12 @@ mod materials;
 mod widgets;
 
 use designer::Tool;
+use designer::bitmap_processing::VectorizationConfig;
+use designer::parametric_design::ParametricConfig;
+use designer::{
+    show_image_engraving_widget, show_jigsaw_widget, show_shape_generation_widget,
+    show_tabbed_box_widget, show_toolpath_generation_widget, show_vector_import_widget,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Action {
@@ -195,6 +201,26 @@ struct GcodeKitApp {
     new_job_type: jobs::JobType,
     selected_material: Option<String>,
     current_job_id: Option<String>, // Currently running job ID
+    vectorization_config: VectorizationConfig,
+    show_add_material_dialog: bool,
+    new_material_name: String,
+    new_material_type: materials::MaterialType,
+    new_material_density: f32,
+    new_material_hardness: f32,
+    new_material_cutting_speed: f32,
+    new_material_feed_rate: f32,
+    new_material_spindle_speed: f32,
+    new_material_tool_material: String,
+    new_material_tool_coating: String,
+    new_material_chip_load_min: f32,
+    new_material_chip_load_max: f32,
+    new_material_notes: String,
+    parametric_shape_type: String,
+    parametric_config: ParametricConfig,
+    // gcode_editor: crate::gcodeedit::GcodeEditorState,
+    soft_limits_enabled: bool,
+    show_left_panel: bool,
+    show_right_panel: bool,
 }
 
 impl Default for GcodeKitApp {
@@ -233,16 +259,24 @@ impl Default for GcodeKitApp {
                 Tool {
                     name: "End Mill 3mm".to_string(),
                     diameter: 3.0,
+                    length: 40.0,
                     material: "HSS".to_string(),
                     flute_count: 2,
                     max_rpm: 10000,
+                    tool_number: 1,
+                    length_offset: 1.0,
+                    wear_offset: 0.0,
                 },
                 Tool {
                     name: "Drill 2mm".to_string(),
                     diameter: 2.0,
+                    length: 50.0,
                     material: "HSS".to_string(),
                     flute_count: 1,
                     max_rpm: 5000,
+                    tool_number: 2,
+                    length_offset: 2.0,
+                    wear_offset: 0.0,
                 },
             ],
             keybindings: {
@@ -391,6 +425,26 @@ impl Default for GcodeKitApp {
             new_job_type: jobs::JobType::GcodeFile,
             selected_material: None,
             current_job_id: None,
+            vectorization_config: VectorizationConfig::default(),
+            show_add_material_dialog: false,
+            new_material_name: String::new(),
+            new_material_type: materials::MaterialType::Wood,
+            new_material_density: 0.0,
+            new_material_hardness: 0.0,
+            new_material_cutting_speed: 0.0,
+            new_material_feed_rate: 0.0,
+            new_material_spindle_speed: 0.0,
+            new_material_tool_material: String::new(),
+            new_material_tool_coating: String::new(),
+            new_material_chip_load_min: 0.0,
+            new_material_chip_load_max: 0.0,
+            new_material_notes: String::new(),
+            parametric_shape_type: "Custom".to_string(),
+            parametric_config: ParametricConfig::default(),
+            // gcode_editor: crate::gcodeedit::GcodeEditorState::default(),
+            soft_limits_enabled: true,
+            show_left_panel: true,
+            show_right_panel: true,
         }
     }
 }
@@ -653,6 +707,7 @@ impl GcodeKitApp {
         self.parsed_paths.clear();
         let mut current_pos = MachinePosition::new(0.0, 0.0, 0.0);
         let mut current_move_type = MoveType::Rapid;
+        let mut absolute_mode = true; // G90 = absolute, G91 = incremental
 
         for (line_idx, line) in self.gcode_content.lines().enumerate() {
             let line = line.trim();
@@ -663,42 +718,63 @@ impl GcodeKitApp {
             let parts: Vec<&str> = line.split_whitespace().collect();
             let mut new_pos = current_pos.clone();
             let mut move_type = current_move_type.clone();
+            let mut has_move_command = false;
 
             for part in parts {
                 if part.starts_with('G') {
                     if let Ok(code) = part[1..].parse::<u32>() {
                         match code {
-                            0 => move_type = MoveType::Rapid,
-                            1 => move_type = MoveType::Feed,
-                            2 | 3 => move_type = MoveType::Arc,
-                            _ => {}
+                            0 => {
+                                move_type = MoveType::Rapid;
+                                has_move_command = true;
+                            }
+                            1 => {
+                                move_type = MoveType::Feed;
+                                has_move_command = true;
+                            }
+                            2 | 3 => {
+                                move_type = MoveType::Arc;
+                                has_move_command = true;
+                            }
+                            90 => absolute_mode = true,
+                            91 => absolute_mode = false,
+                            _ => {} // Other G-codes like G17-G19 (planes), G20/G21, G54-G59, etc.
                         }
                     }
                 } else if part.len() > 1 {
                     let axis = part.chars().next().unwrap();
                     if let Ok(value) = part[1..].parse::<f32>() {
-                        new_pos.set_axis(axis, value);
+                        if absolute_mode {
+                            new_pos.set_axis(axis, value);
+                        } else {
+                            // Incremental mode: add to current position
+                            let current_value = current_pos.get_axis(axis).unwrap_or(0.0);
+                            new_pos.set_axis(axis, current_value + value);
+                        }
                     }
                 }
             }
 
-            // Check if position changed
-            let position_changed = new_pos.x != current_pos.x
-                || new_pos.y != current_pos.y
-                || new_pos.z != current_pos.z
-                || new_pos.a != current_pos.a
-                || new_pos.b != current_pos.b
-                || new_pos.c != current_pos.c
-                || new_pos.d != current_pos.d;
+            // Only create path segments for move commands
+            if has_move_command {
+                // Check if position changed
+                let position_changed = new_pos.x != current_pos.x
+                    || new_pos.y != current_pos.y
+                    || new_pos.z != current_pos.z
+                    || new_pos.a != current_pos.a
+                    || new_pos.b != current_pos.b
+                    || new_pos.c != current_pos.c
+                    || new_pos.d != current_pos.d;
 
-            if position_changed {
-                self.parsed_paths.push(PathSegment {
-                    start: current_pos,
-                    end: new_pos.clone(),
-                    move_type: move_type.clone(),
-                    line_number: line_idx,
-                });
-                current_pos = new_pos;
+                if position_changed {
+                    self.parsed_paths.push(PathSegment {
+                        start: current_pos,
+                        end: new_pos.clone(),
+                        move_type: move_type.clone(),
+                        line_number: line_idx,
+                    });
+                    current_pos = new_pos;
+                }
             }
             current_move_type = move_type;
         }
@@ -1312,6 +1388,21 @@ impl GcodeKitApp {
             });
         });
     }
+
+    fn reset_add_material_dialog(&mut self) {
+        self.new_material_name.clear();
+        self.new_material_type = materials::MaterialType::Wood;
+        self.new_material_density = 0.0;
+        self.new_material_hardness = 0.0;
+        self.new_material_cutting_speed = 0.0;
+        self.new_material_feed_rate = 0.0;
+        self.new_material_spindle_speed = 0.0;
+        self.new_material_tool_material.clear();
+        self.new_material_tool_coating.clear();
+        self.new_material_chip_load_min = 0.0;
+        self.new_material_chip_load_max = 0.0;
+        self.new_material_notes.clear();
+    }
 }
 
 #[cfg(test)]
@@ -1567,6 +1658,98 @@ mod tests {
             "Jigsaw G-code generated (placeholder)".to_string()
         );
     }
+
+    #[test]
+    fn test_reset_add_material_dialog() {
+        let mut app = GcodeKitApp::default();
+
+        // Set some values
+        app.new_material_name = "Test Material".to_string();
+        app.new_material_type = materials::MaterialType::Metal;
+        app.new_material_density = 7800.0;
+        app.new_material_hardness = 200.0;
+        app.new_material_cutting_speed = 100.0;
+        app.new_material_feed_rate = 500.0;
+        app.new_material_spindle_speed = 2000.0;
+        app.new_material_tool_material = "Carbide".to_string();
+        app.new_material_tool_coating = "TiN".to_string();
+        app.new_material_chip_load_min = 0.05;
+        app.new_material_chip_load_max = 0.15;
+        app.new_material_notes = "Test notes".to_string();
+
+        // Reset
+        app.reset_add_material_dialog();
+
+        // Check all fields are reset
+        assert!(app.new_material_name.is_empty());
+        assert_eq!(app.new_material_type, materials::MaterialType::Wood);
+        assert_eq!(app.new_material_density, 0.0);
+        assert_eq!(app.new_material_hardness, 0.0);
+        assert_eq!(app.new_material_cutting_speed, 0.0);
+        assert_eq!(app.new_material_feed_rate, 0.0);
+        assert_eq!(app.new_material_spindle_speed, 0.0);
+        assert!(app.new_material_tool_material.is_empty());
+        assert!(app.new_material_tool_coating.is_empty());
+        assert_eq!(app.new_material_chip_load_min, 0.0);
+        assert_eq!(app.new_material_chip_load_max, 0.0);
+        assert!(app.new_material_notes.is_empty());
+    }
+
+    #[test]
+    fn test_material_database_operations() {
+        let mut app = GcodeKitApp::default();
+
+        // Create a material
+        let material = materials::MaterialProperties::new(
+            "Test Wood",
+            materials::MaterialType::Wood,
+            materials::MaterialSubtype::Custom,
+        )
+        .with_density(600.0)
+        .with_hardness(50.0);
+
+        // Add to database
+        app.material_database.add_material(material);
+
+        // Check it was added
+        let material = app.material_database.get_material("Test Wood");
+        assert!(material.is_some());
+        let material = material.unwrap();
+        assert_eq!(material.name, "Test Wood");
+        assert_eq!(material.material_type, materials::MaterialType::Wood);
+        assert_eq!(material.density, 600.0);
+        assert_eq!(material.hardness, 50.0);
+    }
+
+    #[test]
+    fn test_job_creation_with_material() {
+        let mut app = GcodeKitApp::default();
+
+        // Add a material
+        let material = materials::MaterialProperties::new(
+            "Test Material",
+            materials::MaterialType::Wood,
+            materials::MaterialSubtype::Custom,
+        );
+        app.material_database.add_material(material);
+
+        // Create job with material
+        app.new_job_name = "Test Job".to_string();
+        app.new_job_type = jobs::JobType::GcodeFile;
+        app.selected_material = Some("Test Material".to_string());
+
+        let job = jobs::Job::new(app.new_job_name.clone(), app.new_job_type.clone())
+            .with_material(app.selected_material.clone().unwrap());
+
+        app.job_queue.add_job(job);
+
+        // Check job was created with material
+        let jobs = app.job_queue.jobs;
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs[0].name, "Test Job");
+        assert_eq!(jobs[0].job_type, jobs::JobType::GcodeFile);
+        assert_eq!(jobs[0].material, app.selected_material);
+    }
 }
 
 impl eframe::App for GcodeKitApp {
@@ -1738,6 +1921,9 @@ impl eframe::App for GcodeKitApp {
                             self.selected_tab = Tab::DeviceConsole;
                         }
                         ui.separator();
+                        ui.checkbox(&mut self.show_left_panel, "Machine Control Panel");
+                        ui.checkbox(&mut self.show_right_panel, "CAM Functions Panel");
+                        ui.separator();
                         if ui.button("Refresh Ports").clicked() {
                             self.refresh_ports();
                         }
@@ -1840,43 +2026,47 @@ impl eframe::App for GcodeKitApp {
         });
 
         // Left panel - Machine control
-        egui::SidePanel::left("left_panel")
-            .resizable(true)
-            .default_width(200.0)
-            .show(ctx, |ui| {
-                ui.heading("Machine Control");
-                ui.separator();
+        if self.show_left_panel {
+            egui::SidePanel::left("left_panel")
+                .resizable(true)
+                .default_width(200.0)
+                .show(ctx, |ui| {
+                    ui.heading("Machine Control");
+                    ui.separator();
 
-                widgets::show_connection_widget(ui, self.communication.as_mut());
-                ui.separator();
-                widgets::show_gcode_loading_widget(ui, self);
-                ui.separator();
-                widgets::show_jog_widget(ui, self);
-                ui.separator();
-                widgets::show_overrides_widget(ui, self);
-            });
+                    widgets::show_connection_widget(ui, self.communication.as_mut());
+                    ui.separator();
+                    widgets::show_gcode_loading_widget(ui, self);
+                    ui.separator();
+                    widgets::show_jog_widget(ui, self);
+                    ui.separator();
+                    widgets::show_overrides_widget(ui, self);
+                });
+        }
 
         // Right panel - CAM functions
-        egui::SidePanel::right("right_panel")
-            .resizable(true)
-            .default_width(250.0)
-            .show(ctx, |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.heading("CAM Functions");
+        if self.show_right_panel {
+            egui::SidePanel::right("right_panel")
+                .resizable(true)
+                .default_width(250.0)
+                .show(ctx, |ui| {
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        ui.heading("CAM Functions");
 
-                    widgets::show_shape_generation_widget(ui, self);
-                    ui.separator();
-                    widgets::show_toolpath_generation_widget(ui, self);
-                    ui.separator();
-                    widgets::show_vector_import_widget(ui, self);
-                    ui.separator();
-                    widgets::show_image_engraving_widget(ui, self);
-                    ui.separator();
-                    widgets::show_tabbed_box_widget(ui, self);
-                    ui.separator();
-                    widgets::show_jigsaw_widget(ui, self);
+                        show_shape_generation_widget(ui, self);
+                        ui.separator();
+                        show_toolpath_generation_widget(ui, self);
+                        ui.separator();
+                        show_vector_import_widget(ui, self);
+                        ui.separator();
+                        show_image_engraving_widget(ui, self);
+                        ui.separator();
+                        show_tabbed_box_widget(ui, self);
+                        ui.separator();
+                        show_jigsaw_widget(ui, self);
+                    });
                 });
-            });
+        }
 
         // Central panel with tabs
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -1943,9 +2133,161 @@ impl eframe::App for GcodeKitApp {
                             if response.changed() {
                                 self.parse_gcode();
                             }
+        });
+
+        // Add Material Dialog
+        if self.show_add_material_dialog {
+            let mut open = true;
+            egui::Window::new("Add New Material")
+                .open(&mut open)
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.vertical(|ui| {
+                        ui.heading("Material Information");
+                        ui.separator();
+
+                        ui.horizontal(|ui| {
+                            ui.label("Name:");
+                            ui.text_edit_singleline(&mut self.new_material_name);
                         });
-                    }
-                }
+
+                        ui.horizontal(|ui| {
+                            ui.label("Type:");
+                            egui::ComboBox::from_label("")
+                                .selected_text(format!("{:?}", self.new_material_type))
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(&mut self.new_material_type, materials::MaterialType::Wood, "Wood");
+                                    ui.selectable_value(&mut self.new_material_type, materials::MaterialType::Plastic, "Plastic");
+                                    ui.selectable_value(&mut self.new_material_type, materials::MaterialType::Metal, "Metal");
+                                    ui.selectable_value(&mut self.new_material_type, materials::MaterialType::Composite, "Composite");
+                                    ui.selectable_value(&mut self.new_material_type, materials::MaterialType::Stone, "Stone");
+                                    ui.selectable_value(&mut self.new_material_type, materials::MaterialType::Foam, "Foam");
+                                    ui.selectable_value(&mut self.new_material_type, materials::MaterialType::Other, "Other");
+                                });
+                        });
+
+                        ui.separator();
+                        ui.heading("Physical Properties");
+
+                        ui.horizontal(|ui| {
+                            ui.label("Density (kg/m³):");
+                            ui.add(egui::DragValue::new(&mut self.new_material_density).speed(10.0));
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label("Hardness (HB):");
+                            ui.add(egui::DragValue::new(&mut self.new_material_hardness).speed(1.0));
+                        });
+
+                        ui.separator();
+                        ui.heading("Machining Parameters");
+
+                        ui.horizontal(|ui| {
+                            ui.label("Cutting Speed (m/min):");
+                            ui.add(egui::DragValue::new(&mut self.new_material_cutting_speed).speed(10.0));
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label("Feed Rate (mm/min):");
+                            ui.add(egui::DragValue::new(&mut self.new_material_feed_rate).speed(10.0));
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label("Spindle Speed (RPM):");
+                            ui.add(egui::DragValue::new(&mut self.new_material_spindle_speed).speed(100.0));
+                        });
+
+                        ui.separator();
+                        ui.heading("Tool Recommendations");
+
+                        ui.horizontal(|ui| {
+                            ui.label("Tool Material:");
+                            ui.text_edit_singleline(&mut self.new_material_tool_material);
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label("Tool Coating:");
+                            ui.text_edit_singleline(&mut self.new_material_tool_coating);
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label("Chip Load Min (mm):");
+                            ui.add(egui::DragValue::new(&mut self.new_material_chip_load_min).speed(0.01));
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label("Chip Load Max (mm):");
+                            ui.add(egui::DragValue::new(&mut self.new_material_chip_load_max).speed(0.01));
+                        });
+
+                        ui.separator();
+                        ui.horizontal(|ui| {
+                            ui.label("Notes:");
+                            ui.text_edit_multiline(&mut self.new_material_notes);
+                        });
+
+                        ui.separator();
+                        ui.horizontal(|ui| {
+                            if ui.button("Save Material").clicked() {
+                                if !self.new_material_name.trim().is_empty() {
+                                    let mut material = materials::MaterialProperties::new(
+                                        &self.new_material_name,
+                                        self.new_material_type.clone(),
+                                        materials::MaterialSubtype::Custom, // Default to Custom for now
+                                    )
+                                    .with_density(self.new_material_density)
+                                    .with_hardness(self.new_material_hardness);
+
+                                    if self.new_material_cutting_speed > 0.0 {
+                                        material.cutting_speed = Some(self.new_material_cutting_speed);
+                                    }
+                                    if self.new_material_feed_rate > 0.0 {
+                                        material.feed_rate = Some(self.new_material_feed_rate);
+                                    }
+                                    if self.new_material_spindle_speed > 0.0 {
+                                        material.spindle_speed = Some(self.new_material_spindle_speed);
+                                    }
+
+                                    material.recommended_tool_material = self.new_material_tool_material.clone();
+                                    if !self.new_material_tool_coating.trim().is_empty() {
+                                        material.recommended_coating = Some(self.new_material_tool_coating.clone());
+                                    }
+                                    if self.new_material_chip_load_min > 0.0 {
+                                        material.chip_load_min = Some(self.new_material_chip_load_min);
+                                    }
+                                    if self.new_material_chip_load_max > 0.0 {
+                                        material.chip_load_max = Some(self.new_material_chip_load_max);
+                                    }
+
+                                    material.notes = self.new_material_notes.clone();
+
+                                    self.material_database.add_material(material);
+                                    self.status_message = format!("Added material: {}", self.new_material_name);
+
+                                    // Reset dialog fields
+                                    self.reset_add_material_dialog();
+                                    self.show_add_material_dialog = false;
+                                } else {
+                                    self.status_message = "Material name cannot be empty".to_string();
+                                }
+                            }
+
+                            if ui.button("Cancel").clicked() {
+                                self.reset_add_material_dialog();
+                                self.show_add_material_dialog = false;
+                            }
+                        });
+                    });
+                });
+            if !open {
+                self.reset_add_material_dialog();
+                self.show_add_material_dialog = false;
+            }
+        }
+    }
+
+}
                 Tab::Visualizer3D => {
                     // Handle keyboard shortcuts
                     if ui.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::R))
@@ -2138,6 +2480,18 @@ impl eframe::App for GcodeKitApp {
                             }
                             designer::DesignerEvent::ImportFile => {
                                 self.import_design_file();
+                            }
+                            designer::DesignerEvent::ExportStl => {
+                                // TODO: Implement STL export
+                                self.status_message = "STL export not yet implemented".to_string();
+                            }
+                            designer::DesignerEvent::ExportObj => {
+                                // TODO: Implement OBJ export
+                                self.status_message = "OBJ export not yet implemented".to_string();
+                            }
+                            designer::DesignerEvent::ExportGltf => {
+                                // TODO: Implement GLTF export
+                                self.status_message = "GLTF export not yet implemented".to_string();
                             }
                         }
                     }

@@ -8,16 +8,23 @@ eframe = "0.33"
 egui = "0.33"
 serialport = "4.2"
 tokio = { version = "1.0", features = ["full"] }
+warp = "0.3"
+tokio-tungstenite = "0.21"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+futures-util = "0.3"
 rfd = "0.14"  # File dialog
 anyhow = "1.0"  # Error handling
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
+dirs = "5.0"  # Cross-platform directory handling
 usvg = "0.37"  # SVG parsing
 dxf = "0.4"  # DXF file parsing
 lyon = "1.0"  # 2D graphics and path operations for boolean operations
 image = "0.24"  # Image processing for bitmap vectorization
 rhai = "1.17"  # Scripting engine for parametric design
+stl_io = "0.8"  # STL file I/O
+tobj = "4.0"  # OBJ file loading
+gltf = "1.1"  # GLTF file handling

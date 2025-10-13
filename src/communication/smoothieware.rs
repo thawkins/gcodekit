@@ -78,6 +78,7 @@ pub struct SmoothiewareCommunication {
     pub grbl_version: String,
     pub recovery_config: crate::communication::ErrorRecoveryConfig,
     pub recovery_state: crate::communication::RecoveryState,
+    pub health_metrics: crate::communication::HealthMetrics,
     serial_port: Option<Box<dyn SerialPort>>,
     response_queue: VecDeque<String>,
     last_response: Option<GrblResponse>,
@@ -102,6 +103,7 @@ impl Default for SmoothiewareCommunication {
                 last_error: None,
                 recovery_actions_taken: Vec::new(),
             },
+            health_metrics: crate::communication::HealthMetrics::default(),
             serial_port: None,
             response_queue: VecDeque::new(),
             last_response: None,
@@ -227,42 +229,46 @@ impl SmoothiewareCommunication {
             let content = &response[1..response.len() - 1];
             let parts: Vec<&str> = content.split('|').collect();
 
-            if parts.len() >= 2 {
+            if !parts.is_empty() {
                 let state = MachineState::from(parts[0]);
 
-                let mut x = 0.0;
-                let mut y = 0.0;
-                let mut z = 0.0;
-                let mut feed = 0.0;
-                let mut spindle = 0.0;
+                if state == MachineState::Unknown {
+                    GrblResponse::Other(response.to_string())
+                } else {
+                    let mut x = 0.0;
+                    let mut y = 0.0;
+                    let mut z = 0.0;
+                    let mut feed = 0.0;
+                    let mut spindle = 0.0;
 
-                for part in &parts[1..] {
-                    if part.starts_with("MPos:") {
-                        let coords: Vec<&str> = part[5..].split(',').collect();
-                        if coords.len() >= 3 {
-                            x = coords[0].parse().unwrap_or(0.0);
-                            y = coords[1].parse().unwrap_or(0.0);
-                            z = coords[2].parse().unwrap_or(0.0);
-                        }
-                    } else if part.starts_with("FS:") {
-                        let fs: Vec<&str> = part[3..].split(',').collect();
-                        if fs.len() >= 2 {
-                            feed = fs[0].parse().unwrap_or(0.0);
-                            spindle = fs[1].parse().unwrap_or(0.0);
+                    for part in &parts[1..] {
+                        if part.starts_with("MPos:") {
+                            let coords: Vec<&str> = part[5..].split(',').collect();
+                            if coords.len() >= 3 {
+                                x = coords[0].parse().unwrap_or(0.0);
+                                y = coords[1].parse().unwrap_or(0.0);
+                                z = coords[2].parse().unwrap_or(0.0);
+                            }
+                        } else if part.starts_with("FS:") {
+                            let fs: Vec<&str> = part[3..].split(',').collect();
+                            if fs.len() >= 2 {
+                                feed = fs[0].parse().unwrap_or(0.0);
+                                spindle = fs[1].parse().unwrap_or(0.0);
+                            }
                         }
                     }
-                }
 
-                self.machine_state = state.clone();
-                self.current_position = (x, y, z);
+                    self.machine_state = state.clone();
+                    self.current_position = (x, y, z);
 
-                GrblResponse::Status {
-                    state,
-                    x,
-                    y,
-                    z,
-                    feed,
-                    spindle,
+                    GrblResponse::Status {
+                        state,
+                        x,
+                        y,
+                        z,
+                        feed,
+                        spindle,
+                    }
                 }
             } else {
                 GrblResponse::Other(response.to_string())
@@ -467,6 +473,7 @@ impl CncController for SmoothiewareCommunication {
         }
 
         self.recovery_state.last_error = Some(error.to_string());
+        self.health_metrics.update_error_pattern(error);
         println!("[RECOVERY] Attempting recovery for error: {}", error);
 
         // Classify error and determine recovery action
@@ -546,5 +553,458 @@ impl CncController for SmoothiewareCommunication {
     fn is_recovering(&self) -> bool {
         self.connection_state == ConnectionState::Recovering
             || self.recovery_state.reconnect_attempts > 0
+    }
+
+    fn get_health_metrics(&self) -> &crate::communication::HealthMetrics {
+        &self.health_metrics
+    }
+
+    fn get_health_metrics_mut(&mut self) -> &mut crate::communication::HealthMetrics {
+        &mut self.health_metrics
+    }
+
+    fn perform_health_check(&mut self) -> Vec<String> {
+        let mut warnings = Vec::new();
+        self.health_metrics.update_health_scores();
+        warnings.extend(self.health_metrics.predict_potential_issues());
+        warnings
+    }
+
+    fn optimize_settings_based_on_health(&mut self) -> Vec<String> {
+        Vec::new() // Basic implementation
+    }
+
+    fn emergency_stop(&mut self) {
+        // Send emergency stop command to Smoothieware
+        let _ = self.send_gcode_line("M112 ; Emergency stop");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_smoothieware_communication_new() {
+        let comm = SmoothiewareCommunication::new();
+        assert_eq!(comm.connection_state, ConnectionState::Disconnected);
+        assert!(comm.selected_port.is_empty());
+        assert!(comm.available_ports.is_empty());
+        assert_eq!(comm.status_message, "Disconnected");
+        assert_eq!(comm.machine_state, MachineState::Unknown);
+        assert_eq!(comm.current_position, (0.0, 0.0, 0.0));
+        assert!(comm.grbl_version.is_empty());
+        assert!(comm.serial_port.is_none());
+    }
+
+    #[test]
+    fn test_machine_state_from_string() {
+        assert_eq!(MachineState::from("Idle"), MachineState::Idle);
+        assert_eq!(MachineState::from("Run"), MachineState::Run);
+        assert_eq!(MachineState::from("Hold"), MachineState::Hold);
+        assert_eq!(MachineState::from("Jog"), MachineState::Jog);
+        assert_eq!(MachineState::from("Alarm"), MachineState::Alarm);
+        assert_eq!(MachineState::from("Door"), MachineState::Door);
+        assert_eq!(MachineState::from("Check"), MachineState::Check);
+        assert_eq!(MachineState::from("Home"), MachineState::Home);
+        assert_eq!(MachineState::from("Sleep"), MachineState::Sleep);
+        assert_eq!(MachineState::from("UnknownState"), MachineState::Unknown);
+    }
+
+    #[test]
+    fn test_parse_smoothieware_response_ok() {
+        let mut comm = SmoothiewareCommunication::new();
+        let response = comm.parse_smoothieware_response("ok");
+        assert!(matches!(response, GrblResponse::Ok));
+    }
+
+    #[test]
+    fn test_parse_smoothieware_response_error() {
+        let mut comm = SmoothiewareCommunication::new();
+        let response = comm.parse_smoothieware_response("error: Invalid command");
+        assert!(matches!(response, GrblResponse::Error(_)));
+        if let GrblResponse::Error(msg) = response {
+            assert_eq!(msg, " Invalid command");
+        }
+    }
+
+    #[test]
+    fn test_parse_smoothieware_response_status() {
+        let mut comm = SmoothiewareCommunication::new();
+        let response =
+            comm.parse_smoothieware_response("<Idle|MPos:10.000,20.000,30.000|FS:1000,12000>");
+
+        match response {
+            GrblResponse::Status {
+                state,
+                x,
+                y,
+                z,
+                feed,
+                spindle,
+            } => {
+                assert_eq!(state, MachineState::Idle);
+                assert_eq!(x, 10.0);
+                assert_eq!(y, 20.0);
+                assert_eq!(z, 30.0);
+                assert_eq!(feed, 1000.0);
+                assert_eq!(spindle, 12000.0);
+            }
+            _ => panic!("Expected Status response"),
+        }
+
+        // Check that internal state was updated
+        assert_eq!(comm.machine_state, MachineState::Idle);
+        assert_eq!(comm.current_position, (10.0, 20.0, 30.0));
+    }
+
+    #[test]
+    fn test_parse_smoothieware_response_feedback() {
+        let mut comm = SmoothiewareCommunication::new();
+        let response = comm.parse_smoothieware_response("[MSG: Test message]");
+        assert!(matches!(response, GrblResponse::Feedback(_)));
+        if let GrblResponse::Feedback(msg) = response {
+            assert_eq!(msg, " Test message");
+        }
+    }
+
+    #[test]
+    fn test_parse_smoothieware_response_version() {
+        let mut comm = SmoothiewareCommunication::new();
+        let response = comm.parse_smoothieware_response("Smoothieware version 1.2.3");
+        assert!(matches!(response, GrblResponse::Version(_)));
+        assert_eq!(comm.grbl_version, "Smoothieware version 1.2.3");
+    }
+
+    #[test]
+    fn test_parse_smoothieware_response_other() {
+        let mut comm = SmoothiewareCommunication::new();
+        let response = comm.parse_smoothieware_response("Some other response");
+        assert!(matches!(response, GrblResponse::Other(_)));
+    }
+
+    #[test]
+    fn test_connection_state_management() {
+        let mut comm = SmoothiewareCommunication::new();
+
+        // Initial state
+        assert_eq!(comm.connection_state, ConnectionState::Disconnected);
+
+        // Test disconnect when already disconnected
+        comm.disconnect_from_device();
+        assert_eq!(comm.connection_state, ConnectionState::Disconnected);
+        assert_eq!(comm.machine_state, MachineState::Unknown);
+        assert_eq!(comm.current_position, (0.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn test_jog_command_formatting() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test X axis jog (will fail due to no serial port)
+        comm.jog_axis('X', 10.0);
+        assert_eq!(comm.status_message, "Jog error: Not connected");
+
+        // Test Y axis jog with negative (will fail due to no serial port)
+        comm.jog_axis('Y', -5.5);
+        assert_eq!(comm.status_message, "Jog error: Not connected");
+
+        // Test Z axis jog (will fail due to no serial port)
+        comm.jog_axis('Z', 2.25);
+        assert_eq!(comm.status_message, "Jog error: Not connected");
+    }
+
+    #[test]
+    fn test_home_command() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        comm.home_all_axes();
+        assert_eq!(comm.status_message, "Home error: Not connected");
+    }
+
+    #[test]
+    fn test_override_commands() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test spindle override (will fail due to no serial port)
+        comm.send_spindle_override(75.0);
+        assert_eq!(comm.status_message, "Spindle override error: Not connected");
+
+        // Test feed override (will fail due to no serial port)
+        comm.send_feed_override(120.0);
+        assert_eq!(comm.status_message, "Feed override error: Not connected");
+    }
+
+    #[test]
+    fn test_disconnected_operations() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.connection_state = ConnectionState::Disconnected;
+
+        // Test jog when disconnected
+        comm.jog_axis('X', 10.0);
+        assert_eq!(comm.status_message, "Not connected");
+
+        // Test home when disconnected
+        comm.home_all_axes();
+        assert_eq!(comm.status_message, "Not connected");
+
+        // Test overrides when disconnected
+        comm.send_spindle_override(50.0);
+        assert_eq!(comm.status_message, "Not connected");
+    }
+
+    #[test]
+    fn test_gcode_line_sending() {
+        let mut comm = SmoothiewareCommunication::new();
+
+        // Test disconnected state
+        comm.connection_state = ConnectionState::Disconnected;
+        let result = comm.send_gcode_line("G1 X10");
+        assert!(result.is_err());
+
+        // Test connected state (would need mock serial port for full test)
+        comm.connection_state = ConnectionState::Connected;
+        // Note: This would fail without a real serial port, but tests the logic
+        let result = comm.send_gcode_line("G1 X10 Y20 F100");
+        assert!(result.is_err()); // Expected to fail without serial port
+    }
+
+    #[test]
+    fn test_error_recovery_connection_error() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.recovery_config.auto_recovery_enabled = true;
+        comm.recovery_config.max_reconnect_attempts = 3;
+
+        let action = comm.attempt_recovery("connection timeout").unwrap();
+        assert_eq!(action, crate::communication::RecoveryAction::Reconnect);
+        assert_eq!(comm.recovery_state.reconnect_attempts, 1);
+        assert_eq!(comm.connection_state, ConnectionState::Recovering);
+    }
+
+    #[test]
+    fn test_error_recovery_command_error() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.recovery_config.auto_recovery_enabled = true;
+        comm.recovery_config.max_command_retries = 2;
+
+        let action = comm.attempt_recovery("command syntax error").unwrap();
+        assert_eq!(action, crate::communication::RecoveryAction::RetryCommand);
+        assert_eq!(comm.recovery_state.command_retry_count, 1);
+    }
+
+    #[test]
+    fn test_error_recovery_critical_error() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.recovery_config.auto_recovery_enabled = true;
+        comm.recovery_config.reset_on_critical_error = true;
+
+        let action = comm.attempt_recovery("alarm triggered").unwrap();
+        assert_eq!(
+            action,
+            crate::communication::RecoveryAction::ResetController
+        );
+    }
+
+    #[test]
+    fn test_error_recovery_disabled() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.recovery_config.auto_recovery_enabled = false;
+
+        let result = comm.attempt_recovery("some error");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Auto recovery disabled");
+    }
+
+    #[test]
+    fn test_error_recovery_max_attempts() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.recovery_config.auto_recovery_enabled = true;
+        comm.recovery_config.max_reconnect_attempts = 1;
+        comm.recovery_state.reconnect_attempts = 1;
+
+        let action = comm.attempt_recovery("connection failed").unwrap();
+        assert_eq!(action, crate::communication::RecoveryAction::AbortJob);
+    }
+
+    #[test]
+    fn test_reset_recovery_state() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.recovery_state.reconnect_attempts = 2;
+        comm.recovery_state.command_retry_count = 1;
+        comm.recovery_state.last_error = Some("test error".to_string());
+        comm.recovery_state.recovery_actions_taken =
+            vec![crate::communication::RecoveryAction::Reconnect];
+
+        comm.reset_recovery_state();
+
+        assert_eq!(comm.recovery_state.reconnect_attempts, 0);
+        assert_eq!(comm.recovery_state.command_retry_count, 0);
+        assert!(comm.recovery_state.last_error.is_none());
+        assert!(comm.recovery_state.recovery_actions_taken.is_empty());
+    }
+
+    #[test]
+    fn test_is_recovering() {
+        let mut comm = SmoothiewareCommunication::new();
+
+        // Initially not recovering
+        assert!(!comm.is_recovering());
+
+        // Set recovering state
+        comm.connection_state = ConnectionState::Recovering;
+        assert!(comm.is_recovering());
+
+        // Reset and test reconnect attempts
+        comm.connection_state = ConnectionState::Disconnected;
+        comm.recovery_state.reconnect_attempts = 1;
+        assert!(comm.is_recovering());
+    }
+
+    #[test]
+    fn test_parse_smoothieware_response_edge_cases() {
+        let mut comm = SmoothiewareCommunication::new();
+
+        // Test empty response
+        let response = comm.parse_smoothieware_response("");
+        assert!(matches!(response, GrblResponse::Other(_)));
+
+        // Test whitespace only
+        let response = comm.parse_smoothieware_response("   ");
+        assert!(matches!(response, GrblResponse::Other(_)));
+
+        // Test malformed status response
+        let response = comm.parse_smoothieware_response("<>");
+        assert!(matches!(response, GrblResponse::Other(_)));
+
+        // Test status response with missing fields
+        let response = comm.parse_smoothieware_response("<Idle>");
+        assert!(matches!(response, GrblResponse::Status { .. }));
+
+        // Test error response without colon
+        let response = comm.parse_smoothieware_response("error");
+        assert!(matches!(response, GrblResponse::Other(_)));
+
+        // Test alarm response (assuming Smoothieware uses similar format)
+        let response = comm.parse_smoothieware_response("ALARM:1");
+        assert!(matches!(response, GrblResponse::Other(_))); // Smoothieware may not use this format
+    }
+
+    #[test]
+    fn test_parse_smoothieware_status_complex() {
+        let mut comm = SmoothiewareCommunication::new();
+
+        // Test complex status response with all fields
+        let response = comm.parse_smoothieware_response(
+            "<Run|MPos:10.500,20.750,5.250,1.000,2.000|WPos:0.000,0.000,0.000|FS:1500,200|Ln:123>",
+        );
+
+        match response {
+            GrblResponse::Status {
+                state,
+                x,
+                y,
+                z,
+                feed,
+                spindle,
+            } => {
+                assert_eq!(state, MachineState::Run);
+                assert_eq!(x, 10.5);
+                assert_eq!(y, 20.75);
+                assert_eq!(z, 5.25);
+                assert_eq!(feed, 1500.0);
+                assert_eq!(spindle, 200.0);
+            }
+            _ => panic!("Expected Status response"),
+        }
+
+        // Check that internal state was updated
+        assert_eq!(comm.machine_state, MachineState::Run);
+        assert_eq!(comm.current_position, (10.5, 20.75, 5.25));
+    }
+
+    #[test]
+    fn test_parse_smoothieware_status_minimal() {
+        let mut comm = SmoothiewareCommunication::new();
+
+        // Test minimal status response
+        let response = comm.parse_smoothieware_response("<Idle|MPos:1.000,2.000,3.000>");
+        assert!(matches!(response, GrblResponse::Status { .. }));
+
+        // Check that internal state was updated
+        assert_eq!(comm.machine_state, MachineState::Idle);
+        assert_eq!(comm.current_position, (1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_parse_smoothieware_status_invalid() {
+        let mut comm = SmoothiewareCommunication::new();
+
+        // Test invalid status responses
+        assert!(matches!(
+            comm.parse_smoothieware_response(""),
+            GrblResponse::Other(_)
+        ));
+        assert!(matches!(
+            comm.parse_smoothieware_response("not a status"),
+            GrblResponse::Other(_)
+        ));
+        assert!(matches!(
+            comm.parse_smoothieware_response("<>"),
+            GrblResponse::Other(_)
+        ));
+        assert!(matches!(
+            comm.parse_smoothieware_response("<InvalidState>"),
+            GrblResponse::Other(_)
+        ));
+    }
+
+    #[test]
+    fn test_jog_command_edge_cases() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test very small jog distance
+        comm.jog_axis('X', 0.001);
+        assert_eq!(comm.status_message, "Jog error: Not connected");
+
+        // Test negative jog distance
+        comm.jog_axis('Y', -5.0);
+        assert_eq!(comm.status_message, "Jog error: Not connected");
+
+        // Test large jog distance
+        comm.jog_axis('Z', 1000.0);
+        assert_eq!(comm.status_message, "Jog error: Not connected");
+
+        // Test different axes
+        comm.jog_axis('A', 45.0);
+        assert_eq!(comm.status_message, "Jog error: Not connected");
+
+        comm.jog_axis('B', -30.0);
+        assert_eq!(comm.status_message, "Jog error: Not connected");
+    }
+
+    #[test]
+    fn test_override_commands_edge_cases() {
+        let mut comm = SmoothiewareCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test zero override
+        comm.send_spindle_override(0.0);
+        assert_eq!(comm.status_message, "Spindle override error: Not connected");
+
+        // Test maximum override
+        comm.send_feed_override(200.0);
+        assert_eq!(comm.status_message, "Feed override error: Not connected");
+
+        // Test negative override
+        comm.send_spindle_override(-10.0);
+        assert_eq!(comm.status_message, "Spindle override error: Not connected");
+
+        // Test very high override
+        comm.send_feed_override(500.0);
+        assert_eq!(comm.status_message, "Feed override error: Not connected");
     }
 }

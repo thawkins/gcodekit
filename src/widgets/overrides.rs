@@ -64,5 +64,28 @@ pub fn show_overrides_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                 app.send_feed_override();
             }
         });
+
+        ui.separator();
+
+        // Soft limits
+        ui.horizontal(|ui| {
+            ui.label("Soft Limits:");
+            if ui.checkbox(&mut app.soft_limits_enabled, "").changed() {
+                let value = if app.soft_limits_enabled { 1 } else { 0 };
+                app.send_gcode(&format!("$20={}", value));
+            }
+        });
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_show_overrides_widget_compiles() {
+        // This test ensures the function compiles and has the expected signature
+        // Full UI testing would require egui context mocking
+        let _fn_exists = show_overrides_widget as fn(&mut egui::Ui, &mut GcodeKitApp);
+    }
 }

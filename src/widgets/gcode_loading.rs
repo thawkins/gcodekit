@@ -34,3 +34,15 @@ pub fn show_gcode_loading_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         }
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_show_gcode_loading_widget_compiles() {
+        // This test ensures the function compiles and has the expected signature
+        // Full UI testing would require egui context mocking
+        let _fn_exists = show_gcode_loading_widget as fn(&mut egui::Ui, &mut GcodeKitApp);
+    }
+}

@@ -100,3 +100,15 @@ pub fn show_connection_widget(ui: &mut egui::Ui, communication: &mut dyn CncCont
         }
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_show_connection_widget_compiles() {
+        // This test ensures the function compiles and has the expected signature
+        // Full UI testing would require egui context mocking
+        let _fn_exists = show_connection_widget as fn(&mut egui::Ui, &mut dyn CncController);
+    }
+}

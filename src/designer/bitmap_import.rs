@@ -1,0 +1,73 @@
+use crate::GcodeKitApp;
+use crate::designer::bitmap_processing::{ThresholdMethod, VectorizationConfig};
+use eframe::egui;
+
+pub fn show_bitmap_import_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
+    ui.group(|ui| {
+        ui.label("Bitmap Import & Vectorization");
+
+        ui.horizontal(|ui| {
+            ui.label("Threshold Method:");
+            ui.selectable_value(
+                &mut app.vectorization_config.threshold_method,
+                ThresholdMethod::Otsu,
+                "Otsu",
+            );
+            ui.selectable_value(
+                &mut app.vectorization_config.threshold_method,
+                ThresholdMethod::Fixed,
+                "Fixed",
+            );
+            ui.selectable_value(
+                &mut app.vectorization_config.threshold_method,
+                ThresholdMethod::Adaptive,
+                "Adaptive",
+            );
+        });
+
+        if matches!(
+            app.vectorization_config.threshold_method,
+            ThresholdMethod::Fixed
+        ) {
+            ui.horizontal(|ui| {
+                ui.label("Threshold Value:");
+                ui.add(
+                    egui::DragValue::new(&mut app.vectorization_config.threshold_value)
+                        .range(0..=255),
+                );
+            });
+        }
+
+        ui.checkbox(
+            &mut app.vectorization_config.noise_reduction,
+            "Noise Reduction",
+        );
+        ui.checkbox(&mut app.vectorization_config.smoothing, "Smoothing");
+
+        ui.horizontal(|ui| {
+            ui.label("Min Contour Length:");
+            ui.add(
+                egui::DragValue::new(&mut app.vectorization_config.min_contour_length)
+                    .range(3..=1000),
+            );
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Simplification Tolerance:");
+            ui.add(
+                egui::DragValue::new(&mut app.vectorization_config.simplification_tolerance)
+                    .range(0.1..=10.0),
+            );
+        });
+
+        if ui.button("Import Bitmap").clicked() {
+            // TODO: Implement bitmap file import
+            // app.import_bitmap_file();
+        }
+
+        if ui.button("Preview Vectorization").clicked() {
+            // TODO: Implement bitmap vectorization preview
+            // app.preview_bitmap_vectorization();
+        }
+    });
+}

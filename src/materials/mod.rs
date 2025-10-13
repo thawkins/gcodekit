@@ -1,169 +1,11 @@
+mod properties;
+mod types;
+
+pub use properties::*;
+pub use types::*;
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum MaterialType {
-    Wood,
-    Plastic,
-    Metal,
-    Composite,
-    Stone,
-    Foam,
-    Other,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum MaterialSubtype {
-    // Wood
-    Hardwood,
-    Softwood,
-    Plywood,
-    MDF,
-    ParticleBoard,
-
-    // Plastic
-    ABS,
-    PLA,
-    PETG,
-    Nylon,
-    Polycarbonate,
-    Acrylic,
-    PVC,
-    HDPE,
-
-    // Metal
-    Aluminum,
-    Steel,
-    StainlessSteel,
-    Brass,
-    Copper,
-    Titanium,
-    Magnesium,
-
-    // Composite
-    CarbonFiber,
-    Fiberglass,
-    Kevlar,
-
-    // Stone
-    Granite,
-    Marble,
-    Limestone,
-    Slate,
-    Quartz,
-
-    // Foam
-    EVA,
-    Polyurethane,
-    Polystyrene,
-
-    // Other
-    Custom,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MaterialProperties {
-    pub name: String,
-    pub material_type: MaterialType,
-    pub subtype: MaterialSubtype,
-    pub density: f32,                      // kg/m³
-    pub hardness: f32,                     // HB (Brinell hardness)
-    pub tensile_strength: Option<f32>,     // MPa
-    pub compressive_strength: Option<f32>, // MPa
-    pub thermal_conductivity: f32,         // W/m·K
-    pub specific_heat: Option<f32>,        // J/kg·K
-    pub melting_point: Option<f32>,        // °C
-    pub thermal_expansion: Option<f32>,    // 10^-6/K
-
-    // CNC machining properties
-    pub cutting_speed: Option<f32>, // m/min
-    pub feed_rate: Option<f32>,     // mm/min
-    pub spindle_speed: Option<f32>, // RPM
-    pub depth_of_cut: Option<f32>,  // mm
-    pub stepover: Option<f32>,      // percentage of tool diameter
-    pub coolant_required: bool,
-
-    // Tool recommendations
-    pub recommended_tool_material: String,
-    pub recommended_coating: Option<String>,
-    pub chip_load_min: Option<f32>, // mm
-    pub chip_load_max: Option<f32>, // mm
-
-    // Safety and handling
-    pub hazardous: bool,
-    pub dust_class: Option<String>, // e.g., "MDF dust"
-    pub respiratory_protection: Option<String>,
-
-    pub notes: String,
-}
-
-impl MaterialProperties {
-    pub fn new(name: &str, material_type: MaterialType, subtype: MaterialSubtype) -> Self {
-        Self {
-            name: name.to_string(),
-            material_type,
-            subtype,
-            density: 0.0,
-            hardness: 0.0,
-            tensile_strength: None,
-            compressive_strength: None,
-            thermal_conductivity: 0.0,
-            specific_heat: None,
-            melting_point: None,
-            thermal_expansion: None,
-            cutting_speed: None,
-            feed_rate: None,
-            spindle_speed: None,
-            depth_of_cut: None,
-            stepover: None,
-            coolant_required: false,
-            recommended_tool_material: "HSS".to_string(),
-            recommended_coating: None,
-            chip_load_min: None,
-            chip_load_max: None,
-            hazardous: false,
-            dust_class: None,
-            respiratory_protection: None,
-            notes: String::new(),
-        }
-    }
-
-    pub fn with_density(mut self, density: f32) -> Self {
-        self.density = density;
-        self
-    }
-
-    pub fn with_hardness(mut self, hardness: f32) -> Self {
-        self.hardness = hardness;
-        self
-    }
-
-    pub fn with_machining_params(
-        mut self,
-        cutting_speed: f32,
-        feed_rate: f32,
-        spindle_speed: f32,
-    ) -> Self {
-        self.cutting_speed = Some(cutting_speed);
-        self.feed_rate = Some(feed_rate);
-        self.spindle_speed = Some(spindle_speed);
-        self
-    }
-
-    pub fn with_tool_recommendations(
-        mut self,
-        tool_material: &str,
-        coating: Option<&str>,
-        chip_load_min: f32,
-        chip_load_max: f32,
-    ) -> Self {
-        self.recommended_tool_material = tool_material.to_string();
-        self.recommended_coating = coating.map(|s| s.to_string());
-        self.chip_load_min = Some(chip_load_min);
-        self.chip_load_max = Some(chip_load_max);
-        self
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MaterialDatabase {
@@ -216,6 +58,25 @@ impl MaterialDatabase {
 
     pub fn get_all_materials(&self) -> Vec<&MaterialProperties> {
         self.materials.values().collect()
+    }
+
+    /// Save the material database to a JSON file
+    pub fn save_to_file(&self, path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+        let json = serde_json::to_string_pretty(self)?;
+        std::fs::write(path, json)?;
+        Ok(())
+    }
+
+    /// Load a material database from a JSON file
+    pub fn load_from_file(path: &std::path::Path) -> Result<Self, Box<dyn std::error::Error>> {
+        let json = std::fs::read_to_string(path)?;
+        let db: MaterialDatabase = serde_json::from_str(&json)?;
+        Ok(db)
+    }
+
+    /// Replace the current database with a loaded one
+    pub fn replace_database(&mut self, new_db: MaterialDatabase) {
+        self.materials = new_db.materials;
     }
 
     fn initialize_default_materials(&mut self) {

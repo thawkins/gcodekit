@@ -97,6 +97,8 @@ pub struct GrblCommunication {
     pub current_wcs: WcsCoordinate,
     pub recovery_config: crate::communication::ErrorRecoveryConfig,
     pub recovery_state: crate::communication::RecoveryState,
+    pub health_metrics: crate::communication::HealthMetrics,
+    feed_hold_sent: bool,
     serial_port: Option<Box<dyn SerialPort>>,
 }
 
@@ -113,13 +115,9 @@ impl Default for GrblCommunication {
             last_response: None,
             current_wcs: WcsCoordinate::G54,
             recovery_config: crate::communication::ErrorRecoveryConfig::default(),
-            recovery_state: crate::communication::RecoveryState {
-                reconnect_attempts: 0,
-                last_reconnect_attempt: None,
-                command_retry_count: 0,
-                last_error: None,
-                recovery_actions_taken: Vec::new(),
-            },
+            recovery_state: crate::communication::RecoveryState::default(),
+            health_metrics: crate::communication::HealthMetrics::default(),
+            feed_hold_sent: false,
             serial_port: None,
         }
     }
@@ -145,6 +143,8 @@ impl GrblCommunication {
                 last_error: None,
                 recovery_actions_taken: Vec::new(),
             },
+            health_metrics: crate::communication::HealthMetrics::default(),
+            feed_hold_sent: false,
             serial_port: None,
         }
     }
@@ -328,9 +328,9 @@ impl GrblCommunication {
         }
 
         // Send GRBL jog command ($J=G91 X10 F1000)
-        let command = format!("$J=G91 {} {:.1} F1000\n", axis, distance);
+        let command = format!("$J=G91 {} {:.3} F1000\n", axis, distance);
         self.send_grbl_command(&command);
-        self.status_message = format!("Jogging {} axis by {:.1}mm", axis, distance);
+        self.status_message = format!("Jogging {} axis by {:.3}mm", axis, distance);
     }
 
     pub fn home_all_axes(&mut self) {
@@ -387,8 +387,13 @@ impl GrblCommunication {
             return None;
         }
 
+        let machine_state = MachineState::from(parts[0]);
+        if machine_state == MachineState::Unknown {
+            return None;
+        }
+
         let mut status = GrblStatus::default();
-        status.machine_state = MachineState::from(parts[0]);
+        status.machine_state = machine_state;
 
         for part in &parts[1..] {
             if let Some(colon_pos) = part.find(':') {
@@ -416,6 +421,19 @@ impl GrblCommunication {
                             status.spindle_speed = Some(speed);
                         }
                     }
+                    "FS" => {
+                        // Handle combined feed and spindle: FS:feed,spindle
+                        if let Some(comma_pos) = value.find(',') {
+                            let feed_str = &value[..comma_pos];
+                            let speed_str = &value[comma_pos + 1..];
+                            if let Ok(feed) = feed_str.parse::<f32>() {
+                                status.feed_rate = Some(feed);
+                            }
+                            if let Ok(speed) = speed_str.parse::<f32>() {
+                                status.spindle_speed = Some(speed);
+                            }
+                        }
+                    }
                     "Ln" => {
                         if let Ok(line) = value.parse::<u32>() {
                             status.line_number = Some(line);
@@ -430,6 +448,15 @@ impl GrblCommunication {
                     _ => {} // Unknown field, ignore
                 }
             }
+        }
+
+        // Handle safety door
+        if status.machine_state == MachineState::Door && !self.feed_hold_sent {
+            let _ = self.send_gcode_line("!");
+            self.feed_hold_sent = true;
+        } else if status.machine_state != MachineState::Door && self.feed_hold_sent {
+            let _ = self.send_gcode_line("~");
+            self.feed_hold_sent = false;
         }
 
         Some(status)
@@ -771,6 +798,7 @@ impl CncController for GrblCommunication {
         }
 
         self.recovery_state.last_error = Some(error.to_string());
+        self.health_metrics.update_error_pattern(error);
         println!("[RECOVERY] Attempting recovery for error: {}", error);
 
         // Classify error and determine recovery action
@@ -854,6 +882,84 @@ impl CncController for GrblCommunication {
         self.connection_state == ConnectionState::Recovering
             || self.recovery_state.reconnect_attempts > 0
     }
+
+    fn get_health_metrics(&self) -> &crate::communication::HealthMetrics {
+        &self.health_metrics
+    }
+
+    fn get_health_metrics_mut(&mut self) -> &mut crate::communication::HealthMetrics {
+        &mut self.health_metrics
+    }
+
+    fn perform_health_check(&mut self) -> Vec<String> {
+        let mut warnings = Vec::new();
+
+        // Update health metrics
+        self.health_metrics.update_health_scores();
+
+        // Check connection stability
+        if self.health_metrics.connection_stability < 0.8 {
+            warnings.push(format!(
+                "Connection stability: {:.1}% - Consider checking connections",
+                self.health_metrics.connection_stability * 100.0
+            ));
+        }
+
+        // Check command success rate
+        if self.health_metrics.command_success_rate < 0.9 {
+            warnings.push(format!(
+                "Command success rate: {:.1}% - System may need attention",
+                self.health_metrics.command_success_rate * 100.0
+            ));
+        }
+
+        // Check for error patterns
+        warnings.extend(self.health_metrics.predict_potential_issues());
+
+        // Check GRBL status
+        if self.current_status.machine_state == MachineState::Alarm {
+            warnings.push("GRBL is in alarm state - Clear alarm before proceeding".to_string());
+        }
+
+        warnings
+    }
+
+    fn optimize_settings_based_on_health(&mut self) -> Vec<String> {
+        let mut optimizations = Vec::new();
+
+        // If connection is unstable, suggest reducing baud rate
+        if self.health_metrics.connection_stability < 0.7 {
+            optimizations
+                .push("Consider reducing serial baud rate for better stability".to_string());
+        }
+
+        // If many command errors, suggest checking G-code
+        if self.health_metrics.command_success_rate < 0.8 {
+            optimizations
+                .push("Frequent command errors detected - validate G-code syntax".to_string());
+        }
+
+        // Check for timeout patterns and suggest timeout adjustments
+        if let Some(timeout_pattern) = self
+            .health_metrics
+            .error_patterns
+            .iter()
+            .find(|p| p.error_type.contains("timeout"))
+        {
+            if timeout_pattern.frequency > 3 {
+                optimizations.push(
+                    "Frequent timeouts detected - consider increasing command timeout".to_string(),
+                );
+            }
+        }
+
+        optimizations
+    }
+
+    fn emergency_stop(&mut self) {
+        // Send feed hold command to GRBL
+        let _ = self.send_gcode_line("!");
+    }
 }
 
 #[cfg(test)]
@@ -895,15 +1001,15 @@ mod tests {
 
         // Test X axis jog
         comm.jog_axis('X', 10.0);
-        assert_eq!(comm.status_message, "Jogging X axis by 10.0mm");
+        assert_eq!(comm.status_message, "Jogging X axis by 10.000mm");
 
         // Test Y axis jog with decimal
         comm.jog_axis('Y', -5.5);
-        assert_eq!(comm.status_message, "Jogging Y axis by -5.5mm");
+        assert_eq!(comm.status_message, "Jogging Y axis by -5.500mm");
 
         // Test Z axis jog
         comm.jog_axis('Z', 2.25);
-        assert_eq!(comm.status_message, "Jogging Z axis by 2.2mm");
+        assert_eq!(comm.status_message, "Jogging Z axis by 2.250mm");
     }
 
     #[test]
@@ -1011,24 +1117,155 @@ mod tests {
         assert!(matches!(response, GrblResponse::Ok));
 
         // Test error response
-        let response = comm.parse_grbl_response("error: Invalid command");
+        let response = comm.parse_grbl_response("error:1");
         assert!(matches!(response, GrblResponse::Error(_)));
 
-        // Test alarm response
-        let response = comm.parse_grbl_response("ALARM: Hard limit");
-        assert!(matches!(response, GrblResponse::Alarm(_)));
+        // Test status response
+        let response = comm.parse_grbl_response("<Idle|MPos:0.000,0.000,0.000|FS:0,0>");
+        assert!(matches!(response, GrblResponse::Status { .. }));
 
         // Test feedback response
-        let response = comm.parse_grbl_response("[MSG: Test message]");
+        let response = comm.parse_grbl_response("[MSG:Test message]");
         assert!(matches!(response, GrblResponse::Feedback(_)));
 
         // Test version response
-        let response = comm.parse_grbl_response("Grbl 1.1f");
+        let response = comm.parse_grbl_response("Grbl 1.1f ['$' for help]");
         assert!(matches!(response, GrblResponse::Version(_)));
 
         // Test settings response
         let response = comm.parse_grbl_response("$0=10");
         assert!(matches!(response, GrblResponse::Settings(_)));
+
+        // Test alarm response
+        let response = comm.parse_grbl_response("ALARM:1");
+        assert!(matches!(response, GrblResponse::Alarm(_)));
+
+        // Test other response
+        let response = comm.parse_grbl_response("Some other response");
+        assert!(matches!(response, GrblResponse::Other(_)));
+    }
+
+    #[test]
+    fn test_parse_grbl_response_edge_cases() {
+        let mut comm = GrblCommunication::new();
+
+        // Test empty response
+        let response = comm.parse_grbl_response("");
+        assert!(matches!(response, GrblResponse::Other(_)));
+
+        // Test whitespace only
+        let response = comm.parse_grbl_response("   ");
+        assert!(matches!(response, GrblResponse::Other(_)));
+
+        // Test malformed status response
+        let response = comm.parse_grbl_response("<>");
+        assert!(matches!(response, GrblResponse::Other(_)));
+
+        // Test status response with missing fields
+        let response = comm.parse_grbl_response("<Idle>");
+        assert!(matches!(response, GrblResponse::Status { .. }));
+
+        // Test error response without colon
+        let response = comm.parse_grbl_response("error");
+        assert!(matches!(response, GrblResponse::Other(_)));
+
+        // Test alarm response without colon
+        let response = comm.parse_grbl_response("ALARM");
+        assert!(matches!(response, GrblResponse::Other(_)));
+    }
+
+    #[test]
+    fn test_parse_grbl_status_complex() {
+        let mut comm = GrblCommunication::new();
+
+        // Test complex status response with all fields
+        let status = comm.parse_grbl_status("<Run|MPos:10.500,20.750,5.250|WPos:0.000,0.000,0.000|FS:1500,200|WCO:0.000,0.000,0.000>").unwrap();
+
+        assert_eq!(status.machine_state, MachineState::Run);
+        assert_eq!(status.machine_position.x, 10.5);
+        assert_eq!(status.machine_position.y, 20.75);
+        assert_eq!(status.machine_position.z, 5.25);
+        assert_eq!(status.work_position.x, 0.0);
+        assert_eq!(status.work_position.y, 0.0);
+        assert_eq!(status.work_position.z, 0.0);
+        assert_eq!(status.feed_rate, Some(1500.0));
+        assert_eq!(status.spindle_speed, Some(200.0));
+    }
+
+    #[test]
+    fn test_parse_grbl_status_invalid() {
+        let mut comm = GrblCommunication::new();
+
+        // Test invalid status responses
+        assert!(comm.parse_grbl_status("").is_none());
+        assert!(comm.parse_grbl_status("not a status").is_none());
+        assert!(comm.parse_grbl_status("<>").is_none());
+        assert!(comm.parse_grbl_status("<InvalidState>").is_none());
+    }
+
+    #[test]
+    fn test_machine_state_from_string() {
+        // Test all valid machine states
+        assert_eq!(MachineState::from("Idle"), MachineState::Idle);
+        assert_eq!(MachineState::from("Run"), MachineState::Run);
+        assert_eq!(MachineState::from("Hold"), MachineState::Hold);
+        assert_eq!(MachineState::from("Jog"), MachineState::Jog);
+        assert_eq!(MachineState::from("Alarm"), MachineState::Alarm);
+        assert_eq!(MachineState::from("Door"), MachineState::Door);
+        assert_eq!(MachineState::from("Check"), MachineState::Check);
+        assert_eq!(MachineState::from("Home"), MachineState::Home);
+        assert_eq!(MachineState::from("Sleep"), MachineState::Sleep);
+
+        // Test unknown state defaults to Unknown
+        assert_eq!(MachineState::from("Unknown"), MachineState::Unknown);
+        assert_eq!(MachineState::from(""), MachineState::Unknown);
+    }
+
+    #[test]
+    fn test_jog_command_edge_cases() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test very small jog distance
+        comm.jog_axis('X', 0.001);
+        assert_eq!(comm.status_message, "Jogging X axis by 0.001mm");
+
+        // Test negative jog distance
+        comm.jog_axis('Y', -5.0);
+        assert_eq!(comm.status_message, "Jogging Y axis by -5.000mm");
+
+        // Test large jog distance
+        comm.jog_axis('Z', 1000.0);
+        assert_eq!(comm.status_message, "Jogging Z axis by 1000.000mm");
+
+        // Test different axes
+        comm.jog_axis('A', 45.0);
+        assert_eq!(comm.status_message, "Jogging A axis by 45.000mm");
+
+        comm.jog_axis('B', -30.0);
+        assert_eq!(comm.status_message, "Jogging B axis by -30.000mm");
+    }
+
+    #[test]
+    fn test_override_commands_edge_cases() {
+        let mut comm = GrblCommunication::new();
+        comm.connection_state = ConnectionState::Connected;
+
+        // Test zero override
+        comm.send_spindle_override(0.0);
+        assert_eq!(comm.status_message, "Spindle override: 0%");
+
+        // Test maximum override
+        comm.send_feed_override(200.0);
+        assert_eq!(comm.status_message, "Feed override: 200%");
+
+        // Test negative override (should still work)
+        comm.send_spindle_override(-10.0);
+        assert_eq!(comm.status_message, "Spindle override: -10%");
+
+        // Test very high override
+        comm.send_feed_override(500.0);
+        assert_eq!(comm.status_message, "Feed override: 500%");
     }
 
     #[test]
