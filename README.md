@@ -35,48 +35,131 @@ A professional desktop GUI application for controlling GRBL, Smoothieware, and T
 
 ```
 
-tests/
-├── gcodeedit/
-│   └── mod.rs
-├── jobs/
-│   └── mod.rs
-├── widgets/
-│   ├── connection.rs
-│   ├── gcode_loading.rs
-│   ├── jog.rs
-│   ├── machine_control.rs
-│   ├── overrides.rs
-│   ├── safety.rs
-│   └── tool_management.rs
-├── designer.rs
-└── main.rs
-
-src/
-├── communication/          # Multi-controller communication protocols
-│   ├── grbl.rs            # GRBL protocol implementation
-│   ├── smoothieware.rs    # Smoothieware protocol implementation
-│   ├── tinyg.rs           # TinyG protocol implementation
-│   ├── fluidnc.rs         # FluidNC protocol implementation
-│   └── g2core.rs          # G2core protocol implementation
-├── jobs/                  # Job management and queuing system
-│   ├── mod.rs             # Core job data structures and scheduling
-│   └── manager.rs         # Job management and scheduling operations
-├── widgets/               # Modular UI components
-│   ├── connection.rs      # Device connection interface
-│   ├── gcode_loading.rs   # File loading and queuing
-│   ├── job_scheduling.rs  # Job scheduling and management UI
-│   ├── jog.rs             # Real-time axis control
-│   ├── overrides.rs       # Speed/power adjustments
-│   ├── shape_generation.rs # Basic shape creation
-│   ├── toolpath_generation.rs # G-code generation
-│   ├── vector_import.rs   # SVG/DXF import
-│   ├── image_engraving.rs # Bitmap processing
-│   ├── tabbed_box.rs      # Box cutting with tabs
-│   └── jigsaw.rs          # Puzzle piece generation
-├── designer.rs            # CAD/CAM design tools
-├── materials.rs           # Material database and properties
-├── main.rs                # Application state and UI orchestration
-└── communication.rs       # Communication abstraction layer
+gcodekit/
+├── assets/
+│   └── gcode/
+│       └── test_gcode.gcode
+├── src/
+│   ├── app/                    # Application state management
+│   │   ├── mod.rs
+│   │   └── state.rs
+│   ├── cam/                    # Computer-aided manufacturing operations
+│   │   ├── mod.rs
+│   │   ├── nesting.rs
+│   │   ├── toolpaths.rs
+│   │   └── types.rs
+│   ├── communication/          # Multi-controller communication protocols
+│   │   ├── fluidnc.rs          # FluidNC protocol implementation
+│   │   ├── g2core.rs           # G2core protocol implementation
+│   │   ├── grbl.rs             # GRBL protocol implementation
+│   │   ├── smoothieware.rs     # Smoothieware protocol implementation
+│   │   └── tinyg.rs            # TinyG protocol implementation
+│   ├── designer/               # CAD/CAM design tools
+│   │   ├── bitmap_import.rs
+│   │   ├── bitmap_processing.rs
+│   │   ├── cam_operations.rs
+│   │   ├── image_engraving.rs
+│   │   ├── jigsaw.rs
+│   │   ├── parametric_design.rs
+│   │   ├── parametric_ui.rs
+│   │   ├── part_nesting.rs
+│   │   ├── shape_generation.rs
+│   │   ├── tabbed_box.rs
+│   │   ├── toolpath_generation.rs
+│   │   └── vector_import.rs
+│   ├── firmware/               # Firmware-specific handling
+│   │   └── mod.rs
+│   ├── gcode/                  # G-code parsing and manipulation
+│   │   └── mod.rs
+│   ├── gcodeedit/              # G-code editor functionality
+│   │   └── mod.rs
+│   ├── gcodeview/              # G-code visualization
+│   │   └── mod.rs
+│   ├── input/                  # Input handling
+│   │   └── mod.rs
+│   ├── jobs/                   # Job management and queuing system
+│   │   ├── manager.rs          # Job management and scheduling operations
+│   │   └── mod.rs              # Core job data structures and scheduling
+│   ├── layout/                 # UI layout components
+│   │   ├── bottom_status.rs
+│   │   ├── center_panel.rs
+│   │   ├── left_panel.rs
+│   │   ├── mod.rs
+│   │   ├── right_panel.rs
+│   │   ├── top_central_panel.rs
+│   │   └── top_menu.rs
+│   ├── materials/              # Material database and properties
+│   │   ├── mod.rs
+│   │   ├── properties.rs
+│   │   └── types.rs
+│   ├── ops/                    # Operation handlers
+│   │   ├── file_ops.rs
+│   │   ├── gcode_ops.rs
+│   │   ├── job_ops.rs
+│   │   ├── mod.rs
+│   │   └── ui_ops.rs
+│   ├── plugins/                # Plugin system
+│   │   └── mod.rs
+│   ├── postprocessor/          # G-code postprocessing
+│   │   └── mod.rs
+│   ├── types/                  # Common types and enums
+│   │   ├── enums.rs
+│   │   ├── mod.rs
+│   │   └── position.rs
+│   ├── ui/                     # User interface components
+│   │   ├── tabs/
+│   │   │   ├── designer.rs
+│   │   │   ├── device_console.rs
+│   │   │   ├── gcode_editor.rs
+│   │   │   ├── job_manager.rs
+│   │   │   ├── mod.rs
+│   │   │   └── visualizer_3d.rs
+│   │   ├── centralpanel.rs
+│   │   ├── mod.rs
+│   │   ├── panels.rs
+│   │   └── widgets.rs
+│   ├── web_pendant/            # Web pendant interface
+│   │   └── mod.rs
+│   ├── widgets/                # Modular UI components
+│   │   ├── calibration.rs
+│   │   ├── cam_operations.rs
+│   │   ├── connection.rs       # Device connection interface
+│   │   ├── gcode_loading.rs    # File loading and queuing
+│   │   ├── job_scheduling.rs   # Job scheduling and management UI
+│   │   ├── jog.rs              # Real-time axis control
+│   │   ├── machine_control.rs
+│   │   ├── overrides.rs        # Speed/power adjustments
+│   │   ├── safety.rs
+│   │   └── tool_management.rs
+│   ├── communication.rs        # Communication abstraction layer
+│   ├── designer.rs
+│   ├── errors.rs
+│   ├── lib.rs
+│   ├── main.rs                 # Application entry point
+│   └── widgets.rs
+├── tests/                      # Unit and integration tests
+│   ├── gcodeedit/
+│   │   └── mod.rs
+│   ├── jobs/
+│   │   └── mod.rs
+│   ├── widgets/
+│   │   ├── connection.rs
+│   │   ├── gcode_loading.rs
+│   │   ├── jog.rs
+│   │   ├── machine_control.rs
+│   │   ├── overrides.rs
+│   │   ├── safety.rs
+│   │   └── tool_management.rs
+│   ├── designer.rs
+│   └── main.rs
+├── .gitignore
+├── AGENTS.md
+├── Cargo.lock
+├── Cargo.toml
+├── IMPLEMENTATION_PLAN.md
+├── README.md
+├── SPEC.md
+└── TESTS_RESULTS.md
 ```
 
 tests/
