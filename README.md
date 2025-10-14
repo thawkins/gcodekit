@@ -4,32 +4,25 @@ A professional desktop GUI application for controlling GRBL, Smoothieware, and T
 
 ## Features
 
-### Core Functionality
-- **Multi-Controller Support**: GRBL v1.1+, Smoothieware, TinyG, FluidNC, and G2core firmware compatibility
-- **Advanced Communication**: Serial communication with automatic error recovery and 99.9% uptime guarantee
-- **Real-time Control**: Jog controls, spindle/laser overrides, and live status monitoring
-- **Job Management**: Priority-based job queuing with pause/resume and automatic resumption after errors
-- **Job Scheduling**: Time-based job execution with recurring schedules and dependency management
-
-### CAM (Computer-Aided Manufacturing)
-- **Shape Generation**: Create rectangles, circles, and custom shapes with precise dimensions
-- **Toolpath Generation**: Convert designs to optimized G-code with configurable feed rates and spindle controls
-- **Vector Import**: Load and convert SVG/DXF files for engraving and cutting operations
-- **Image Engraving**: Convert bitmap images to G-code with adjustable resolution and intensity
-- **Advanced Operations**: Tabbed box generation, jigsaw puzzle cutting, boolean shape operations, and part nesting for material optimization
-
-### Visualization & Design
-- **3D Visualizer**: Interactive G-code preview with color-coded paths and real-time machine position overlay
-- **Designer Canvas**: Interactive CAD environment with shape manipulation and G-code export
-- **G-code Editor**: Syntax-highlighted editor with line-by-line execution capabilities
-
-### Advanced Features
-- **6-Axis Support**: Full XYZABC axis control with rotary axis handling
-- **Probing Routines**: Z-probing, auto-leveling, and workpiece measurement (G38.x commands)
-- **Tool Management**: Tool length offsets (G43/G49), tool libraries, and automated tool changes
-- **Error Recovery**: Automatic reconnection, command retry logic, and comprehensive logging
-- **Keybinding System**: Fully customizable keyboard shortcuts for all operations
-- **Configurable UI**: Dockable windows with toggleable left/right panels for customizable workflows
+- **Advanced Visualizer**: Right-click jog to location, color-coded paths for G0/G1/G2/G3 moves, 6-axis support (XYZABC parsing), real-time machine position overlay, outline gcode functionality (planned)
+- **Designer Tab Foundation**: Basic shape drawing (Rectangle, Circle, Line) with interactive canvas, shape selection, and G-code export
+- **Modular Architecture**: Clean separation of concerns with dedicated modules for communication, designer, jobs, materials, and widgets
+- **Advanced Error Recovery System**: 99.9% uptime guarantee through automatic error recovery, job resumption, and comprehensive logging
+- **Job Management System**: Priority-based job queuing, progress tracking, pause/resume functionality, and automatic resumption after communication errors
+- **Multi-axis Support**: Full 6-axis machine support (XYZABC) with rotary axis handling and G-code parsing
+- **Enhanced Communication**: Support for GRBL, Smoothieware, TinyG, G2core, and FluidNC controllers with extensible architecture
+- **Vector Import**: SVG/DXF file import with automatic G-code conversion
+- **Boolean Operations**: Shape union operations for combining geometric elements
+- **Probing Routines**: Z-probing, auto-leveling, and workpiece measurement with G38.x commands
+- **Tool Management**: Tool length offsets (G43/G49), tool change support, and tool libraries
+- **Keybinding Customization**: Configurable keyboard shortcuts for all major actions
+- **UI Stability**: Resolved all duplicate element IDs in egui interface for reliable dropdown menus and button interactions
+- **G2core Controller Support**: Full JSON parsing for status reports, spindle/feed override commands, enhanced error recovery
+- **Configurable UI System**: Dockable window functionality with toggleable left/right panels via View menu
+- **Advanced CAM Operations**: Part nesting algorithm using bottom-left fill strategy with rotation support
+- **Test Reorganization**: Tests moved to tests/ folder with hierarchy mirroring src/
+- **Build Fixes**: Compilation errors resolved and debug binary built
+- **Repository Updates**: Changes committed
 
 ## Project Structure
 
