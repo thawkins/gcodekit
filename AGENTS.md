@@ -20,6 +20,9 @@
 - `cargo fmt` - Format code with rustfmt
 - `cargo fmt --check` - Check formatting without changes
 
+## Github access
+- use "gh" to access all github repositories. 
+
 ## Documentation standards 
 -  For all functions create DOCBLOCK documentation comments above each function that describes the purpose of the function, and documents any arguments and return vaulues
 -  For all modules place a DOCBLOCK at the top of the File that describes the purpose of the module, and any dependancies. 
