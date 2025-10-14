@@ -107,7 +107,7 @@ fn load_binary_stl(data: &[u8]) -> Result<Mesh, Box<dyn std::error::Error>> {
     let mut offset = 80;
 
     // Read number of triangles (u32)
-    let num_triangles = u32::from_le_bytes(data[offset..offset+4].try_into()?);
+    let num_triangles = u32::from_le_bytes(data[offset..offset + 4].try_into()?);
     offset += 4;
 
     let mut triangles = Vec::new();
@@ -120,19 +120,23 @@ fn load_binary_stl(data: &[u8]) -> Result<Mesh, Box<dyn std::error::Error>> {
 
         // Read normal (3 floats)
         let normal = Point3D {
-            x: f32::from_le_bytes(data[offset..offset+4].try_into()?),
-            y: f32::from_le_bytes(data[offset+4..offset+8].try_into()?),
-            z: f32::from_le_bytes(data[offset+8..offset+12].try_into()?),
+            x: f32::from_le_bytes(data[offset..offset + 4].try_into()?),
+            y: f32::from_le_bytes(data[offset + 4..offset + 8].try_into()?),
+            z: f32::from_le_bytes(data[offset + 8..offset + 12].try_into()?),
         };
         offset += 12;
 
         // Read 3 vertices (9 floats)
-        let mut vertices = [Point3D { x: 0.0, y: 0.0, z: 0.0 }; 3];
+        let mut vertices = [Point3D {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }; 3];
         for j in 0..3 {
             vertices[j] = Point3D {
-                x: f32::from_le_bytes(data[offset..offset+4].try_into()?),
-                y: f32::from_le_bytes(data[offset+4..offset+8].try_into()?),
-                z: f32::from_le_bytes(data[offset+8..offset+12].try_into()?),
+                x: f32::from_le_bytes(data[offset..offset + 4].try_into()?),
+                y: f32::from_le_bytes(data[offset + 4..offset + 8].try_into()?),
+                z: f32::from_le_bytes(data[offset + 8..offset + 12].try_into()?),
             };
             bounds.expand(&vertices[j]);
             offset += 12;

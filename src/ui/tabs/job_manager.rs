@@ -1,5 +1,5 @@
-use chrono::Utc;
 use egui;
+use rfd;
 
 use crate::GcodeKitApp;
 
@@ -16,6 +16,7 @@ pub fn show_job_manager_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
                 app.ui.show_job_creation_dialog = true;
                 app.ui.new_job_name = "New Job".to_string();
                 app.ui.new_job_type = crate::jobs::JobType::GcodeFile;
+                app.ui.new_job_file_path.clear();
                 app.ui.selected_material = None;
             }
             if ui.button("🗑️ Clear Completed").clicked() {
@@ -65,6 +66,18 @@ pub fn show_job_manager_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
                                 );
                             });
 
+                        if app.ui.new_job_type == crate::jobs::JobType::GcodeFile {
+                            ui.label("File Path:");
+                            ui.horizontal(|ui| {
+                                ui.text_edit_singleline(&mut app.ui.new_job_file_path);
+                                if ui.button("Browse").clicked() {
+                                    if let Some(path) = rfd::FileDialog::new().pick_file() {
+                                        app.ui.new_job_file_path = path.display().to_string();
+                                    }
+                                }
+                            });
+                        }
+
                         ui.label("Material:");
                         let mut material_names: Vec<String> = app
                             .material_database
@@ -105,15 +118,22 @@ pub fn show_job_manager_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
                                 let job_name = app.ui.new_job_name.clone();
                                 let job_type = app.ui.new_job_type.clone();
                                 let selected_material_clone = app.ui.selected_material.clone();
-                                let mut job = crate::jobs::Job::new(job_name, job_type);
+                                let mut job = crate::jobs::Job::new(job_name, job_type.clone());
                                 if let Some(material) = &selected_material_clone {
                                     job = job.with_material(material.clone());
                                 }
+                                if job_type == crate::jobs::JobType::GcodeFile {
+                                    job.gcode_path = Some(std::path::PathBuf::from(
+                                        app.ui.new_job_file_path.clone(),
+                                    ));
+                                }
                                 app.job.job_queue.add_job(job);
                                 app.ui.show_job_creation_dialog = false;
+                                app.ui.new_job_file_path.clear();
                             }
                             if ui.button("Cancel").clicked() {
                                 app.ui.show_job_creation_dialog = false;
+                                app.ui.new_job_file_path.clear();
                             }
                         });
                     });

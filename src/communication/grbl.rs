@@ -1,5 +1,5 @@
 use chrono::Utc;
-use serialport::{SerialPort, available_ports};
+use serialport::{SerialPort, available_ports, DataBits, StopBits, Parity, FlowControl};
 use std::any::Any;
 use std::collections::VecDeque;
 use std::error::Error;
@@ -20,6 +20,13 @@ pub enum MachineState {
     Sleep,
     #[default]
     Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum QueueState {
+    Idle,
+    WaitingForAck,
+    Paused,
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -93,13 +100,16 @@ pub struct GrblCommunication {
     pub grbl_version: String,
     pub current_status: GrblStatus,
     pub gcode_queue: VecDeque<String>,
+    pub is_sending_job: bool,
     pub last_response: Option<GrblResponse>,
     pub current_wcs: WcsCoordinate,
     pub recovery_config: crate::communication::ErrorRecoveryConfig,
     pub recovery_state: crate::communication::RecoveryState,
     pub health_metrics: crate::communication::HealthMetrics,
+    pub debug_enabled: bool,
     feed_hold_sent: bool,
     serial_port: Option<Box<dyn SerialPort>>,
+    queue_state: QueueState,
 }
 
 impl Default for GrblCommunication {
@@ -112,14 +122,17 @@ impl Default for GrblCommunication {
             grbl_version: String::new(),
             current_status: GrblStatus::default(),
             gcode_queue: VecDeque::new(),
+            is_sending_job: false,
             last_response: None,
             current_wcs: WcsCoordinate::G54,
             recovery_config: crate::communication::ErrorRecoveryConfig::default(),
-            recovery_state: crate::communication::RecoveryState::default(),
-            health_metrics: crate::communication::HealthMetrics::default(),
-            feed_hold_sent: false,
-            serial_port: None,
-        }
+             recovery_state: crate::communication::RecoveryState::default(),
+             health_metrics: crate::communication::HealthMetrics::default(),
+             debug_enabled: false,
+             feed_hold_sent: false,
+             serial_port: None,
+             queue_state: QueueState::Idle,
+         }
     }
 }
 
@@ -133,6 +146,7 @@ impl GrblCommunication {
             grbl_version: String::new(),
             current_status: GrblStatus::default(),
             gcode_queue: VecDeque::new(),
+            is_sending_job: false,
             last_response: None,
             current_wcs: WcsCoordinate::G54,
             recovery_config: crate::communication::ErrorRecoveryConfig::default(),
@@ -143,10 +157,12 @@ impl GrblCommunication {
                 last_error: None,
                 recovery_actions_taken: Vec::new(),
             },
-            health_metrics: crate::communication::HealthMetrics::default(),
-            feed_hold_sent: false,
-            serial_port: None,
-        }
+             health_metrics: crate::communication::HealthMetrics::default(),
+             debug_enabled: false,
+             feed_hold_sent: false,
+             serial_port: None,
+             queue_state: QueueState::Idle,
+         }
     }
 
     pub fn set_wcs(&mut self, wcs: WcsCoordinate) -> Result<(), String> {
@@ -199,6 +215,10 @@ impl GrblCommunication {
         self.status_message = format!("Connecting to {}...", self.selected_port);
 
         match serialport::new(&self.selected_port, 115200)
+            .data_bits(DataBits::Eight)
+            .stop_bits(StopBits::One)
+            .parity(Parity::None)
+            .flow_control(FlowControl::None)
             .timeout(std::time::Duration::from_millis(100))
             .open()
         {
@@ -213,9 +233,62 @@ impl GrblCommunication {
                 self.status_message = format!("Connected to {} at 115200 baud", self.selected_port);
 
                 // Send initial commands to wake up GRBL
-                self.send_grbl_command("\r\n\r\n");
+                if self.debug_enabled {
+                    eprintln!("DEBUG: Sending wake-up commands to GRBL");
+                }
+                self.send_grbl_command("\n\n");
                 std::thread::sleep(std::time::Duration::from_millis(2000));
+
+                // Send initialization commands that require proper acknowledgment
+                // Use send_gcode_line for commands that need "ok" responses
+                if self.debug_enabled {
+                    eprintln!("DEBUG: Sending $X command to unlock GRBL if in alarm state");
+                }
+                if let Err(e) = self.send_gcode_line("$X") { // Unlock GRBL
+                    if self.debug_enabled {
+                        eprintln!("DEBUG: Failed to send unlock command: {}", e);
+                    }
+                }
+                std::thread::sleep(std::time::Duration::from_millis(500));
+
+                if self.debug_enabled {
+                    eprintln!("DEBUG: Sending G21 command to set units to mm");
+                }
+                if let Err(e) = self.send_gcode_line("G21") { // Set units to mm
+                    if self.debug_enabled {
+                        eprintln!("DEBUG: Failed to send G21 command: {}", e);
+                    }
+                }
+                std::thread::sleep(std::time::Duration::from_millis(200));
+
+                if self.debug_enabled {
+                    eprintln!("DEBUG: Sending G90 command to set absolute positioning");
+                }
+                if let Err(e) = self.send_gcode_line("G90") { // Set absolute positioning
+                    if self.debug_enabled {
+                        eprintln!("DEBUG: Failed to send G90 command: {}", e);
+                    }
+                }
+                std::thread::sleep(std::time::Duration::from_millis(200));
+
+                // Send query commands to get GRBL state (these don't need queuing)
+                if self.debug_enabled {
+                    eprintln!("DEBUG: Sending $$ command to get GRBL settings");
+                }
                 self.send_grbl_command("$$\n"); // Get settings
+                std::thread::sleep(std::time::Duration::from_millis(500));
+
+                if self.debug_enabled {
+                    eprintln!("DEBUG: Sending $G command to get GRBL parser state");
+                }
+                self.send_grbl_command("$G\n"); // Get parser state
+                std::thread::sleep(std::time::Duration::from_millis(500));
+
+                if self.debug_enabled {
+                    eprintln!("DEBUG: Sending ? command to get GRBL status");
+                }
+                self.send_grbl_command("?\n"); // Get status
+                std::thread::sleep(std::time::Duration::from_millis(500));
             }
             Err(e) => {
                 self.connection_state = ConnectionState::Error;
@@ -229,17 +302,50 @@ impl GrblCommunication {
         self.connection_state = ConnectionState::Disconnected;
         self.grbl_version.clear();
         self.status_message = "Disconnected from device".to_string();
+        // Reset queue state on disconnect
+        self.queue_state = QueueState::Idle;
+        self.gcode_queue.clear();
     }
 
     pub fn send_grbl_command(&mut self, command: &str) {
-        if let Some(ref mut port) = self.serial_port {
-            match port.write_all(command.as_bytes()) {
-                Ok(_) => {
-                    self.log_console(&format!("Sent: {}", command.trim()));
+        let port_available = self.serial_port.is_some();
+        let command_bytes = command.as_bytes();
+        if self.debug_enabled {
+            eprintln!("DEBUG: send_grbl_command: Attempting to send: '{}' (port available: {})", command.trim(), port_available);
+        }
+
+        if port_available {
+            if self.debug_enabled {
+                eprintln!("DEBUG: send_grbl_command: Port is available, calling write_all with {} bytes", command_bytes.len());
+            }
+
+            // Perform the write operation
+            let write_result = if let Some(ref mut port) = self.serial_port {
+                let result = port.write_all(command_bytes);
+                if result.is_ok() {
+                    // Flush to ensure data is sent immediately
+                    let _ = port.flush();
                 }
-                Err(e) => {
-                    self.log_console(&format!("Send error: {}", e));
+                result
+            } else {
+                Err(std::io::Error::new(std::io::ErrorKind::NotConnected, "Port not available"))
+            };
+
+            if self.debug_enabled {
+                match write_result {
+                    Ok(_) => {
+                        eprintln!("DEBUG: send_grbl_command: write_all succeeded for: '{}'", command.trim());
+                        eprintln!("DEBUG: Sent: {}", command.trim());
+                    }
+                    Err(e) => {
+                        eprintln!("DEBUG: send_grbl_command: write_all failed with error: {}", e);
+                        eprintln!("DEBUG: Send error: {}", e);
+                    }
                 }
+            }
+        } else {
+            if self.debug_enabled {
+                eprintln!("DEBUG: send_grbl_command: No serial port available!");
             }
         }
     }
@@ -247,24 +353,43 @@ impl GrblCommunication {
     pub fn read_grbl_responses(&mut self) -> Vec<String> {
         let mut messages = Vec::new();
 
-        if let Some(ref mut port) = self.serial_port {
+        if self.serial_port.is_some() {
+            self.log_console("read_grbl_responses: Attempting to read from serial port");
             let mut buffer = [0; 1024];
-            match port.read(&mut buffer) {
-                Ok(bytes_read) if bytes_read > 0 => {
-                    if let Ok(response) = std::str::from_utf8(&buffer[..bytes_read]) {
-                        let clean_response = response.trim();
-                        if !clean_response.is_empty() {
-                            messages.push(format!("Recv: {}", clean_response));
+            let read_result = if let Some(ref mut port) = self.serial_port {
+                port.read(&mut buffer)
+            } else {
+                Err(std::io::Error::new(std::io::ErrorKind::NotConnected, "Port not available"))
+            };
 
-                            // Check if this is a version response
-                            if clean_response.contains("Grbl") {
-                                self.parse_grbl_version(clean_response);
+            match read_result {
+                Ok(bytes_read) => {
+                    if bytes_read > 0 {
+                        self.log_console(&format!("read_grbl_responses: Read {} bytes", bytes_read));
+                        if let Ok(response) = std::str::from_utf8(&buffer[..bytes_read]) {
+                            let clean_response = response.trim();
+                            self.log_console(&format!("read_grbl_responses: Decoded response: '{}'", clean_response));
+                            if !clean_response.is_empty() {
+                                messages.push(clean_response.to_string());
+
+                                // Check if this is a version response
+                                if clean_response.contains("Grbl") {
+                                    self.parse_grbl_version(clean_response);
+                                }
                             }
+                        } else {
+                            self.log_console("read_grbl_responses: Failed to decode UTF-8");
                         }
+                    } else {
+                        self.log_console("read_grbl_responses: No bytes read (EOF or timeout)");
                     }
                 }
-                _ => {} // No data or error, ignore for now
+                Err(e) => {
+                    self.log_console(&format!("read_grbl_responses: Read error: {}", e));
+                }
             }
+        } else {
+            self.log_console("read_grbl_responses: No serial port available");
         }
 
         messages
@@ -549,10 +674,27 @@ impl GrblCommunication {
         }
 
         // Add to queue for flow control
+        let was_empty = self.gcode_queue.is_empty();
+        if self.debug_enabled {
+            eprintln!("DEBUG: send_gcode_line: Command '{}' - queue was_empty: {}, queue len: {}, queue_state: {:?}", trimmed, was_empty, self.gcode_queue.len(), self.queue_state);
+        }
         self.gcode_queue.push_back(trimmed.to_string());
+        if self.debug_enabled {
+            eprintln!("DEBUG: send_gcode_line: After adding, queue len: {}", self.gcode_queue.len());
+        }
 
-        // For now, send immediately (TODO: implement proper queuing)
-        self.send_grbl_command(trimmed);
+        // If queue was empty and we're idle, send immediately
+        if was_empty && self.queue_state == QueueState::Idle {
+            if self.debug_enabled {
+                eprintln!("DEBUG: send_gcode_line: Sending '{}' immediately", trimmed);
+            }
+            self.send_grbl_command(&format!("{}\r\n", trimmed));
+            self.queue_state = QueueState::WaitingForAck;
+        } else {
+            if self.debug_enabled {
+                eprintln!("DEBUG: send_gcode_line: Adding '{}' to queue (state: {:?})", trimmed, self.queue_state);
+            }
+        }
 
         Ok(())
     }
@@ -755,10 +897,43 @@ impl CncController for GrblCommunication {
     }
 
     fn handle_response(&mut self, response: &str) -> Option<crate::MachinePosition> {
+        if self.debug_enabled {
+            eprintln!("DEBUG: handle_response: Received response: '{}'", response.trim());
+        }
         let parsed = self.parse_grbl_response(response);
+        if self.debug_enabled {
+            eprintln!("DEBUG: handle_response: Parsed as: {:?}", parsed);
+        }
         // Handle the response as needed, e.g., update status
         match parsed {
+            GrblResponse::Ok => {
+                if self.debug_enabled {
+                    eprintln!("DEBUG: handle_response: Got OK, queue length: {}, queue_state: {:?}", self.gcode_queue.len(), self.queue_state);
+                }
+                // Mark current command as completed
+                self.queue_state = QueueState::Idle;
+
+                // Send next line from queue if available
+                if let Some(next_line) = self.gcode_queue.pop_front() {
+                    if self.debug_enabled {
+                        eprintln!("DEBUG: Queue: Sending next command from queue: '{}'", next_line);
+                        let command_with_ending = format!("{}\r\n", next_line);
+                        eprintln!("DEBUG: Queue: Full command being sent: {:?}", command_with_ending.as_bytes());
+                    }
+                    let command_with_ending = format!("{}\r\n", next_line);
+                    let _ = self.send_grbl_command(&command_with_ending);
+                    self.queue_state = QueueState::WaitingForAck;
+                } else {
+                    if self.debug_enabled {
+                        eprintln!("DEBUG: Queue: No more commands in queue");
+                    }
+                }
+                None
+            }
             GrblResponse::Status(status) => {
+                if self.debug_enabled {
+                    eprintln!("DEBUG: handle_response: GRBL status - State: {:?}, Position: ({:.3}, {:.3}, {:.3})", status.machine_state, status.work_position.x, status.work_position.y, status.work_position.z);
+                }
                 self.current_status = status.clone();
                 let pos = status.work_position;
                 Some(crate::MachinePosition {
@@ -770,6 +945,20 @@ impl CncController for GrblCommunication {
                     c: pos.c,
                     d: pos.d,
                 })
+            }
+            GrblResponse::Error(error_msg) => {
+                if self.debug_enabled {
+                    eprintln!("DEBUG: handle_response: Got ERROR: {}, resetting queue state", error_msg);
+                }
+                self.queue_state = QueueState::Idle; // Allow next command to be sent
+                None
+            }
+            GrblResponse::Alarm(alarm_msg) => {
+                if self.debug_enabled {
+                    eprintln!("DEBUG: handle_response: Got ALARM: {}, pausing queue", alarm_msg);
+                }
+                self.queue_state = QueueState::Paused; // Pause queue on alarm
+                None
             }
             _ => None,
         }
@@ -959,6 +1148,10 @@ impl CncController for GrblCommunication {
     fn emergency_stop(&mut self) {
         // Send feed hold command to GRBL
         let _ = self.send_gcode_line("!");
+    }
+
+    fn send_raw_command(&mut self, command: &str) {
+        self.send_grbl_command(command);
     }
 }
 

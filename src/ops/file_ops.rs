@@ -11,6 +11,7 @@ impl GcodeKitApp {
         {
             match std::fs::read_to_string(&path) {
                 Ok(content) => {
+                    self.log_console(&format!("load_gcode_file: Loaded {} bytes, {} lines", content.len(), content.lines().count()));
                     self.gcode.gcode_content = content;
                     self.gcode.gcode_filename = path
                         .file_name()

@@ -11,9 +11,6 @@ use std::path::PathBuf;
 pub enum FirmwareType {
     Grbl,
     Smoothieware,
-    TinyG,
-    G2core,
-    FluidNC,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,18 +81,8 @@ impl FirmwareManager {
                 // Use dfu-util or similar for STM32-based controllers
                 Err("STM32 flashing not implemented".to_string())
             }
-            FirmwareType::TinyG => {
-                // TinyG flashing procedure
-                Err("TinyG flashing not implemented".to_string())
-            }
-            FirmwareType::G2core => {
-                // G2core flashing procedure
-                Err("G2core flashing not implemented".to_string())
-            }
-            FirmwareType::FluidNC => {
-                // FluidNC flashing procedure
-                Err("FluidNC flashing not implemented".to_string())
-            }
+
+
         }
     }
 

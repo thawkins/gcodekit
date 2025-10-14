@@ -8,6 +8,10 @@ pub fn show_device_console_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.label("Device Console");
             ui.separator();
+            if ui.button("📋 Copy All").clicked() {
+                let all_messages = app.machine.console_messages.join("\n");
+                ui.ctx().copy_text(all_messages);
+            }
             if ui.button("🗑️ Clear").clicked() {
                 app.machine.console_messages.clear();
             }

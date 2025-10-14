@@ -167,8 +167,16 @@ pub struct BoundingBox {
 impl BoundingBox {
     pub fn new() -> Self {
         Self {
-            min: Point3D { x: f32::INFINITY, y: f32::INFINITY, z: f32::INFINITY },
-            max: Point3D { x: f32::NEG_INFINITY, y: f32::NEG_INFINITY, z: f32::NEG_INFINITY },
+            min: Point3D {
+                x: f32::INFINITY,
+                y: f32::INFINITY,
+                z: f32::INFINITY,
+            },
+            max: Point3D {
+                x: f32::NEG_INFINITY,
+                y: f32::NEG_INFINITY,
+                z: f32::NEG_INFINITY,
+            },
         }
     }
 

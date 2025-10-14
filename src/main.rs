@@ -36,7 +36,7 @@ mod ui;
 mod web_pendant;
 mod widgets;
 
-use crate::types::{MachineMode, MachinePosition, PathSegment, Tab};
+use crate::types::{MachineMode, MachinePosition};
 use app::GcodeKitApp;
 
 use communication::{ConnectionState, ControllerType};
@@ -103,23 +103,6 @@ impl GcodeKitApp {
         self.gcode.sending_from_line = None; // Clear sending indicator
         let msg = self.machine.communication.get_status_message().to_string();
         self.log_console(&msg);
-    }
-
-    /// Initiates sending the currently loaded G-code to the connected device.
-    /// Currently a placeholder - full implementation with queuing is TODO.
-    fn send_gcode_to_device(&mut self) {
-        if *self.machine.communication.get_connection_state() != ConnectionState::Connected {
-            self.machine.status_message = "Not connected to device".to_string();
-            return;
-        }
-
-        if self.gcode.gcode_content.is_empty() {
-            self.machine.status_message = "No G-code loaded".to_string();
-            return;
-        }
-
-        // TODO: Implement actual sending with queuing
-        self.machine.status_message = "Sending G-code to device...".to_string();
     }
 
     /// Moves the specified machine axis by the given distance.
@@ -288,13 +271,16 @@ impl GcodeKitApp {
         if *self.machine.communication.get_connection_state() == ConnectionState::Connected
             && let Some(message) = self.machine.communication.read_response()
         {
+            println!("DEBUG: Device response: {}", message.trim());
             if let Some(pos) = self.machine.communication.handle_response(&message) {
                 // Position updated
                 self.machine.current_position = pos.clone();
                 self.log_console(&format!("Position: {}", pos.format()));
             } else {
-                // Other response, just log
-                self.log_console(&message);
+                // Other response, just log if not "ok"
+                if message.trim() != "ok" {
+                    self.log_console(&format!("Recv: {}", message));
+                }
             }
         }
     }

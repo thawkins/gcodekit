@@ -1,7 +1,8 @@
-use gcodekit::designer::{AddShapeCommand, DeleteShapeCommand};
-use gcodekit::designer::Command;
-use gcodekit::designer::{DesignerState, Shape, Material, Tool, DrawingTool, ToolpathPattern};
+use egui;
 use gcodekit::cam::types::{CAMOperation, CAMParameters};
+use gcodekit::designer::Command;
+use gcodekit::designer::{AddShapeCommand, DeleteShapeCommand};
+use gcodekit::designer::{DesignerState, DrawingTool, Material, Shape, Tool, ToolpathPattern};
 use std::collections::VecDeque;
 
 fn create_test_designer() -> DesignerState {
@@ -43,6 +44,14 @@ fn create_test_designer() -> DesignerState {
         current_polyline_points: Vec::new(),
         selected_cam_operation: CAMOperation::default(),
         cam_params: CAMParameters::default(),
+        viewport_size: egui::vec2(800.0, 600.0),
+        shape_width: 100.0,
+        shape_height: 100.0,
+        shape_radius: 50.0,
+        stroke_width: 1.0,
+        calligraphy_angle: 0.0,
+        text_font_size: 12.0,
+        current_mesh: None,
     }
 }
 

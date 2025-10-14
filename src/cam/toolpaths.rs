@@ -14,7 +14,13 @@ pub fn generate_waterline_toolpath(
 ) -> Vec<String> {
     let mut gcode = Vec::new();
 
-    if let CAMOperation::Waterline { min_z, max_z, stepdown, stepover } = operation {
+    if let CAMOperation::Waterline {
+        min_z,
+        max_z,
+        stepdown,
+        stepover,
+    } = operation
+    {
         // Initialize G-code
         gcode.push("G90".to_string()); // Absolute positioning
         gcode.push("G21".to_string()); // Metric units
@@ -35,7 +41,10 @@ pub fn generate_waterline_toolpath(
 
                     // Cut the contour
                     for point in contour.iter().skip(1) {
-                        gcode.push(format!("G1 X{:.3} Y{:.3} F{}", point.x, point.y, params.feed_rate));
+                        gcode.push(format!(
+                            "G1 X{:.3} Y{:.3} F{}",
+                            point.x, point.y, params.feed_rate
+                        ));
                     }
 
                     // Close the contour if it's a loop
@@ -64,7 +73,14 @@ pub fn generate_scanline_toolpath(
 ) -> Vec<String> {
     let mut gcode = Vec::new();
 
-    if let CAMOperation::Scanline { min_z, max_z, stepdown, stepover, angle } = operation {
+    if let CAMOperation::Scanline {
+        min_z,
+        max_z,
+        stepdown,
+        stepover,
+        angle,
+    } = operation
+    {
         // Initialize G-code
         gcode.push("G90".to_string());
         gcode.push("G21".to_string());
@@ -90,13 +106,19 @@ pub fn generate_scanline_toolpath(
                     });
 
                     // Move to start
-                    gcode.push(format!("G0 X{:.3} Y{:.3}", sorted_line[0].x, sorted_line[0].y));
+                    gcode.push(format!(
+                        "G0 X{:.3} Y{:.3}",
+                        sorted_line[0].x, sorted_line[0].y
+                    ));
                     gcode.push(format!("G0 Z{:.3}", current_z + 1.0));
                     gcode.push(format!("G1 Z{:.3} F{}", current_z, params.plunge_rate));
 
                     // Cut along the line
                     for point in sorted_line.iter().skip(1) {
-                        gcode.push(format!("G1 X{:.3} Y{:.3} F{}", point.x, point.y, params.feed_rate));
+                        gcode.push(format!(
+                            "G1 X{:.3} Y{:.3} F{}",
+                            point.x, point.y, params.feed_rate
+                        ));
                     }
 
                     // Retract
@@ -154,7 +176,11 @@ fn generate_scan_lines(mesh: &Mesh, z: f32, stepover: f32, angle: f32) -> Vec<Ve
 
             // Check if point is on surface
             if point_on_surface(mesh, rotated_x, rotated_y, z) {
-                line_points.push(Point3D { x: rotated_x, y: rotated_y, z });
+                line_points.push(Point3D {
+                    x: rotated_x,
+                    y: rotated_y,
+                    z,
+                });
             }
         }
 
@@ -167,10 +193,12 @@ fn generate_scan_lines(mesh: &Mesh, z: f32, stepover: f32, angle: f32) -> Vec<Ve
 }
 
 /// Check if point is on the surface at given Z
-fn point_on_surface(mesh: &Mesh, x: f32, y: f32, z: f32) -> bool {
+fn point_on_surface(mesh: &Mesh, x: f32, y: f32, _z: f32) -> bool {
     // Simple bounding box check for now
-    x >= mesh.bounds.min.x && x <= mesh.bounds.max.x &&
-    y >= mesh.bounds.min.y && y <= mesh.bounds.max.y
+    x >= mesh.bounds.min.x
+        && x <= mesh.bounds.max.x
+        && y >= mesh.bounds.min.y
+        && y <= mesh.bounds.max.y
     // TODO: Implement proper ray casting or surface intersection
 }
 
@@ -195,9 +223,23 @@ fn intersect_triangle_with_plane(triangle: &Triangle, z: f32) -> Option<(Point3D
         (1, 2, 0) | (2, 1, 0) => {
             // Intersect the edge between above and below points
             let (above_point, below_point) = if above.len() == 1 {
-                (above[0], if below[0].z < below[1].z { below[0] } else { below[1] })
+                (
+                    above[0],
+                    if below[0].z < below[1].z {
+                        below[0]
+                    } else {
+                        below[1]
+                    },
+                )
             } else {
-                (below[0], if above[0].z > above[1].z { above[0] } else { above[1] })
+                (
+                    below[0],
+                    if above[0].z > above[1].z {
+                        above[0]
+                    } else {
+                        above[1]
+                    },
+                )
             };
 
             let t = (z - below_point.z) / (above_point.z - below_point.z);
@@ -208,7 +250,10 @@ fn intersect_triangle_with_plane(triangle: &Triangle, z: f32) -> Option<(Point3D
             };
 
             // Find second intersection
-            let other_above = above.iter().find(|p| *p != &above_point).or_else(|| below.iter().find(|p| *p != &below_point))?;
+            let other_above = above
+                .iter()
+                .find(|p| *p != &above_point)
+                .or_else(|| below.iter().find(|p| *p != &below_point))?;
             let t2 = (z - below_point.z) / (other_above.z - below_point.z);
             let intersection2 = Point3D {
                 x: below_point.x + t2 * (other_above.x - below_point.x),

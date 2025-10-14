@@ -1,6 +1,6 @@
 # gcodekit - Advanced CNC & Laser Controller
 
-A professional desktop GUI application for controlling GRBL, Smoothieware, and TinyG-based CNC machines and laser engravers. Built with Rust and egui, featuring advanced CAM capabilities, comprehensive error recovery, and multi-axis support.
+A professional desktop GUI application for controlling GRBL and Smoothieware-based CNC machines and laser engravers. Built with Rust and egui, featuring advanced CAM capabilities, comprehensive error recovery, and multi-axis support.
 
 ## Features
 
@@ -10,14 +10,14 @@ A professional desktop GUI application for controlling GRBL, Smoothieware, and T
 - **Advanced Error Recovery System**: 99.9% uptime guarantee through automatic error recovery, job resumption, and comprehensive logging
 - **Job Management System**: Priority-based job queuing, progress tracking, pause/resume functionality, and automatic resumption after communication errors
 - **Multi-axis Support**: Full 6-axis machine support (XYZABC) with rotary axis handling and G-code parsing
-- **Enhanced Communication**: Support for GRBL, Smoothieware, TinyG, G2core, and FluidNC controllers with extensible architecture
+- **Enhanced Communication**: Support for GRBL and Smoothieware controllers with extensible architecture
 - **Vector Import**: SVG/DXF file import with automatic G-code conversion
 - **Boolean Operations**: Shape union operations for combining geometric elements
 - **Probing Routines**: Z-probing, auto-leveling, and workpiece measurement with G38.x commands
 - **Tool Management**: Tool length offsets (G43/G49), tool change support, and tool libraries
 - **Keybinding Customization**: Configurable keyboard shortcuts for all major actions
 - **UI Stability**: Resolved all duplicate element IDs in egui interface for reliable dropdown menus and button interactions
-- **G2core Controller Support**: Full JSON parsing for status reports, spindle/feed override commands, enhanced error recovery
+
 - **Configurable UI System**: Dockable window functionality with toggleable left/right panels via View menu
 - **Advanced CAM Operations**: Part nesting algorithm using bottom-left fill strategy with rotation support
 - **Test Reorganization**: Tests moved to tests/ folder with hierarchy mirroring src/
@@ -42,11 +42,8 @@ gcodekit/
 │   │   ├── toolpaths.rs
 │   │   └── types.rs
 │   ├── communication/          # Multi-controller communication protocols
-│   │   ├── fluidnc.rs          # FluidNC protocol implementation
-│   │   ├── g2core.rs           # G2core protocol implementation
 │   │   ├── grbl.rs             # GRBL protocol implementation
-│   │   ├── smoothieware.rs     # Smoothieware protocol implementation
-│   │   └── tinyg.rs            # TinyG protocol implementation
+│   │   └── smoothieware.rs     # Smoothieware protocol implementation
 │   ├── designer/               # CAD/CAM design tools
 │   │   ├── bitmap_import.rs
 │   │   ├── bitmap_processing.rs
@@ -175,7 +172,7 @@ tests/
 ## Requirements
 
 - **Rust**: 1.75+ (2024 edition)
-- **Controller Firmware**: GRBL v1.1+, Smoothieware, or TinyG compatible device
+- **Controller Firmware**: GRBL v1.1+ or Smoothieware compatible device
 - **Serial Port Access**: For device communication
 
 ## Building
@@ -267,14 +264,14 @@ tests/
 **Current Phase**: Phase 10 Complete - Advanced CAM Features and Controller Support
 
 ### Completed Features
-- ✅ Multi-controller support (GRBL, Smoothieware, TinyG, FluidNC, G2core)
+- ✅ Multi-controller support (GRBL, Smoothieware)
 - ✅ Advanced error recovery with 99.9% uptime guarantee and predictive issue detection
 - ✅ Priority-based job management with automatic resumption after errors
 - ✅ 6-axis machine support (XYZABC) with rotary axis visualization
 - ✅ **Job Scheduling System**: Time-based job execution with recurring schedules
 - ✅ **Dependency Management**: Jobs can depend on completion of other jobs
 - ✅ **Advanced Scheduling UI**: Create, manage, and monitor scheduled jobs
-- ✅ **G2core Controller Support**: Full JSON parsing for status reports, spindle/feed override commands
+
 - ✅ **Configurable UI System**: Dockable window functionality with toggleable left/right panels
 - ✅ **Advanced CAM Operations**: Part nesting algorithm using bottom-left fill strategy with rotation support
 - ✅ **Test Organization**: Tests reorganized into tests/ folder with hierarchy mirroring src/

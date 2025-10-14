@@ -1,17 +1,13 @@
 //! CNC controller communication module.
 //!
 //! This module handles communication with various CNC controllers including
-//! GRBL, FluidNC, G2core, SmoothieWare, and TinyG. It provides unified
+//! GRBL and SmoothieWare. It provides unified
 //! interfaces for connecting, sending commands, and receiving responses.
 
-pub mod fluidnc;
-pub mod g2core;
+
 pub mod grbl;
 pub mod smoothieware;
-pub mod tinyg;
 
-pub use fluidnc::FluidNCCommunication;
-pub use g2core::G2coreCommunication;
 pub use grbl::GrblCommunication;
 pub use smoothieware::SmoothiewareCommunication;
 
@@ -217,9 +213,6 @@ impl HealthMetrics {
 pub enum ControllerType {
     Grbl,
     Smoothieware,
-    TinyG,
-    G2core,
-    FluidNC,
 }
 
 pub trait CncController {
@@ -228,6 +221,7 @@ pub trait CncController {
     fn connect(&mut self) -> Result<(), Box<dyn Error>>;
     fn disconnect(&mut self);
     fn send_gcode_line(&mut self, line: &str) -> Result<(), Box<dyn Error>>;
+    fn send_raw_command(&mut self, command: &str);
     fn read_response(&mut self) -> Option<String>;
     fn is_connected(&self) -> bool;
     fn get_status(&self) -> String;

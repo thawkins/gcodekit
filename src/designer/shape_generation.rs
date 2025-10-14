@@ -30,7 +30,8 @@ pub fn show_shape_generation_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                     .width(ui.available_width())
                     .show_ui(ui, |ui| {
                         for material_name in &material_names {
-                            let is_selected = Some(material_name.clone()) == app.ui.selected_material
+                            let is_selected = Some(material_name.clone())
+                                == app.ui.selected_material
                                 || (material_name == "None" && app.ui.selected_material.is_none());
                             if ui.selectable_label(is_selected, material_name).clicked() {
                                 if material_name == "None" {
@@ -63,16 +64,27 @@ pub fn show_shape_generation_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             // Column 3: Shape buttons
             columns[2].push_id("shapes_column", |ui| {
                 ui.label("Shapes:");
-                if ui.button("Rectangle").on_hover_text("Generate Rectangle Shape").clicked() {
+                if ui
+                    .button("Rectangle")
+                    .on_hover_text("Generate Rectangle Shape")
+                    .clicked()
+                {
                     app.generate_rectangle();
                     app.create_job_from_generated_gcode(
                         "Rectangle",
                         crate::jobs::JobType::CAMOperation,
                     );
                 }
-                if ui.button("Circle").on_hover_text("Generate Circle Shape").clicked() {
+                if ui
+                    .button("Circle")
+                    .on_hover_text("Generate Circle Shape")
+                    .clicked()
+                {
                     app.generate_circle();
-                    app.create_job_from_generated_gcode("Circle", crate::jobs::JobType::CAMOperation);
+                    app.create_job_from_generated_gcode(
+                        "Circle",
+                        crate::jobs::JobType::CAMOperation,
+                    );
                 }
             });
         });

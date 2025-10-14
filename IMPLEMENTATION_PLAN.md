@@ -115,7 +115,7 @@ Create a professional, customizable user interface.
 Add advanced system integration capabilities.
 
 **Key Deliverables:**
-- Multi-controller support (Smoothieware, TinyG, etc.)
+- Multi-controller support (Smoothieware, etc.)
 - Web pendant interface
 - Firmware management system
 - Plugin architecture
@@ -169,13 +169,13 @@ Implement enterprise-grade job scheduling and production management features.
 Implement advanced CAM operations and enhanced controller support for professional CNC machining.
 
 **Key Deliverables:**
-- ✅ G2core Controller Support: Full JSON parsing for status reports, spindle/feed override commands, enhanced error recovery
+
 - ✅ Configurable UI System: Dockable window functionality with toggleable left/right panels via View menu
 - ✅ Advanced CAM Operations: Part nesting algorithm using bottom-left fill strategy with rotation support
 - ✅ Testing & Validation: Comprehensive test suite (41 passing tests) and successful release build
 
 **Success Metrics:**
-- ✅ Robust G2core integration with JSON-based communication
+
 - ✅ 100% customizable interface layouts with panel toggling
 - ✅ 30% material waste reduction through optimized part nesting
 - ✅ All code compiles successfully with comprehensive testing

@@ -395,4 +395,130 @@ mod tests {
         assert_eq!(jobs[0].job_type, jobs::JobType::GcodeFile);
         assert_eq!(jobs[0].material, app.ui.selected_material);
     }
+
+    #[test]
+    fn test_gcode_batching_logic() {
+        let mut app = GcodeKitApp::default();
+
+        // Load the large G-code file (131 lines)
+        let large_gcode = std::fs::read_to_string("assets/gcode/square_15mm.gcode")
+            .expect("Failed to read test G-code file");
+        app.gcode.gcode_content = large_gcode.clone();
+
+        // Count total lines and commands
+        let lines: Vec<&str> = app.gcode.gcode_content.lines().collect();
+        let total_lines = lines.len();
+        let commands: Vec<&str> = lines
+            .iter()
+            .filter(|line| {
+                let trimmed = line.trim();
+                !trimmed.is_empty() && !trimmed.starts_with(';')
+            })
+            .copied()
+            .collect();
+        let total_commands = commands.len();
+
+        // Verify we have the expected number of lines
+        assert_eq!(total_lines, 131, "G-code file should have 131 lines");
+
+        // Calculate expected batches (10 commands per batch)
+        let batch_size = 10;
+        let expected_batches = (total_commands + batch_size - 1) / batch_size; // Ceiling division
+
+        // Verify batching calculation
+        assert_eq!(total_commands, 85, "Should have 85 commands after filtering comments and empty lines");
+        assert_eq!(expected_batches, 9, "Should require 9 batches for 85 commands");
+
+        // Test that the batching logic would work (without actually sending)
+        let mut batch_count = 0;
+        for batch in commands.chunks(batch_size) {
+            batch_count += 1;
+            assert!(batch.len() <= batch_size, "Batch size should not exceed {}", batch_size);
+        }
+        assert_eq!(batch_count, expected_batches, "Should create correct number of batches");
+    }
+
+    #[test]
+    fn test_send_gcode_with_debug_logging() {
+        let mut app = GcodeKitApp::default();
+
+        // Load a small G-code file
+        let small_gcode = "G21 ; Set units to mm\n\
+                           G90 ; Absolute positioning\n\
+                           G0 X0 Y0 ; Go to origin\n\
+                           G1 X100 Y0 F500 ; Bottom edge\n\
+                           M30 ; End program\n";
+        app.gcode.gcode_content = small_gcode.to_string();
+
+        // Test that send_gcode detects multi-line content
+        // Note: This will fail at connection check since we're not connected
+        app.send_gcode(small_gcode);
+
+        // Verify the content was set
+        assert_eq!(app.gcode.gcode_content, small_gcode);
+
+        // Check that it detected multi-line and tried to send
+        // The status should indicate connection failure
+        assert!(app.machine.status_message.contains("Not connected"));
+
+        // Check console messages for our debug logs
+        let console_messages = &app.machine.console_messages;
+        assert!(!console_messages.is_empty());
+
+        // Find the send_gcode debug message
+        let send_gcode_msg = console_messages.iter().find(|msg| msg.contains("send_gcode: Called with content"));
+        assert!(send_gcode_msg.is_some(), "send_gcode debug message not found");
+
+        // Verify it detected newlines
+        assert!(send_gcode_msg.unwrap().contains("contains_newlines = true"));
+    }
+
+    #[test]
+    fn test_larger_gcode_file_batching() {
+        let mut app = GcodeKitApp::default();
+
+        // Create a larger G-code file by duplicating the square pattern
+        let base_gcode = std::fs::read_to_string("assets/gcode/square_15mm.gcode")
+            .expect("Failed to read test G-code file");
+
+        // Duplicate the content 5 times to create a larger file
+        let mut large_gcode = String::new();
+        for _ in 0..5 {
+            large_gcode.push_str(&base_gcode);
+            large_gcode.push('\n');
+        }
+        app.gcode.gcode_content = large_gcode.clone();
+
+        // Count total lines and commands
+        let lines: Vec<&str> = app.gcode.gcode_content.lines().collect();
+        let total_lines = lines.len();
+        let commands: Vec<&str> = lines
+            .iter()
+            .filter(|line| {
+                let trimmed = line.trim();
+                !trimmed.is_empty() && !trimmed.starts_with(';')
+            })
+            .copied()
+            .collect();
+        let total_commands = commands.len();
+
+        // Verify we have the expected scale (5x the original)
+        assert_eq!(total_lines, 131 * 5 + 5, "Should have 5x lines plus separators");
+        assert_eq!(total_commands, 85 * 5, "Should have 5x commands");
+
+        // Calculate expected batches (10 commands per batch)
+        let batch_size = 10;
+        let expected_batches = (total_commands + batch_size - 1) / batch_size; // Ceiling division
+
+        // Verify batching calculation for larger file
+        assert_eq!(expected_batches, 43, "Should require 43 batches for 425 commands");
+
+        // Test that the batching logic would work (without actually sending)
+        let mut total_batch_commands = 0;
+        for batch in commands.chunks(batch_size) {
+            assert!(batch.len() <= batch_size, "Batch size should not exceed {}", batch_size);
+            total_batch_commands += batch.len();
+        }
+        assert_eq!(total_batch_commands, total_commands, "All commands should be batched");
+    }
 }

@@ -3,7 +3,6 @@
 //! This module defines a centralized error type using `thiserror` for better
 //! error handling and specificity throughout the application.
 
-use stl_io;
 use thiserror::Error;
 
 /// Main application error type.

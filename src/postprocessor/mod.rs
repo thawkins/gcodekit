@@ -68,9 +68,6 @@ impl GcodeCommand {
 pub enum ControllerType {
     Grbl,
     Smoothieware,
-    TinyG,
-    G2core,
-    FluidNC,
 }
 
 impl ControllerType {
@@ -78,9 +75,6 @@ impl ControllerType {
         match s.to_lowercase().as_str() {
             "grbl" => Some(Self::Grbl),
             "smoothieware" => Some(Self::Smoothieware),
-            "tinyg" => Some(Self::TinyG),
-            "g2core" => Some(Self::G2core),
-            "fluidnc" => Some(Self::FluidNC),
             _ => None,
         }
     }
@@ -89,9 +83,6 @@ impl ControllerType {
         match self {
             Self::Grbl => "GRBL",
             Self::Smoothieware => "Smoothieware",
-            Self::TinyG => "TinyG",
-            Self::G2core => "G2core",
-            Self::FluidNC => "FluidNC",
         }
     }
 }
@@ -235,119 +226,9 @@ impl PostProcessor for SmoothiewarePostProcessor {
     }
 }
 
-/// TinyG-specific post-processor
-pub struct TinyGPostProcessor;
 
-impl TinyGPostProcessor {
-    pub fn new() -> Self {
-        Self
-    }
-}
 
-impl PostProcessor for TinyGPostProcessor {
-    fn process_command(&self, command: &GcodeCommand) -> Vec<GcodeCommand> {
-        let mut processed = command.clone();
 
-        // TinyG uses JSON protocol, but can accept standard G-code
-        // Convert commands that TinyG handles differently
-        match command.command.as_str() {
-            // TinyG has different coordinate system handling
-            "G54" | "G55" | "G56" | "G57" | "G58" | "G59" => {
-                // TinyG uses G54-G59 for coordinate systems
-                processed = processed;
-            }
-            _ => {}
-        }
-
-        vec![processed]
-    }
-
-    fn target_controller(&self) -> ControllerType {
-        ControllerType::TinyG
-    }
-
-    fn name(&self) -> &'static str {
-        "TinyG"
-    }
-
-    fn description(&self) -> &'static str {
-        "Post-processor optimized for TinyG controllers"
-    }
-}
-
-/// G2core-specific post-processor
-pub struct G2corePostProcessor;
-
-impl G2corePostProcessor {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl PostProcessor for G2corePostProcessor {
-    fn process_command(&self, command: &GcodeCommand) -> Vec<GcodeCommand> {
-        let mut processed = command.clone();
-
-        // G2core-specific modifications
-        match command.command.as_str() {
-            // G2core has enhanced arc support
-            "G2" | "G3" => {
-                // Ensure arcs are properly formatted for G2core
-                processed = processed;
-            }
-            _ => {}
-        }
-
-        vec![processed]
-    }
-
-    fn target_controller(&self) -> ControllerType {
-        ControllerType::G2core
-    }
-
-    fn name(&self) -> &'static str {
-        "G2core"
-    }
-
-    fn description(&self) -> &'static str {
-        "Post-processor optimized for G2core controllers"
-    }
-}
-
-/// FluidNC-specific post-processor
-pub struct FluidNCPostProcessor;
-
-impl FluidNCPostProcessor {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl PostProcessor for FluidNCPostProcessor {
-    fn process_command(&self, command: &GcodeCommand) -> Vec<GcodeCommand> {
-        let processed = command.clone();
-
-        // FluidNC-specific modifications
-        match command.command.as_str() {
-            // FluidNC inherits from GRBL but may have extensions
-            _ => {}
-        }
-
-        vec![processed]
-    }
-
-    fn target_controller(&self) -> ControllerType {
-        ControllerType::FluidNC
-    }
-
-    fn name(&self) -> &'static str {
-        "FluidNC"
-    }
-
-    fn description(&self) -> &'static str {
-        "Post-processor optimized for FluidNC controllers"
-    }
-}
 
 /// Main post-processor manager
 pub struct PostProcessorManager {
@@ -364,12 +245,6 @@ impl PostProcessorManager {
         processors.insert(
             ControllerType::Smoothieware,
             Box::new(SmoothiewarePostProcessor::new()),
-        );
-        processors.insert(ControllerType::TinyG, Box::new(TinyGPostProcessor::new()));
-        processors.insert(ControllerType::G2core, Box::new(G2corePostProcessor::new()));
-        processors.insert(
-            ControllerType::FluidNC,
-            Box::new(FluidNCPostProcessor::new()),
         );
 
         Self {

@@ -1,7 +1,7 @@
 # Minimum Viable Product Test Procedure
 
 ## Prerequisites
-- **Hardware**: CNC machine or laser engraver with GRBL v1.1+ firmware (or Smoothieware/TinyG/G2core/FluidNC compatible device)
+- **Hardware**: CNC machine or laser engraver with GRBL v1.1+ firmware (or Smoothieware compatible device)
 - **Software**: gcodekit application built with `cargo build --release`
 - **Test Files**: Use `assets/gcode/test_gcode.gcode` or create simple G-code (e.g., `G0 X0 Y0 Z0`, `G1 X10 Y10 F100`)
 - **Serial Connection**: USB cable connecting computer to CNC controller

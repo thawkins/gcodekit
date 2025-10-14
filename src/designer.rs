@@ -31,10 +31,8 @@ use tobj;
 use crate::cam::{CAMOperation, CAMParameters};
 
 // Re-export the widget functions for easy access
-pub use bitmap_import::show_bitmap_import_widget;
 pub use image_engraving::show_image_engraving_widget;
 pub use jigsaw::show_jigsaw_widget;
-pub use parametric_ui::show_parametric_design_widget;
 pub use shape_generation::show_shape_generation_widget;
 pub use tabbed_box::show_tabbed_box_widget;
 pub use toolpath_generation::show_toolpath_generation_widget;
@@ -1452,56 +1450,103 @@ impl DesignerState {
                 self.current_tool = DrawingTool::Polyline;
             }
             // Re-enabled tools:
-            if ui.selectable_label(self.current_tool == DrawingTool::Line, "━").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Line, "━")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Line;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Pencil, "✏️").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Pencil, "✏️")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Pencil;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Pen, "🖊️").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Pen, "🖊️")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Pen;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Calligraphy, "🖌️").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Calligraphy, "🖌️")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Calligraphy;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Node, "🔗").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Node, "🔗")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Node;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Text, "📝").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Text, "📝")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Text;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Drill, "🔨").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Drill, "🔨")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Drill;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Pocket, "📦").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Pocket, "📦")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Pocket;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Cylinder, "🛢️").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Cylinder, "🛢️")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Cylinder;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Sphere, "🔮").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Sphere, "🔮")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Sphere;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Extrusion, "📏").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Extrusion, "📏")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Extrusion;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Turning, "🔄").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Turning, "🔄")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Turning;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Facing, "📐").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Facing, "📐")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Facing;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Threading, "🧵").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Threading, "🧵")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Threading;
             }
-            if ui.selectable_label(self.current_tool == DrawingTool::Parametric, "📊").clicked() {
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Parametric, "📊")
+                .clicked()
+            {
                 self.current_tool = DrawingTool::Parametric;
             }
 
             ui.separator();
             ui.heading("Commands");
 
-            if ui.button("🗑️ Delete").clicked() && let Some(index) = self.selected_shape {
+            if ui.button("🗑️ Delete").clicked()
+                && let Some(index) = self.selected_shape
+            {
                 self.execute_command(Box::new(DeleteShapeCommand::new(index)));
                 self.selected_shape = None;
             }
@@ -1644,24 +1689,44 @@ impl DesignerState {
             }
             DrawingTool::Pencil => {
                 ui.label("Pencil:");
-                ui.add(egui::DragValue::new(&mut self.stroke_width).suffix("mm").range(0.1..=10.0));
+                ui.add(
+                    egui::DragValue::new(&mut self.stroke_width)
+                        .suffix("mm")
+                        .range(0.1..=10.0),
+                );
             }
             DrawingTool::Pen => {
                 ui.label("Pen:");
-                ui.add(egui::DragValue::new(&mut self.stroke_width).suffix("mm").range(0.1..=10.0));
+                ui.add(
+                    egui::DragValue::new(&mut self.stroke_width)
+                        .suffix("mm")
+                        .range(0.1..=10.0),
+                );
             }
             DrawingTool::Calligraphy => {
                 ui.label("Calligraphy:");
-                ui.add(egui::DragValue::new(&mut self.stroke_width).suffix("mm").range(0.1..=10.0));
+                ui.add(
+                    egui::DragValue::new(&mut self.stroke_width)
+                        .suffix("mm")
+                        .range(0.1..=10.0),
+                );
                 ui.label("Angle:");
-                ui.add(egui::DragValue::new(&mut self.calligraphy_angle).suffix("°").range(0.0..=180.0));
+                ui.add(
+                    egui::DragValue::new(&mut self.calligraphy_angle)
+                        .suffix("°")
+                        .range(0.0..=180.0),
+                );
             }
             DrawingTool::Node => {
                 ui.label("Node: Edit path points");
             }
             DrawingTool::Text => {
                 ui.label("Text:");
-                ui.add(egui::DragValue::new(&mut self.text_font_size).suffix("pt").range(8.0..=72.0));
+                ui.add(
+                    egui::DragValue::new(&mut self.text_font_size)
+                        .suffix("pt")
+                        .range(8.0..=72.0),
+                );
             }
             _ => {
                 ui.label("Tool controls");
@@ -2083,7 +2148,12 @@ impl DesignerState {
                                     }
                                 }
                             }
-                            DrawingTool::Pencil | DrawingTool::Pen | DrawingTool::Calligraphy | DrawingTool::Node | DrawingTool::Parametric | _ => {
+                            DrawingTool::Pencil
+                            | DrawingTool::Pen
+                            | DrawingTool::Calligraphy
+                            | DrawingTool::Node
+                            | DrawingTool::Parametric
+                            | _ => {
                                 // Start drawing
                                 self.drawing_start = Some((canvas_pos.x, canvas_pos.y));
                             }
@@ -2143,7 +2213,7 @@ impl DesignerState {
                                         text: "Text".to_string(),
                                         font_size: 16.0,
                                     })
-                                },
+                                }
                                 DrawingTool::Drill => {
                                     // For drill, place at click position with default depth
                                     Some(Shape::Drill {
@@ -2151,7 +2221,7 @@ impl DesignerState {
                                         y: start.1,
                                         depth: 5.0,
                                     })
-                                },
+                                }
                                 DrawingTool::Pocket => {
                                     let width = (end_canvas.x - start.0).abs();
                                     let height = (end_canvas.y - start.1).abs();
@@ -2166,7 +2236,7 @@ impl DesignerState {
                                         stepover: 1.0,
                                         pattern: self.current_pattern.clone(),
                                     })
-                                },
+                                }
                                 DrawingTool::Cylinder => {
                                     let radius = ((end_canvas.x - start.0).powi(2)
                                         + (end_canvas.y - start.1).powi(2))
@@ -2178,7 +2248,7 @@ impl DesignerState {
                                         height: 10.0,
                                         depth: 5.0,
                                     })
-                                },
+                                }
                                 DrawingTool::Sphere => {
                                     let radius = ((end_canvas.x - start.0).powi(2)
                                         + (end_canvas.y - start.1).powi(2))
@@ -2189,7 +2259,7 @@ impl DesignerState {
                                         radius,
                                         depth: 5.0,
                                     })
-                                },
+                                }
                                 DrawingTool::Extrusion => {
                                     let width = (end_canvas.x - start.0).abs();
                                     let height = (end_canvas.y - start.1).abs();
@@ -2203,7 +2273,10 @@ impl DesignerState {
                                         depth: 5.0,
                                     })
                                 }
-                                DrawingTool::Pencil | DrawingTool::Pen | DrawingTool::Calligraphy | DrawingTool::Node => {
+                                DrawingTool::Pencil
+                                | DrawingTool::Pen
+                                | DrawingTool::Calligraphy
+                                | DrawingTool::Node => {
                                     // TODO: Implement these drawing tools
                                     None
                                 }

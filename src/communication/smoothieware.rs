@@ -578,6 +578,10 @@ impl CncController for SmoothiewareCommunication {
         // Send emergency stop command to Smoothieware
         let _ = self.send_gcode_line("M112 ; Emergency stop");
     }
+
+    fn send_raw_command(&mut self, command: &str) {
+        let _ = self.send_command(command);
+    }
 }
 
 #[cfg(test)]

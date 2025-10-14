@@ -11,6 +11,17 @@ pub fn show_gcode_editor_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
             ui.label("No G-code file loaded. Use 'Load File' in the left panel.");
         });
     } else {
+        // Show sending progress if active
+        if app.gcode.sending_progress > 0.0 && app.gcode.sending_progress < 1.0 {
+            ui.horizontal(|ui| {
+                ui.label("Sending G-code:");
+                let progress_bar = egui::ProgressBar::new(app.gcode.sending_progress)
+                    .show_percentage()
+                    .animate(true);
+                ui.add(progress_bar);
+            });
+            ui.separator();
+        }
         egui::ScrollArea::vertical().show(ui, |ui| {
             let response = ui.add(
                 egui::TextEdit::multiline(&mut app.gcode.gcode_content)

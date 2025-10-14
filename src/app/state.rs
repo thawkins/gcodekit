@@ -17,6 +17,7 @@ pub struct UiState {
     pub show_job_creation_dialog: bool,
     pub new_job_name: String,
     pub new_job_type: JobType,
+    pub new_job_file_path: String,
     pub selected_material: Option<String>,
     pub show_add_material_dialog: bool,
     pub new_material_name: String,
@@ -44,6 +45,7 @@ impl Default for UiState {
             show_job_creation_dialog: false,
             new_job_name: String::new(),
             new_job_type: JobType::GcodeFile,
+            new_job_file_path: String::new(),
             selected_material: None,
             show_add_material_dialog: false,
             new_material_name: String::new(),
@@ -161,6 +163,7 @@ pub struct GcodeState {
     pub parsed_paths: Vec<PathSegment>,
     pub selected_line: Option<usize>,
     pub sending_from_line: Option<usize>,
+    pub sending_progress: f32, // 0.0 to 1.0, progress of current send operation
 }
 
 impl Default for GcodeState {
@@ -171,6 +174,7 @@ impl Default for GcodeState {
             parsed_paths: Vec::new(),
             selected_line: None,
             sending_from_line: None,
+            sending_progress: 0.0,
         }
     }
 }

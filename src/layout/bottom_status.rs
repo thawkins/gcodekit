@@ -1,6 +1,8 @@
 use crate::app::GcodeKitApp;
-use crate::communication::ConnectionState;
+use crate::communication::{ConnectionState, grbl};
 use egui;
+#[allow(unused_imports)]
+use std::any::Any;
 
 /// Renders the bottom status bar showing connection status, machine state,
 /// controller type, current position, and version information.
@@ -27,8 +29,13 @@ pub fn show_bottom_status(app: &mut GcodeKitApp, ctx: &egui::Context) {
 
             ui.separator();
 
-            // Device state (locked/alarmed)
-            ui.label("State: Idle"); // TODO: Track actual state
+            // Device state (machine state from GRBL)
+            let machine_state = if let Some(grbl_comm) = app.machine.communication.as_any().downcast_ref::<grbl::GrblCommunication>() {
+                format!("State: {:?}", grbl_comm.current_status.machine_state)
+            } else {
+                "State: Unknown".to_string()
+            };
+            ui.label(machine_state);
 
             ui.separator();
 

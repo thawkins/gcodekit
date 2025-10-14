@@ -60,7 +60,7 @@ pub fn show_top_menu(app: &mut GcodeKitApp, ctx: &egui::Context) {
                     });
                     ui.separator();
                     if ui.button("Connect").clicked() {
-                        app.machine.communication.connect();
+                        let _ = app.machine.communication.connect();
                     }
                     if ui.button("Disconnect").clicked() {
                         app.machine.communication.disconnect();

@@ -1,5 +1,5 @@
 
-gcodekit is a desktop GUI application that allows users to control laser engravers or CNC machines using GRBL, Smoothieware, and TinyG firmware. The application provides comprehensive machine control, advanced CAM (Computer-Aided Manufacturing) functions for G-code generation, robust error recovery capabilities ensuring 99.9% uptime, and extensible controller support. The application is multiplatform, working on Linux, Windows, and macOS.
+gcodekit is a desktop GUI application that allows users to control laser engravers or CNC machines using GRBL and Smoothieware firmware. The application provides comprehensive machine control, advanced CAM (Computer-Aided Manufacturing) functions for G-code generation, robust error recovery capabilities ensuring 99.9% uptime, and extensible controller support. The application is multiplatform, working on Linux, Windows, and macOS.
 
 The device should supply the following features:
 
@@ -25,7 +25,7 @@ The device should supply the following features:
  	e. Tabbed box widget (tabbed_box.rs): Generate cutting paths for boxes with interlocking tabs, with adjustable dimensions, tab size, and material thickness
  	f. Jigsaw widget (jigsaw.rs): Generate laser cutting paths for interlocking puzzle pieces with adjustable piece count, size, and complexity
 3. Status bar, shows the connection/disconnection status, device state (idle/alarmed), current position (X/Y/Z), and GRBL version when connected.
-  4. Communication module (communication/grbl.rs, communication/smoothieware.rs, communication/tinyg.rs): Handles GRBL, Smoothieware, and TinyG protocol communication including serial port management, command sending, response parsing, version detection, and real-time status monitoring.
+  4. Communication module (communication/grbl.rs, communication/smoothieware.rs): Handles GRBL and Smoothieware protocol communication including serial port management, command sending, response parsing, version detection, and real-time status monitoring.
   5. 3D Visualizer: Interactive G-code visualization with color-coded paths (rapid moves blue, feed moves green, arcs yellow), right-click jog to position, left-click path selection with highlighting, real-time machine position overlay, and 6-axis support (XYZABC parsing, 2D visualization).
   6. Job Manager: Comprehensive job queuing system with priority-based scheduling, progress tracking, pause/resume functionality, and automatic job resumption after communication errors.
 
@@ -36,7 +36,7 @@ Technology: Built with Rust language (2024 edition), using cargo build and cargo
 - rfd (0.14) for file dialogs
 - anyhow (1.0) for error handling
 - serde (1.0) for serialization
-- serde_json (1.0) for JSON parsing (G2core support)
+
 - chrono (0.4) for timestamps
 - uuid (1.0) for job identification
 - usvg (0.37) for SVG parsing
@@ -45,7 +45,7 @@ Technology: Built with Rust language (2024 edition), using cargo build and cargo
 - image (0.24) for bitmap processing
 
 Architecture: Modular design with separate modules for:
-- communication: GRBL/Smoothieware/TinyG/G2core/FluidNC protocol handling, serial communication, and error recovery
+- communication: GRBL/Smoothieware protocol handling, serial communication, and error recovery
 - designer: CAD/CAM design tools and shape manipulation
 - jobs: Job management, queuing, and resumption capabilities
 - materials: Material database and properties
@@ -61,12 +61,12 @@ Development Tools:
 
 System Requirements:
 - Rust 1.75+ (2024 edition)
-- GRBL v1.1+, Smoothieware, TinyG, G2core, or FluidNC compatible device
+- GRBL v1.1+ or Smoothieware compatible device
 - Serial port access for device communication
 
 Additional Requirements:
 1. GRBL Version Support: Prioritize GRBL v1.1 and v1.2 features including real-time overrides and jogging
-2. Device Compatibility: Support GRBL, Smoothieware, TinyG, G2core, and FluidNC controllers with extensible architecture for additional controllers
+2. Device Compatibility: Support GRBL and Smoothieware controllers with extensible architecture for additional controllers
 3. Menu Structure: Follow Universal G-Code Sender (UGS) menu structure with File, Machine, View, Tools, and Help menus
 4. Machine Types: Support both laser engraver and CNC machine commands with automatic mode detection
 5. G-code Compatibility: Implement only G-code features supported by GRBL firmware
@@ -87,14 +87,14 @@ Additional Requirements:
   15. **Advanced Error Recovery System**: 99.9% uptime guarantee through automatic error recovery, job resumption, and comprehensive logging ✓
   16. **Job Management System**: Priority-based job queuing, progress tracking, pause/resume functionality, and automatic resumption after communication errors ✓
   17. **Multi-axis Support**: Full 6-axis machine support (XYZABC) with rotary axis handling and G-code parsing ✓
-  18. **Enhanced Communication**: Support for GRBL, Smoothieware, TinyG, G2core, and FluidNC controllers with extensible architecture ✓
+  18. **Enhanced Communication**: Support for GRBL and Smoothieware controllers with extensible architecture ✓
   19. **Vector Import**: SVG/DXF file import with automatic G-code conversion ✓
   20. **Boolean Operations**: Shape union operations for combining geometric elements ✓
   21. **Probing Routines**: Z-probing, auto-leveling, and workpiece measurement with G38.x commands ✓
   22. **Tool Management**: Tool length offsets (G43/G49), tool change support, and tool libraries ✓
   23. **Keybinding Customization**: Configurable keyboard shortcuts for all major actions ✓
   24. **UI Stability**: Resolved all duplicate element IDs in egui interface for reliable dropdown menus and button interactions ✓
-  25. **G2core Controller Support**: Full JSON parsing for status reports, spindle/feed override commands, enhanced error recovery ✓
+
   26. **Configurable UI System**: Dockable window functionality with toggleable left/right panels via View menu ✓
   27. **Advanced CAM Operations**: Part nesting algorithm using bottom-left fill strategy with rotation support ✓
 28. **Test Reorganization**: Tests moved to tests/ folder with hierarchy mirroring src/ ✓
@@ -157,11 +157,6 @@ The advanced job scheduling system provides enterprise-grade production manageme
 
 The advanced CAM features and controller support phase extends gcodekit's capabilities with professional-grade features:
 
-### G2core Controller Support:
-- **JSON Parsing**: Full JSON parsing for G2core status reports with proper serde deserialization
-- **Spindle/Feed Overrides**: Real-time spindle and feed rate override commands
-- **Enhanced Error Recovery**: Improved error recovery with comprehensive logging and state management
-
 ### Configurable UI System:
 - **Dockable Windows**: Toggleable left/right panels via View menu for customizable workflows
 - **Flexible Layout**: Highly configurable interface layouts to suit different user preferences
@@ -200,14 +195,14 @@ The advanced 3D machining and extended controller support phase adds sophisticat
 ## Development Status
 
 **Current Phase**: Phase 10 Complete - Advanced CAM Features and Controller Support
-**Implementation Status**: Professional-grade CAM operations with G2core controller support, configurable UI, and part nesting algorithms
+**Implementation Status**: Professional-grade CAM operations with configurable UI, and part nesting algorithms
 **Test Coverage**: 41 passing tests covering all major components, controller integrations, and UI configurability
 **Architecture**: Modular, extensible design with stable UI framework and advanced CAM capabilities
 
 **Completed Phases**:
 - Phase 1-8: Core GRBL communication, GUI framework, CAM functions, multi-axis support
 - Phase 9: Advanced error recovery, job management, multi-axis support, and job scheduling system
-- Phase 10: G2core controller support, configurable UI system, advanced CAM operations with part nesting
+- Phase 10: Configurable UI system, advanced CAM operations with part nesting
 - UI Stabilization: Resolved duplicate element IDs and improved interface reliability
 
 **Next Development Focus**: Phase 11 - Advanced 3D Machining and Extended Controller Support
@@ -220,7 +215,7 @@ The advanced 3D machining and extended controller support phase adds sophisticat
 23. **Probing Routines**: Z-probing ✓, auto-leveling ✓, workpiece measurement with G38.x commands ✓
 24. **Tool Management**: Tool length offsets (G43/G49) ✓, tool change support ✓, tool libraries with predefined cutter parameters ✓
 25. **Machine Calibration**: Step calibration, backlash compensation, homing sequence configuration
-26. **Additional Controller Support**: Add support for TinyG ✓, G2core ✓, and FluidNC controllers (Smoothieware ✓)
+26. **Additional Controller Support**: Smoothieware ✓ controller support
 27. **Gamepad/Joystick Support**: SDL-based gamepad/joystick control with customizable button mapping
 28. **Web Pendant Interface**: Remote control via web-based pendant interface
 29. **Firmware Management**: GRBL firmware updating and flashing capabilities
@@ -238,7 +233,7 @@ The advanced 3D machining and extended controller support phase adds sophisticat
 CamBam-Inspired Features:
 37. **Advanced G-code Editor**: Built-in G-code editor with syntax highlighting, error checking, and manual modifications
 38. **Back Plotting**: Visual simulation of G-code execution to verify toolpaths before machining
-39. **Post-Processor System**: Configurable post-processors for various CNC controllers (GRBL ✓, Smoothieware ✓, TinyG ✓, Mach3, EMC2, LinuxCNC, etc.)
+39. **Post-Processor System**: Configurable post-processors for various CNC controllers (GRBL ✓, Smoothieware ✓, Mach3, EMC2, LinuxCNC, etc.)
 40. **Speeds and Feeds Calculator**: Built-in calculator for optimizing cutting parameters based on material and tool
 41. **Bitmap Processing**: Import bitmaps for heightmap generation, edge detection, and vectorization
 42. **Script Objects**: Parametric drawing using scripts for dynamic geometry creation

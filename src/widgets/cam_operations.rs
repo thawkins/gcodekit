@@ -112,11 +112,16 @@ pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerStat
         }
 
         if let Some(mesh) = &designer.current_mesh {
-            ui.label(format!("Loaded mesh with {} triangles", mesh.triangles.len()));
-            ui.label(format!("Bounds: {:.1} x {:.1} x {:.1} mm",
+            ui.label(format!(
+                "Loaded mesh with {} triangles",
+                mesh.triangles.len()
+            ));
+            ui.label(format!(
+                "Bounds: {:.1} x {:.1} x {:.1} mm",
                 mesh.bounds.max.x - mesh.bounds.min.x,
                 mesh.bounds.max.y - mesh.bounds.min.y,
-                mesh.bounds.max.z - mesh.bounds.min.z));
+                mesh.bounds.max.z - mesh.bounds.min.z
+            ));
         } else {
             ui.label("No mesh loaded");
         }
@@ -226,7 +231,11 @@ pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerStat
         let gcode = match &designer.selected_cam_operation {
             CAMOperation::Waterline { .. } => {
                 if let Some(mesh) = &designer.current_mesh {
-                    toolpaths::generate_waterline_toolpath(mesh, &designer.cam_params, &designer.selected_cam_operation)
+                    toolpaths::generate_waterline_toolpath(
+                        mesh,
+                        &designer.cam_params,
+                        &designer.selected_cam_operation,
+                    )
                 } else {
                     ui.label("No 3D mesh loaded for waterline machining");
                     return;
@@ -234,7 +243,11 @@ pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerStat
             }
             CAMOperation::Scanline { .. } => {
                 if let Some(mesh) = &designer.current_mesh {
-                    toolpaths::generate_scanline_toolpath(mesh, &designer.cam_params, &designer.selected_cam_operation)
+                    toolpaths::generate_scanline_toolpath(
+                        mesh,
+                        &designer.cam_params,
+                        &designer.selected_cam_operation,
+                    )
                 } else {
                     ui.label("No 3D mesh loaded for scanline machining");
                     return;

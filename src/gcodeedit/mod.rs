@@ -885,7 +885,7 @@ mod tests {
         };
 
         let result = editor.optimize_gcode();
-        assert_eq!(result, "G-code optimized: 5 -> 2 lines");
+        assert_eq!(result, "G-code optimized: 5 -> 2 lines, 89 -> 22 bytes (75% reduction)");
         assert_eq!(editor.gcode_content, "G0 X10\nG1 X20 Y30 F100");
     }
 
@@ -897,7 +897,7 @@ mod tests {
         };
 
         let result = editor.optimize_gcode();
-        assert_eq!(result, "G-code optimized: 5 -> 3 lines");
+        assert_eq!(result, "G-code optimized: 5 -> 3 lines, 33 -> 29 bytes (12% reduction)");
         assert_eq!(editor.gcode_content, "G0 X10\nG1 X20\nG2 X30 Y30 I5 J5");
     }
 
