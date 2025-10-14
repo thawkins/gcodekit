@@ -426,16 +426,29 @@ mod tests {
         let expected_batches = (total_commands + batch_size - 1) / batch_size; // Ceiling division
 
         // Verify batching calculation
-        assert_eq!(total_commands, 85, "Should have 85 commands after filtering comments and empty lines");
-        assert_eq!(expected_batches, 9, "Should require 9 batches for 85 commands");
+        assert_eq!(
+            total_commands, 85,
+            "Should have 85 commands after filtering comments and empty lines"
+        );
+        assert_eq!(
+            expected_batches, 9,
+            "Should require 9 batches for 85 commands"
+        );
 
         // Test that the batching logic would work (without actually sending)
         let mut batch_count = 0;
         for batch in commands.chunks(batch_size) {
             batch_count += 1;
-            assert!(batch.len() <= batch_size, "Batch size should not exceed {}", batch_size);
+            assert!(
+                batch.len() <= batch_size,
+                "Batch size should not exceed {}",
+                batch_size
+            );
         }
-        assert_eq!(batch_count, expected_batches, "Should create correct number of batches");
+        assert_eq!(
+            batch_count, expected_batches,
+            "Should create correct number of batches"
+        );
     }
 
     #[test]
@@ -466,8 +479,13 @@ mod tests {
         assert!(!console_messages.is_empty());
 
         // Find the send_gcode debug message
-        let send_gcode_msg = console_messages.iter().find(|msg| msg.contains("send_gcode: Called with content"));
-        assert!(send_gcode_msg.is_some(), "send_gcode debug message not found");
+        let send_gcode_msg = console_messages
+            .iter()
+            .find(|msg| msg.contains("send_gcode: Called with content"));
+        assert!(
+            send_gcode_msg.is_some(),
+            "send_gcode debug message not found"
+        );
 
         // Verify it detected newlines
         assert!(send_gcode_msg.unwrap().contains("contains_newlines = true"));
@@ -503,7 +521,11 @@ mod tests {
         let total_commands = commands.len();
 
         // Verify we have the expected scale (5x the original)
-        assert_eq!(total_lines, 131 * 5 + 5, "Should have 5x lines plus separators");
+        assert_eq!(
+            total_lines,
+            131 * 5 + 5,
+            "Should have 5x lines plus separators"
+        );
         assert_eq!(total_commands, 85 * 5, "Should have 5x commands");
 
         // Calculate expected batches (10 commands per batch)
@@ -511,14 +533,24 @@ mod tests {
         let expected_batches = (total_commands + batch_size - 1) / batch_size; // Ceiling division
 
         // Verify batching calculation for larger file
-        assert_eq!(expected_batches, 43, "Should require 43 batches for 425 commands");
+        assert_eq!(
+            expected_batches, 43,
+            "Should require 43 batches for 425 commands"
+        );
 
         // Test that the batching logic would work (without actually sending)
         let mut total_batch_commands = 0;
         for batch in commands.chunks(batch_size) {
-            assert!(batch.len() <= batch_size, "Batch size should not exceed {}", batch_size);
+            assert!(
+                batch.len() <= batch_size,
+                "Batch size should not exceed {}",
+                batch_size
+            );
             total_batch_commands += batch.len();
         }
-        assert_eq!(total_batch_commands, total_commands, "All commands should be batched");
+        assert_eq!(
+            total_batch_commands, total_commands,
+            "All commands should be batched"
+        );
     }
 }

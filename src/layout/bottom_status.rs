@@ -30,7 +30,12 @@ pub fn show_bottom_status(app: &mut GcodeKitApp, ctx: &egui::Context) {
             ui.separator();
 
             // Device state (machine state from GRBL)
-            let machine_state = if let Some(grbl_comm) = app.machine.communication.as_any().downcast_ref::<grbl::GrblCommunication>() {
+            let machine_state = if let Some(grbl_comm) = app
+                .machine
+                .communication
+                .as_any()
+                .downcast_ref::<grbl::GrblCommunication>()
+            {
                 format!("State: {:?}", grbl_comm.current_status.machine_state)
             } else {
                 "State: Unknown".to_string()

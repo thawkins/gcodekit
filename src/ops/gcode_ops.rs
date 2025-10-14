@@ -127,20 +127,33 @@ impl GcodeKitApp {
     /// Initiates sending the currently loaded G-code to the connected device.
     /// Currently a placeholder - full implementation with queuing is TODO.
     pub fn send_gcode(&mut self, content: &str) {
-        self.log_console(&format!("send_gcode: Called with content length = {}, contains_newlines = {}", content.len(), content.contains('\n')));
+        self.log_console(&format!(
+            "send_gcode: Called with content length = {}, contains_newlines = {}",
+            content.len(),
+            content.contains('\n')
+        ));
         if content.len() > 0 {
-            let preview = if content.len() > 50 { &content[..50] } else { content };
+            let preview = if content.len() > 50 {
+                &content[..50]
+            } else {
+                content
+            };
             self.log_console(&format!("send_gcode: Content preview: {:?}", preview));
         }
         self.machine.status_message = "Sending G-code to device...".to_string();
         if content.contains('\n') {
             // Multi-line content (file)
-            self.log_console("send_gcode: Multi-line content detected, calling send_gcode_to_device");
+            self.log_console(
+                "send_gcode: Multi-line content detected, calling send_gcode_to_device",
+            );
             self.gcode.gcode_content = content.to_string();
             self.send_gcode_to_device();
         } else {
             // Single command
-            self.log_console(&format!("send_gcode: Single command '{}' detected", content));
+            self.log_console(&format!(
+                "send_gcode: Single command '{}' detected",
+                content
+            ));
             if let Err(e) = self.machine.communication.send_gcode_line(content) {
                 self.machine.status_message = format!("Error sending G-code: {}", e);
             } else {
@@ -153,8 +166,14 @@ impl GcodeKitApp {
         self.log_console("send_gcode_to_device: Starting G-code send process");
 
         let connection_state = self.machine.communication.get_connection_state().clone();
-        self.log_console(&format!("send_gcode_to_device: Connection state = {:?}", connection_state));
-        self.log_console(&format!("send_gcode_to_device: G-code content length = {}", self.gcode.gcode_content.len()));
+        self.log_console(&format!(
+            "send_gcode_to_device: Connection state = {:?}",
+            connection_state
+        ));
+        self.log_console(&format!(
+            "send_gcode_to_device: G-code content length = {}",
+            self.gcode.gcode_content.len()
+        ));
 
         if connection_state != crate::communication::ConnectionState::Connected {
             self.machine.status_message = "Not connected to device".to_string();
@@ -168,7 +187,10 @@ impl GcodeKitApp {
             return;
         }
 
-        self.log_console(&format!("send_gcode_to_device: G-code content length = {}", self.gcode.gcode_content.len()));
+        self.log_console(&format!(
+            "send_gcode_to_device: G-code content length = {}",
+            self.gcode.gcode_content.len()
+        ));
 
         // Send each line to the device sequentially with delay, like gcode-send
         let content = self.gcode.gcode_content.clone(); // Clone to avoid borrowing issues
@@ -176,7 +198,10 @@ impl GcodeKitApp {
         let mut sent_count = 0;
         let error_count = 0;
 
-        self.log_console(&format!("send_gcode_to_device: Total lines = {}", lines.len()));
+        self.log_console(&format!(
+            "send_gcode_to_device: Total lines = {}",
+            lines.len()
+        ));
 
         // Reset progress
         self.gcode.sending_progress = 0.0;
@@ -195,9 +220,15 @@ impl GcodeKitApp {
                     .trim();
 
                 if !command.is_empty() {
-                    self.log_console(&format!("send_gcode_to_device: Sending command {}: '{}'", line_idx + 1, command));
+                    self.log_console(&format!(
+                        "send_gcode_to_device: Sending command {}: '{}'",
+                        line_idx + 1,
+                        command
+                    ));
                     // Send directly without queuing, like gcode-send
-                    self.machine.communication.send_raw_command(&format!("{}\r\n", command));
+                    self.machine
+                        .communication
+                        .send_raw_command(&format!("{}\r\n", command));
                     sent_count += 1;
                 }
             }
@@ -211,7 +242,10 @@ impl GcodeKitApp {
 
         // Report final status
         if error_count == 0 {
-            self.machine.status_message = format!("G-code queued successfully ({} commands sent sequentially)", sent_count);
+            self.machine.status_message = format!(
+                "G-code queued successfully ({} commands sent sequentially)",
+                sent_count
+            );
             self.gcode.sending_progress = 1.0;
         } else if sent_count > 0 {
             self.machine.status_message = format!(
@@ -220,7 +254,10 @@ impl GcodeKitApp {
             );
             self.gcode.sending_progress = (sent_count as f32) / (sent_count + error_count) as f32;
         } else {
-            self.machine.status_message = format!("Failed to send any G-code commands ({} errors)", error_count);
+            self.machine.status_message = format!(
+                "Failed to send any G-code commands ({} errors)",
+                error_count
+            );
             self.gcode.sending_progress = 0.0;
         }
     }

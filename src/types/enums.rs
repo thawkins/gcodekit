@@ -6,6 +6,7 @@ pub enum Tab {
     Visualizer3D,
     DeviceConsole,
     JobManager,
+    FeedsSpeeds,
     Scripting,
 }
 

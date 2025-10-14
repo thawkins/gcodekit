@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginInfo {
@@ -206,23 +207,23 @@ impl Plugin for ExamplePlugin {
     }
 
     fn initialize(&mut self, _context: &PluginContext) -> Result<(), String> {
-        println!("Example plugin initialized");
+        info!("Example plugin initialized");
         Ok(())
     }
 
     fn shutdown(&mut self) -> Result<(), String> {
-        println!("Example plugin shutdown");
+        info!("Example plugin shutdown");
         Ok(())
     }
 
     fn on_gcode_loaded(&mut self, gcode: &str) {
-        println!(
+        info!(
             "Example plugin: G-code loaded, {} lines",
             gcode.lines().count()
         );
     }
 
     fn on_machine_connected(&mut self, port: &str) {
-        println!("Example plugin: Machine connected on port {}", port);
+        info!("Example plugin: Machine connected on port {}", port);
     }
 }

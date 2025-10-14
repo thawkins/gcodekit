@@ -33,6 +33,11 @@ pub fn show_center_panel(app: &mut GcodeKitApp, ctx: &egui::Context) {
             );
             ui.selectable_value(
                 &mut app.ui.selected_tab,
+                crate::types::Tab::FeedsSpeeds,
+                "Feeds & Speeds",
+            );
+            ui.selectable_value(
+                &mut app.ui.selected_tab,
                 crate::types::Tab::Designer,
                 "Designer",
             );
@@ -51,6 +56,9 @@ pub fn show_center_panel(app: &mut GcodeKitApp, ctx: &egui::Context) {
             }
             crate::types::Tab::JobManager => {
                 crate::ui::tabs::show_job_manager_tab(app, ui);
+            }
+            crate::types::Tab::FeedsSpeeds => {
+                crate::ui::tabs::show_feeds_speeds_tab(app, ui);
             }
             crate::types::Tab::Designer => {
                 crate::ui::tabs::show_designer_tab(app, ui);

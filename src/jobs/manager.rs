@@ -3,6 +3,7 @@ use super::{
     ScheduledJob,
 };
 use chrono::{DateTime, Utc};
+use tracing::warn;
 use uuid;
 
 pub struct JobManager {
@@ -297,7 +298,7 @@ impl JobManager {
 
                 // Mark as executed in scheduler
                 if let Err(e) = self.scheduler.mark_job_executed(&schedule_id, current_time) {
-                    eprintln!("Warning: Failed to mark job as executed: {}", e);
+                    warn!("Warning: Failed to mark job as executed: {}", e);
                 }
 
                 executed_schedule_ids.push(schedule_id);

@@ -1,8 +1,8 @@
 use crate::GcodeKitApp;
 use crate::types::Tab;
 use crate::ui::tabs::{
-    show_designer_tab, show_device_console_tab, show_gcode_editor_tab, show_job_manager_tab,
-    show_visualizer_3d_tab,
+    show_designer_tab, show_device_console_tab, show_feeds_speeds_tab, show_gcode_editor_tab,
+    show_job_manager_tab, show_visualizer_3d_tab,
 };
 use eframe::egui;
 
@@ -23,6 +23,11 @@ impl GcodeKitApp {
                     "Device Console",
                 );
                 ui.selectable_value(&mut self.ui.selected_tab, Tab::JobManager, "Job Manager");
+                ui.selectable_value(
+                    &mut self.ui.selected_tab,
+                    Tab::FeedsSpeeds,
+                    "Feeds & Speeds",
+                );
                 ui.selectable_value(&mut self.ui.selected_tab, Tab::Designer, "Designer");
             });
             ui.separator();
@@ -39,6 +44,9 @@ impl GcodeKitApp {
                 }
                 Tab::JobManager => {
                     show_job_manager_tab(self, ui);
+                }
+                Tab::FeedsSpeeds => {
+                    show_feeds_speeds_tab(self, ui);
                 }
                 Tab::Designer => {
                     show_designer_tab(self, ui);

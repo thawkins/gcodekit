@@ -226,10 +226,6 @@ impl PostProcessor for SmoothiewarePostProcessor {
     }
 }
 
-
-
-
-
 /// Main post-processor manager
 pub struct PostProcessorManager {
     processors: HashMap<ControllerType, Box<dyn PostProcessor>>,

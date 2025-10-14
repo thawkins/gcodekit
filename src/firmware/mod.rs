@@ -81,8 +81,6 @@ impl FirmwareManager {
                 // Use dfu-util or similar for STM32-based controllers
                 Err("STM32 flashing not implemented".to_string())
             }
-
-
         }
     }
 

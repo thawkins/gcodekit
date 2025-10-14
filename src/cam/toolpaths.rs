@@ -18,7 +18,7 @@ pub fn generate_waterline_toolpath(
         min_z,
         max_z,
         stepdown,
-        stepover,
+        stepover: _,
     } = operation
     {
         // Initialize G-code

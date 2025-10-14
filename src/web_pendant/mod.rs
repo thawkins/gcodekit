@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
+use tracing::info;
 use warp::Filter;
 use warp::ws::{Message, WebSocket};
 
@@ -127,7 +128,7 @@ impl WebPendant {
 
         let routes = index.or(ws_route).with(warp::cors().allow_any_origin());
 
-        println!("Web pendant server starting on port {}", port);
+        info!("Web pendant server starting on port {}", port);
         warp::serve(routes).run(([127, 0, 0, 1], port)).await;
 
         Ok(())

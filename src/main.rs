@@ -15,6 +15,7 @@
 use chrono::Utc;
 use eframe::egui;
 use std::time::Duration;
+use tracing::{debug, info};
 use tracing_subscriber;
 
 mod app;
@@ -54,6 +55,7 @@ fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1200.0, 800.0])
+            .with_maximized(true)
             .with_title("gcodekit"),
         ..Default::default()
     };
@@ -225,15 +227,15 @@ impl GcodeKitApp {
             if should_attempt_reconnect {
                 // Time to attempt reconnection
                 let timestamp = Utc::now().format("%H:%M:%S");
-                println!(
+                info!(
                     "[{}] [RECOVERY] Executing scheduled reconnection attempt {}",
                     timestamp, attempt_count
                 );
                 self.log_console("Executing scheduled reconnection...");
                 match self.machine.communication.connect() {
                     Ok(_) => {
-                        println!(
-                            "[{}] [RECOVERY] Reconnection successful after {} attempts",
+                        info!(
+                            "[{}] [RECOVERY] Executing scheduled reconnection attempt {}",
                             timestamp, attempt_count
                         );
                         self.log_console("Reconnection successful");
@@ -243,16 +245,16 @@ impl GcodeKitApp {
                     }
                     Err(e) => {
                         let error_msg = format!("Reconnection failed: {}", e);
-                        println!(
-                            "[{}] [RECOVERY] Reconnection attempt {} failed: {}",
-                            timestamp, attempt_count, e
+                        info!(
+                            "[{}] [RECOVERY] Reconnection successful after {} attempts",
+                            timestamp, attempt_count
                         );
                         self.log_console(&error_msg);
                         // Try recovery again
                         if let Err(recovery_err) =
                             self.machine.communication.attempt_recovery(&error_msg)
                         {
-                            println!(
+                            info!(
                                 "[{}] [RECOVERY] Recovery failed permanently: {}",
                                 timestamp, recovery_err
                             );
@@ -271,7 +273,7 @@ impl GcodeKitApp {
         if *self.machine.communication.get_connection_state() == ConnectionState::Connected
             && let Some(message) = self.machine.communication.read_response()
         {
-            println!("DEBUG: Device response: {}", message.trim());
+            debug!("Device response: {}", message.trim());
             if let Some(pos) = self.machine.communication.handle_response(&message) {
                 // Position updated
                 self.machine.current_position = pos.clone();

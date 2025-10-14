@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use crate::jobs::manager::JobManager;
 use crate::jobs::{Job, JobType, RepeatInterval};
+use tracing::warn;
 
 pub struct JobSchedulingWidget {
     show_create_dialog: bool,
@@ -81,7 +82,7 @@ impl JobSchedulingWidget {
                                 if let Err(e) =
                                     job_manager.cancel_schedule(&scheduled_job.schedule_id)
                                 {
-                                    eprintln!("Failed to cancel schedule: {}", e);
+                                    warn!("Failed to cancel schedule: {}", e);
                                 }
                             }
 
@@ -90,7 +91,7 @@ impl JobSchedulingWidget {
                                     if let Err(e) =
                                         job_manager.disable_schedule(&scheduled_job.schedule_id)
                                     {
-                                        eprintln!("Failed to disable schedule: {}", e);
+                                        warn!("Failed to disable schedule: {}", e);
                                     }
                                 }
                             } else {
@@ -98,7 +99,7 @@ impl JobSchedulingWidget {
                                     if let Err(e) =
                                         job_manager.enable_schedule(&scheduled_job.schedule_id)
                                     {
-                                        eprintln!("Failed to enable schedule: {}", e);
+                                        warn!("Failed to enable schedule: {}", e);
                                     }
                                 }
                             }

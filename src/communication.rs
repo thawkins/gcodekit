@@ -4,7 +4,6 @@
 //! GRBL and SmoothieWare. It provides unified
 //! interfaces for connecting, sending commands, and receiving responses.
 
-
 pub mod grbl;
 pub mod smoothieware;
 

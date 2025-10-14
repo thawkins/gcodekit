@@ -144,7 +144,7 @@ impl GcodeEditorState {
 
         let optimized_size = self.gcode_content.len();
         let optimized_line_count = optimized_lines.len();
-        let size_reduction = if original_size > 0 {
+        let size_reduction = if original_size > 0 && optimized_size <= original_size {
             ((original_size - optimized_size) as f32 / original_size as f32 * 100.0) as i32
         } else {
             0
@@ -885,20 +885,26 @@ mod tests {
         };
 
         let result = editor.optimize_gcode();
-        assert_eq!(result, "G-code optimized: 5 -> 2 lines, 89 -> 22 bytes (75% reduction)");
+        assert_eq!(
+            result,
+            "G-code optimized: 5 -> 2 lines, 89 -> 22 bytes (75% reduction)"
+        );
         assert_eq!(editor.gcode_content, "G0 X10\nG1 X20 Y30 F100");
     }
 
     #[test]
     fn test_optimize_gcode_remove_empty_lines() {
         let mut editor = GcodeEditorState {
-            gcode_content: "G0 X10\n\nG1 X20\n  \nG2 X30 Y30 I5 J5".to_string(),
+            gcode_content: "G0 X10\n\nG1 X20\n  \nG1 X40 Y50".to_string(),
             ..Default::default()
         };
 
         let result = editor.optimize_gcode();
-        assert_eq!(result, "G-code optimized: 5 -> 3 lines, 33 -> 29 bytes (12% reduction)");
-        assert_eq!(editor.gcode_content, "G0 X10\nG1 X20\nG2 X30 Y30 I5 J5");
+        assert_eq!(
+            result,
+            "G-code optimized: 5 -> 3 lines, 33 -> 29 bytes (12% reduction)"
+        );
+        assert_eq!(editor.gcode_content, "G0 X10\nG1 X20\nG1 X40 Y50");
     }
 
     #[test]

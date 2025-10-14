@@ -3,6 +3,7 @@ use std::any::Any;
 use std::collections::VecDeque;
 use std::error::Error;
 use std::io::{Read, Write};
+use tracing::info;
 
 use super::{CncController, ConnectionState};
 
@@ -81,7 +82,6 @@ pub struct SmoothiewareCommunication {
     pub health_metrics: crate::communication::HealthMetrics,
     serial_port: Option<Box<dyn SerialPort>>,
     response_queue: VecDeque<String>,
-    last_response: Option<GrblResponse>,
 }
 
 impl Default for SmoothiewareCommunication {
@@ -106,7 +106,6 @@ impl Default for SmoothiewareCommunication {
             health_metrics: crate::communication::HealthMetrics::default(),
             serial_port: None,
             response_queue: VecDeque::new(),
-            last_response: None,
         }
     }
 }
@@ -468,18 +467,18 @@ impl CncController for SmoothiewareCommunication {
         error: &str,
     ) -> Result<crate::communication::RecoveryAction, String> {
         if !self.recovery_config.auto_recovery_enabled {
-            println!("[RECOVERY] Auto recovery disabled for error: {}", error);
+            info!("[RECOVERY] Auto recovery disabled for error: {}", error);
             return Err("Auto recovery disabled".to_string());
         }
 
         self.recovery_state.last_error = Some(error.to_string());
         self.health_metrics.update_error_pattern(error);
-        println!("[RECOVERY] Attempting recovery for error: {}", error);
+        info!("[RECOVERY] Attempting recovery for error: {}", error);
 
         // Classify error and determine recovery action
         let action = if error.contains("connection") || error.contains("timeout") {
             // Connection-related errors
-            println!(
+            info!(
                 "[RECOVERY] Classified as connection error (attempts: {}/{})",
                 self.recovery_state.reconnect_attempts, self.recovery_config.max_reconnect_attempts
             );
@@ -488,55 +487,55 @@ impl CncController for SmoothiewareCommunication {
                 self.recovery_state.reconnect_attempts += 1;
                 self.recovery_state.last_reconnect_attempt = Some(std::time::Instant::now());
                 self.connection_state = ConnectionState::Recovering;
-                println!(
+                info!(
                     "[RECOVERY] Initiating reconnection attempt {}",
                     self.recovery_state.reconnect_attempts
                 );
                 crate::communication::RecoveryAction::Reconnect
             } else {
-                println!("[RECOVERY] Max reconnection attempts reached, aborting job");
+                info!("[RECOVERY] Max reconnection attempts reached, aborting job");
                 crate::communication::RecoveryAction::AbortJob
             }
         } else if error.contains("command") || error.contains("syntax") {
             // Command-related errors
-            println!(
+            info!(
                 "[RECOVERY] Classified as command error (retries: {}/{})",
                 self.recovery_state.command_retry_count, self.recovery_config.max_command_retries
             );
             if self.recovery_state.command_retry_count < self.recovery_config.max_command_retries {
                 self.recovery_state.command_retry_count += 1;
-                println!(
+                info!(
                     "[RECOVERY] Retrying command (attempt {})",
                     self.recovery_state.command_retry_count
                 );
                 crate::communication::RecoveryAction::RetryCommand
             } else {
-                println!("[RECOVERY] Max command retries reached, skipping command");
+                info!("[RECOVERY] Max command retries reached, skipping command");
                 crate::communication::RecoveryAction::SkipCommand
             }
         } else if error.contains("alarm") || error.contains("emergency") {
             // Critical errors
-            println!(
+            info!(
                 "[RECOVERY] Classified as critical error (reset_on_critical: {})",
                 self.recovery_config.reset_on_critical_error
             );
             if self.recovery_config.reset_on_critical_error {
-                println!("[RECOVERY] Resetting controller due to critical error");
+                info!("[RECOVERY] Resetting controller due to critical error");
                 crate::communication::RecoveryAction::ResetController
             } else {
-                println!("[RECOVERY] Aborting job due to critical error");
+                info!("[RECOVERY] Aborting job due to critical error");
                 crate::communication::RecoveryAction::AbortJob
             }
         } else {
             // Unknown errors - try reset
-            println!("[RECOVERY] Classified as unknown error, attempting controller reset");
+            info!("[RECOVERY] Classified as unknown error, attempting controller reset");
             crate::communication::RecoveryAction::ResetController
         };
 
         self.recovery_state
             .recovery_actions_taken
             .push(action.clone());
-        println!("[RECOVERY] Recovery action taken: {:?}", action);
+        info!("[RECOVERY] Recovery action taken: {:?}", action);
         Ok(action)
     }
 
