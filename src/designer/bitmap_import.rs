@@ -9,45 +9,45 @@ pub fn show_bitmap_import_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         ui.horizontal(|ui| {
             ui.label("Threshold Method:");
             ui.selectable_value(
-                &mut app.vectorization_config.threshold_method,
+                &mut app.cam.vectorization_config.threshold_method,
                 ThresholdMethod::Otsu,
                 "Otsu",
             );
             ui.selectable_value(
-                &mut app.vectorization_config.threshold_method,
+                &mut app.cam.vectorization_config.threshold_method,
                 ThresholdMethod::Fixed,
                 "Fixed",
             );
             ui.selectable_value(
-                &mut app.vectorization_config.threshold_method,
+                &mut app.cam.vectorization_config.threshold_method,
                 ThresholdMethod::Adaptive,
                 "Adaptive",
             );
         });
 
         if matches!(
-            app.vectorization_config.threshold_method,
+            app.cam.vectorization_config.threshold_method,
             ThresholdMethod::Fixed
         ) {
             ui.horizontal(|ui| {
                 ui.label("Threshold Value:");
                 ui.add(
-                    egui::DragValue::new(&mut app.vectorization_config.threshold_value)
+                    egui::DragValue::new(&mut app.cam.vectorization_config.threshold_value)
                         .range(0..=255),
                 );
             });
         }
 
         ui.checkbox(
-            &mut app.vectorization_config.noise_reduction,
+            &mut app.cam.vectorization_config.noise_reduction,
             "Noise Reduction",
         );
-        ui.checkbox(&mut app.vectorization_config.smoothing, "Smoothing");
+        ui.checkbox(&mut app.cam.vectorization_config.smoothing, "Smoothing");
 
         ui.horizontal(|ui| {
             ui.label("Min Contour Length:");
             ui.add(
-                egui::DragValue::new(&mut app.vectorization_config.min_contour_length)
+                egui::DragValue::new(&mut app.cam.vectorization_config.min_contour_length)
                     .range(3..=1000),
             );
         });
@@ -55,7 +55,7 @@ pub fn show_bitmap_import_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         ui.horizontal(|ui| {
             ui.label("Simplification Tolerance:");
             ui.add(
-                egui::DragValue::new(&mut app.vectorization_config.simplification_tolerance)
+                egui::DragValue::new(&mut app.cam.vectorization_config.simplification_tolerance)
                     .range(0.1..=10.0),
             );
         });

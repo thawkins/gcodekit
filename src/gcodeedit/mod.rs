@@ -1,3 +1,8 @@
+//! G-code editor module.
+//!
+//! This module provides functionality for editing, searching, and optimizing
+//! G-code files with syntax highlighting and post-processing capabilities.
+
 use eframe::egui;
 use egui::text::{LayoutJob, TextFormat};
 use egui::text_edit::TextBuffer;

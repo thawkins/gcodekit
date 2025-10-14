@@ -1,3 +1,8 @@
+//! Designer module for 2D/3D design and CAM operations.
+//!
+//! This module provides tools for creating and editing shapes, importing various
+//! file formats, and generating CAM toolpaths for CNC machining.
+
 pub mod bitmap_import;
 pub mod bitmap_processing;
 pub mod cam_operations;
@@ -11,7 +16,7 @@ pub mod tabbed_box;
 pub mod toolpath_generation;
 pub mod vector_import;
 
-use anyhow::Result;
+use crate::errors::{GcodeKitError, Result};
 use eframe::egui;
 use image::GrayImage;
 use lyon::math::point;
@@ -23,6 +28,7 @@ use std::fs;
 use stl_io::{Normal, Triangle, Vertex};
 use tobj;
 
+use crate::cam::{CAMOperation, CAMParameters};
 use bitmap_processing::{BitmapProcessor, VectorizationConfig};
 
 // Re-export the widget functions for easy access
@@ -228,6 +234,13 @@ pub struct AddShapeCommand {
 }
 
 impl AddShapeCommand {
+    /// Creates a new AddShapeCommand with the given shape.
+    ///
+    /// # Arguments
+    /// * `shape` - The shape to add to the designer state
+    ///
+    /// # Returns
+    /// A new AddShapeCommand instance
     pub fn new(shape: Shape) -> Self {
         Self { shape, index: None }
     }
@@ -252,6 +265,13 @@ pub struct DeleteShapeCommand {
 }
 
 impl DeleteShapeCommand {
+    /// Creates a new DeleteShapeCommand for the shape at the given index.
+    ///
+    /// # Arguments
+    /// * `index` - The index of the shape to delete
+    ///
+    /// # Returns
+    /// A new DeleteShapeCommand instance
     pub fn new(index: usize) -> Self {
         Self {
             shape: None,
@@ -417,29 +437,34 @@ pub struct DesignerState {
     pub drawing_start: Option<(f32, f32)>,
     pub selected_shape: Option<usize>,
     pub selected_point: Option<usize>,
-    undo_stack: VecDeque<Box<dyn Command>>,
-    redo_stack: VecDeque<Box<dyn Command>>,
-    drag_start_pos: Option<(f32, f32)>,
-    show_grid: bool,
-    manipulation_start: Option<(f32, f32)>,
-    original_shape: Option<Shape>,
-    scale_start: Option<(f32, f32)>,
-    rotation_start: Option<f32>,
-    mirror_axis: Option<MirrorAxis>,
-    current_scale: Option<(f32, f32)>,
-    current_rotation: Option<f32>,
-    current_polyline_points: Vec<(f32, f32)>,
-    pub selected_cam_operation: cam_operations::CAMOperation,
-    pub cam_params: cam_operations::CAMParameters,
+    pub undo_stack: VecDeque<Box<dyn Command>>,
+    pub redo_stack: VecDeque<Box<dyn Command>>,
+    pub drag_start_pos: Option<(f32, f32)>,
+    pub show_grid: bool,
+    pub manipulation_start: Option<(f32, f32)>,
+    pub original_shape: Option<Shape>,
+    pub scale_start: Option<(f32, f32)>,
+    pub rotation_start: Option<f32>,
+    pub mirror_axis: Option<MirrorAxis>,
+    pub current_scale: Option<(f32, f32)>,
+    pub current_rotation: Option<f32>,
+    pub current_polyline_points: Vec<(f32, f32)>,
+    pub selected_cam_operation: crate::cam::types::CAMOperation,
+    pub cam_params: crate::cam::types::CAMParameters,
 }
 
 impl DesignerState {
+    /// Executes a command and adds it to the undo stack.
+    ///
+    /// # Arguments
+    /// * `command` - The command to execute
     pub fn execute_command(&mut self, mut command: Box<dyn Command>) {
         command.execute(self);
         self.undo_stack.push_back(command);
         self.redo_stack.clear(); // Clear redo stack when new command is executed
     }
 
+    /// Undoes the last executed command.
     pub fn undo(&mut self) {
         if let Some(mut command) = self.undo_stack.pop_back() {
             command.undo(self);
@@ -447,6 +472,7 @@ impl DesignerState {
         }
     }
 
+    /// Redoes the last undone command.
     pub fn redo(&mut self) {
         if let Some(mut command) = self.redo_stack.pop_back() {
             command.execute(self);
@@ -454,10 +480,12 @@ impl DesignerState {
         }
     }
 
+    /// Returns true if there are commands that can be undone.
     pub fn can_undo(&self) -> bool {
         !self.undo_stack.is_empty()
     }
 
+    /// Returns true if there are commands that can be redone.
     pub fn can_redo(&self) -> bool {
         !self.redo_stack.is_empty()
     }
@@ -509,7 +537,7 @@ impl DesignerState {
         }
     }
 
-    fn get_shape_pos(shape: &Shape) -> (f32, f32) {
+    pub fn get_shape_pos(shape: &Shape) -> (f32, f32) {
         match shape {
             Shape::Rectangle { x, y, .. } => (*x, *y),
             Shape::Circle { x, y, .. } => (*x, *y),
@@ -595,6 +623,10 @@ impl DesignerState {
             }
         }
     }
+    /// Exports the current shapes to G-code.
+    ///
+    /// # Returns
+    /// A string containing the generated G-code
     pub fn export_to_gcode(&self) -> String {
         if self.shapes.is_empty() {
             return String::new();
@@ -1100,7 +1132,8 @@ impl DesignerState {
         }
 
         let mut buffer = Vec::new();
-        stl_io::write_stl(&mut buffer, triangles.iter())?;
+        stl_io::write_stl(&mut buffer, triangles.iter())
+            .map_err(|e| GcodeKitError::Stl(format!("Failed to write STL: {:?}", e)))?;
         Ok(buffer)
     }
 
@@ -2624,7 +2657,10 @@ impl DesignerState {
     }
 
     pub fn import_obj(&mut self, path: &std::path::Path) -> Result<()> {
-        let (models, _) = tobj::load_obj(path, &tobj::LoadOptions::default())?;
+        let (models, _) = match tobj::load_obj(path, &tobj::LoadOptions::default()) {
+            Ok(result) => result,
+            Err(e) => return Err(GcodeKitError::ObjLoad(format!("{:?}", e))),
+        };
         for model in models {
             let mesh = &model.mesh;
             let positions = &mesh.positions;
@@ -2930,7 +2966,9 @@ impl DesignerState {
 
     pub fn boolean_intersect(&mut self, indices: &[usize]) -> Result<()> {
         if indices.len() < 2 {
-            return Err(anyhow::anyhow!("Need at least 2 shapes for intersect"));
+            return Err(crate::errors::GcodeKitError::App(
+                "Need at least 2 shapes for intersect".to_string(),
+            ));
         }
 
         // For now, implement intersection for rectangles only
@@ -2946,14 +2984,16 @@ impl DesignerState {
             {
                 rectangles.push((*x, *y, *width, *height));
             } else {
-                return Err(anyhow::anyhow!(
-                    "Intersection currently only supports rectangles"
+                return Err(crate::errors::GcodeKitError::App(
+                    "Intersection currently only supports rectangles".to_string(),
                 ));
             }
         }
 
         if rectangles.is_empty() {
-            return Err(anyhow::anyhow!("No rectangles found for intersection"));
+            return Err(crate::errors::GcodeKitError::App(
+                "No rectangles found for intersection".to_string(),
+            ));
         }
 
         // Calculate intersection of all rectangles
@@ -2970,7 +3010,9 @@ impl DesignerState {
         }
 
         if min_x >= max_x || min_y >= max_y {
-            return Err(anyhow::anyhow!("No intersection found"));
+            return Err(crate::errors::GcodeKitError::App(
+                "No intersection found".to_string(),
+            ));
         }
 
         // Remove original shapes
@@ -2995,7 +3037,9 @@ impl DesignerState {
 
     pub fn boolean_subtract(&mut self, indices: &[usize]) -> Result<()> {
         if indices.len() != 2 {
-            return Err(anyhow::anyhow!("Need exactly 2 shapes for subtract"));
+            return Err(crate::errors::GcodeKitError::App(
+                "Need exactly 2 shapes for subtract".to_string(),
+            ));
         }
 
         let shape_a = &self.shapes[indices[0]];
@@ -3018,8 +3062,8 @@ impl DesignerState {
                 },
             ) => ((*x1, *y1, *w1, *h1), (*x2, *y2, *w2, *h2)),
             _ => {
-                return Err(anyhow::anyhow!(
-                    "Subtract currently only supports rectangles"
+                return Err(crate::errors::GcodeKitError::App(
+                    "Subtract currently only supports rectangles".to_string(),
                 ));
             }
         };
@@ -3242,7 +3286,9 @@ impl DesignerState {
 
     pub fn boolean_union(&mut self, indices: &[usize]) -> Result<()> {
         if indices.len() < 2 {
-            return Err(anyhow::anyhow!("Need at least 2 shapes for union"));
+            return Err(GcodeKitError::App(
+                "Need at least 2 shapes for union".to_string(),
+            ));
         }
 
         // For simplicity, create a bounding box union
@@ -4155,8 +4201,8 @@ mod tests {
             current_scale: None,
             current_rotation: None,
             current_polyline_points: Vec::new(),
-            selected_cam_operation: cam_operations::CAMOperation::default(),
-            cam_params: cam_operations::CAMParameters::default(),
+            selected_cam_operation: CAMOperation::default(),
+            cam_params: CAMParameters::default(),
         }
     }
 

@@ -1,3 +1,8 @@
+//! G-code visualization module.
+//!
+//! This module provides 2D/3D visualization of G-code toolpaths with
+//! interactive controls for simulation, jogging, and path inspection.
+
 use crate::GcodeKitApp;
 use eframe::egui;
 

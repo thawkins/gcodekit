@@ -1,3 +1,9 @@
+//! Job management and queuing system.
+//!
+//! This module provides comprehensive job management functionality including
+//! job creation, queuing, scheduling, history tracking, and performance analytics
+//! for CNC machining operations.
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;

@@ -1,3 +1,9 @@
+//! CNC controller communication module.
+//!
+//! This module handles communication with various CNC controllers including
+//! GRBL, FluidNC, G2core, SmoothieWare, and TinyG. It provides unified
+//! interfaces for connecting, sending commands, and receiving responses.
+
 pub mod fluidnc;
 pub mod g2core;
 pub mod grbl;

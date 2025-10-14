@@ -1,7 +1,5 @@
-use crate::designer::{
-    DesignerState,
-    cam_operations::{CAMOperation, ContourDirection},
-};
+use crate::cam::types::{CAMOperation, ContourDirection};
+use crate::designer::DesignerState;
 use eframe::egui;
 
 /// Show the CAM operations widget

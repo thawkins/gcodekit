@@ -5,23 +5,26 @@ pub fn show_connection_widget(ui: &mut egui::Ui, communication: &mut dyn CncCont
     ui.group(|ui| {
         ui.label("Connection");
 
-        // Refresh ports button
-        if ui.button("🔄 Refresh Ports").clicked() {
-            communication.refresh_ports();
-        }
+        ui.horizontal(|ui| {
+            // Port selection
+            let mut selected_port = communication.get_selected_port().to_string();
+            egui::ComboBox::from_id_salt("serial_port_combobox")
+                .selected_text(&selected_port)
+                .width(ui.available_width() - 30.0) // Leave space for the button
+                .show_ui(ui, |ui| {
+                    for port in communication.get_available_ports() {
+                        ui.selectable_value(&mut selected_port, port.clone(), port);
+                    }
+                });
+            if selected_port != communication.get_selected_port() {
+                communication.set_port(selected_port);
+            }
 
-        // Port selection
-        let mut selected_port = communication.get_selected_port().to_string();
-        egui::ComboBox::from_id_salt("serial_port_combobox")
-            .selected_text(&selected_port)
-            .show_ui(ui, |ui| {
-                for port in communication.get_available_ports() {
-                    ui.selectable_value(&mut selected_port, port.clone(), port);
-                }
-            });
-        if selected_port != communication.get_selected_port() {
-            communication.set_port(selected_port);
-        }
+            // Refresh ports button
+            if ui.button("🔄").clicked() {
+                communication.refresh_ports();
+            }
+        });
 
         ui.horizontal(|ui| {
             let connect_enabled = !communication.get_selected_port().is_empty()
@@ -101,14 +104,3 @@ pub fn show_connection_widget(ui: &mut egui::Ui, communication: &mut dyn CncCont
     });
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_show_connection_widget_compiles() {
-        // This test ensures the function compiles and has the expected signature
-        // Full UI testing would require egui context mocking
-        let _fn_exists = show_connection_widget as fn(&mut egui::Ui, &mut dyn CncController);
-    }
-}

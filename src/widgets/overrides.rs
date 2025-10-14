@@ -8,18 +8,18 @@ pub fn show_overrides_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         // Machine mode selection
         ui.horizontal(|ui| {
             ui.label("Mode:");
-            ui.selectable_value(&mut app.machine_mode, MachineMode::CNC, "CNC");
-            ui.selectable_value(&mut app.machine_mode, MachineMode::Laser, "Laser");
+            ui.selectable_value(&mut app.machine.machine_mode, MachineMode::CNC, "CNC");
+            ui.selectable_value(&mut app.machine.machine_mode, MachineMode::Laser, "Laser");
         });
 
         ui.separator();
 
         // Spindle/Laser control
-        let spindle_label = match app.machine_mode {
+        let spindle_label = match app.machine.machine_mode {
             MachineMode::CNC => "Spindle Speed:",
             MachineMode::Laser => "Laser Power:",
         };
-        let spindle_suffix = match app.machine_mode {
+        let spindle_suffix = match app.machine.machine_mode {
             MachineMode::CNC => "% RPM",
             MachineMode::Laser => "% Power",
         };
@@ -28,14 +28,14 @@ pub fn show_overrides_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             ui.label(spindle_label);
             if ui
                 .add(
-                    egui::DragValue::new(&mut app.spindle_override)
+                    egui::DragValue::new(&mut app.machine.spindle_override)
                         .suffix(spindle_suffix)
                         .range(0.0..=200.0)
                         .speed(1.0),
                 )
                 .changed()
             {
-                app.send_spindle_override();
+                app.machine.communication.send_spindle_override(app.machine.spindle_override);
             }
         });
 
@@ -44,24 +44,24 @@ pub fn show_overrides_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             ui.label("Feed Rate:");
             if ui
                 .add(
-                    egui::DragValue::new(&mut app.feed_override)
+                    egui::DragValue::new(&mut app.machine.feed_override)
                         .suffix("%")
                         .range(0.0..=200.0)
                         .speed(1.0),
                 )
                 .changed()
             {
-                app.send_feed_override();
+                app.machine.communication.send_feed_override(app.machine.feed_override);
             }
         });
 
         // Reset button
         ui.horizontal(|ui| {
             if ui.button("Reset to 100%").clicked() {
-                app.spindle_override = 100.0;
-                app.feed_override = 100.0;
-                app.send_spindle_override();
-                app.send_feed_override();
+                app.machine.spindle_override = 100.0;
+                app.machine.feed_override = 100.0;
+                app.machine.communication.send_spindle_override(app.machine.spindle_override);
+                app.machine.communication.send_feed_override(app.machine.feed_override);
             }
         });
 
@@ -70,8 +70,15 @@ pub fn show_overrides_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         // Soft limits
         ui.horizontal(|ui| {
             ui.label("Soft Limits:");
-            if ui.checkbox(&mut app.soft_limits_enabled, "").changed() {
-                let value = if app.soft_limits_enabled { 1 } else { 0 };
+            if ui
+                .checkbox(&mut app.machine.soft_limits_enabled, "")
+                .changed()
+            {
+                let value = if app.machine.soft_limits_enabled {
+                    1
+                } else {
+                    0
+                };
                 app.send_gcode(&format!("$20={}", value));
             }
         });

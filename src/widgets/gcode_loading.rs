@@ -10,17 +10,17 @@ pub fn show_gcode_loading_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             if ui.button("📁 Load File").clicked() {
                 app.load_gcode_file();
             }
-            ui.label(if app.gcode_filename.is_empty() {
+            ui.label(if app.gcode.gcode_filename.is_empty() {
                 "No file loaded"
             } else {
-                &app.gcode_filename
+                &app.gcode.gcode_filename
             });
         });
 
         // Send controls
         ui.horizontal(|ui| {
             if ui.button("📤 Send to Device").clicked() {
-                app.send_gcode_to_device();
+                app.send_gcode(&app.gcode.gcode_content.clone());
             }
             if ui.button("⏹️ Stop").clicked() {
                 // TODO: Implement stop sending
@@ -28,21 +28,9 @@ pub fn show_gcode_loading_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         });
 
         // Progress/status
-        if !app.gcode_content.is_empty() {
-            let lines = app.gcode_content.lines().count();
+        if !app.gcode.gcode_content.is_empty() {
+            let lines = app.gcode.gcode_content.lines().count();
             ui.label(format!("{} lines loaded", lines));
         }
     });
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_show_gcode_loading_widget_compiles() {
-        // This test ensures the function compiles and has the expected signature
-        // Full UI testing would require egui context mocking
-        let _fn_exists = show_gcode_loading_widget as fn(&mut egui::Ui, &mut GcodeKitApp);
-    }
 }

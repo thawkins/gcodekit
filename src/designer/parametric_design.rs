@@ -1,4 +1,4 @@
-use anyhow::Result;
+use crate::errors::Result;
 use rhai::{Dynamic, Engine};
 use std::collections::HashMap;
 
@@ -56,12 +56,15 @@ impl ParametricDesigner {
     }
 
     /// Validate a parametric script
-    pub fn validate_script(script: &str) -> Result<(), String> {
+    pub fn validate_script(script: &str) -> Result<()> {
         let engine = Self::create_engine();
 
         match engine.compile(script) {
             Ok(_) => Ok(()),
-            Err(e) => Err(format!("Script compilation error: {}", e)),
+            Err(e) => Err(crate::errors::GcodeKitError::Script(format!(
+                "Script compilation error: {}",
+                e
+            ))),
         }
     }
 
@@ -107,14 +110,18 @@ impl ParametricDesigner {
             }
 
             // Evaluate the script
-            let result: Dynamic = engine
-                .eval(&script_for_step)
-                .map_err(|_| anyhow::anyhow!("Script evaluation error"))?;
+            let result: Dynamic = engine.eval(&script_for_step).map_err(|_| {
+                crate::errors::GcodeKitError::Script("Script evaluation error".to_string())
+            })?;
 
             // Extract x and y from the returned map
             let map = result
                 .try_cast::<std::collections::BTreeMap<rhai::ImmutableString, Dynamic>>()
-                .ok_or_else(|| anyhow::anyhow!("Script must return a map with x and y"))?;
+                .ok_or_else(|| {
+                    crate::errors::GcodeKitError::Script(
+                        "Script must return a map with x and y".to_string(),
+                    )
+                })?;
             let key_x = rhai::ImmutableString::from("x");
             let key_y = rhai::ImmutableString::from("y");
             let x = map

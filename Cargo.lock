@@ -1523,6 +1523,7 @@ dependencies = [
  "serde_json",
  "serialport",
  "stl_io",
+ "thiserror 1.0.69",
  "tobj",
  "tokio",
  "tokio-tungstenite",

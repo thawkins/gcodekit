@@ -6,11 +6,11 @@ pub fn show_image_engraving_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         ui.label("Image Engraving");
         ui.horizontal(|ui| {
             ui.label("Resolution:");
-            ui.add(egui::DragValue::new(&mut app.image_resolution).suffix("dpi"));
+            ui.add(egui::DragValue::new(&mut app.cam.image_resolution).suffix("dpi"));
         });
         ui.horizontal(|ui| {
             ui.label("Max Power:");
-            ui.add(egui::DragValue::new(&mut app.image_max_power).suffix("%"));
+            ui.add(egui::DragValue::new(&mut app.cam.image_max_power).suffix("%"));
         });
 
         if ui.button("Load Image").clicked() {

@@ -3,6 +3,10 @@ name = "gcodekit"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "gcodekit"
+path = "src/lib.rs"
+
 [dependencies]
 eframe = "0.33"
 egui = "0.33"
@@ -14,12 +18,13 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 futures-util = "0.3"
 rfd = "0.14"  # File dialog
-anyhow = "1.0"  # Error handling
+thiserror = "1.0"  # Custom error types
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 dirs = "5.0"  # Cross-platform directory handling
+anyhow = "1.0"  # Error handling
 usvg = "0.37"  # SVG parsing
 dxf = "0.4"  # DXF file parsing
 lyon = "1.0"  # 2D graphics and path operations for boolean operations

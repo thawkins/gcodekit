@@ -16,8 +16,8 @@ pub fn show_safety_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                     .stroke(egui::Stroke::new(2.0, egui::Color32::WHITE)),
             );
             if emergency_button.clicked() {
-                app.communication.emergency_stop();
-                app.status_message = "Emergency stop activated!".to_string();
+                app.machine.communication.emergency_stop();
+                app.machine.status_message = "Emergency stop activated!".to_string();
             }
             ui.label("Immediately halts all machine motion");
         });
@@ -26,10 +26,14 @@ pub fn show_safety_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         ui.label("Safety Settings");
 
         ui.collapsing("Soft Limits", |ui| {
-            ui.checkbox(&mut app.soft_limits_enabled, "Enable soft limits");
+            ui.checkbox(&mut app.machine.soft_limits_enabled, "Enable soft limits");
             ui.label("Prevents machine from moving beyond defined boundaries");
             if ui.button("Apply Setting").clicked() {
-                let value = if app.soft_limits_enabled { 1 } else { 0 };
+                let value = if app.machine.soft_limits_enabled {
+                    1
+                } else {
+                    0
+                };
                 app.send_gcode(&format!("$20={}", value));
             }
         });

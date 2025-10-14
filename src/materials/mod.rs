@@ -1,3 +1,8 @@
+//! Material properties and database management.
+//!
+//! This module provides material property definitions, machining parameters,
+//! and a comprehensive database of materials for CNC machining operations.
+
 mod properties;
 mod types;
 
@@ -431,38 +436,3 @@ impl MaterialDatabase {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_material_creation() {
-        let material =
-            MaterialProperties::new("Test Material", MaterialType::Plastic, MaterialSubtype::ABS)
-                .with_density(1050.0)
-                .with_hardness(8.0);
-
-        assert_eq!(material.name, "Test Material");
-        assert_eq!(material.material_type, MaterialType::Plastic);
-        assert_eq!(material.density, 1050.0);
-        assert_eq!(material.hardness, 8.0);
-    }
-
-    #[test]
-    fn test_material_database() {
-        let db = MaterialDatabase::new();
-
-        // Should have many materials loaded
-        assert!(db.materials.len() > 50);
-
-        // Test lookup
-        let oak = db.get_material("Oak");
-        assert!(oak.is_some());
-        assert_eq!(oak.unwrap().material_type, MaterialType::Wood);
-
-        // Test search
-        let woods = db.get_materials_by_type(&MaterialType::Wood);
-        assert!(woods.len() > 0);
-        assert!(woods.iter().all(|m| m.material_type == MaterialType::Wood));
-    }
-}

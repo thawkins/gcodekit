@@ -70,7 +70,7 @@ pub fn show_machine_control_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         if ui.button("Start Auto-Leveling").clicked() {
             // This would implement a probing routine for surface leveling
             app.send_gcode("G38.2 Z-20 F50 ; Initial probe to find surface");
-            app.status_message = "Auto-leveling not fully implemented yet".to_string();
+            app.machine.status_message = "Auto-leveling not fully implemented yet".to_string();
         }
     });
     ui.separator();
@@ -116,9 +116,13 @@ pub fn show_machine_control_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
     ui.label("Safety & Limits");
 
     ui.horizontal(|ui| {
-        ui.checkbox(&mut app.soft_limits_enabled, "Enable Soft Limits");
+        ui.checkbox(&mut app.machine.soft_limits_enabled, "Enable Soft Limits");
         if ui.button("Update Settings").clicked() {
-            let value = if app.soft_limits_enabled { 1 } else { 0 };
+            let value = if app.machine.soft_limits_enabled {
+                1
+            } else {
+                0
+            };
             app.send_gcode(&format!("$20={}", value));
         }
     });
