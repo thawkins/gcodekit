@@ -134,3 +134,57 @@ pub struct NestedPart {
     pub rotation: f32, // Rotation angle in degrees
     pub part_index: usize,
 }
+
+/// 3D point in space
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Point3D {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+
+/// 3D triangle face with normal
+#[derive(Clone, Debug)]
+pub struct Triangle {
+    pub vertices: [Point3D; 3],
+    pub normal: Point3D,
+}
+
+/// 3D mesh representation
+#[derive(Clone, Debug)]
+pub struct Mesh {
+    pub triangles: Vec<Triangle>,
+    pub bounds: BoundingBox,
+}
+
+/// Axis-aligned bounding box
+#[derive(Clone, Debug)]
+pub struct BoundingBox {
+    pub min: Point3D,
+    pub max: Point3D,
+}
+
+impl BoundingBox {
+    pub fn new() -> Self {
+        Self {
+            min: Point3D { x: f32::INFINITY, y: f32::INFINITY, z: f32::INFINITY },
+            max: Point3D { x: f32::NEG_INFINITY, y: f32::NEG_INFINITY, z: f32::NEG_INFINITY },
+        }
+    }
+
+    pub fn expand(&mut self, point: &Point3D) {
+        self.min.x = self.min.x.min(point.x);
+        self.min.y = self.min.y.min(point.y);
+        self.min.z = self.min.z.min(point.z);
+        self.max.x = self.max.x.max(point.x);
+        self.max.y = self.max.y.max(point.y);
+        self.max.z = self.max.z.max(point.z);
+    }
+}
+
+/// 3D machining surface types
+#[derive(Clone, Debug)]
+pub enum SurfaceType {
+    Mesh(Mesh),
+    HeightMap(Vec<Vec<f32>>), // 2D grid of Z heights
+}

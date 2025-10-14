@@ -55,14 +55,14 @@ impl FirmwareManager {
 
     pub fn check_for_updates(
         &mut self,
-        firmware_type: &FirmwareType,
+        _firmware_type: &FirmwareType,
     ) -> Result<Vec<FirmwareRelease>, String> {
         // TODO: Implement checking for firmware updates from remote sources
         // This could involve GitHub API calls, official firmware repositories, etc.
         Ok(Vec::new())
     }
 
-    pub fn download_firmware(&self, release: &FirmwareRelease) -> Result<PathBuf, String> {
+    pub fn download_firmware(&self, _release: &FirmwareRelease) -> Result<PathBuf, String> {
         // TODO: Implement firmware download functionality
         // Should download from release.download_url and verify checksum
         Err("Not implemented".to_string())
@@ -70,7 +70,7 @@ impl FirmwareManager {
 
     pub fn flash_firmware(
         &self,
-        firmware_path: &PathBuf,
+        _firmware_path: &PathBuf,
         controller_type: &FirmwareType,
     ) -> Result<(), String> {
         // TODO: Implement firmware flashing for different controller types
@@ -107,7 +107,11 @@ impl FirmwareManager {
         self.installed_versions.insert(firmware_type, version);
     }
 
-    pub fn is_update_available(&self, firmware_type: &FirmwareType, current_version: &str) -> bool {
+    pub fn is_update_available(
+        &self,
+        _firmware_type: &FirmwareType,
+        _current_version: &str,
+    ) -> bool {
         // TODO: Implement version comparison logic
         false
     }

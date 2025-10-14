@@ -1,5 +1,5 @@
 use crate::GcodeKitApp;
-use crate::designer::parametric_design::{ParametricConfig, ParametricDesigner};
+use crate::designer::parametric_design::ParametricDesigner;
 use eframe::egui;
 
 pub fn show_parametric_design_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {

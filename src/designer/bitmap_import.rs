@@ -1,5 +1,5 @@
 use crate::GcodeKitApp;
-use crate::designer::bitmap_processing::{ThresholdMethod, VectorizationConfig};
+use crate::designer::bitmap_processing::ThresholdMethod;
 use eframe::egui;
 
 pub fn show_bitmap_import_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {

@@ -4,6 +4,7 @@
 //! and managing CAM-related data structures and algorithms.
 
 pub mod nesting;
+pub mod stl;
 pub mod toolpaths;
 pub mod types;
 

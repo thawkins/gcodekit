@@ -171,7 +171,7 @@ impl PostProcessor for GrblPostProcessor {
             }
             // Ensure feed rates are within GRBL limits (if known)
             "G1" | "G2" | "G3" => {
-                if let Some(f) = command.get_parameter("F") {
+                if let Some(_f) = command.get_parameter("F") {
                     // GRBL has no hard feed rate limit, but we could add validation here
                     processed = processed;
                 }
@@ -325,7 +325,7 @@ impl FluidNCPostProcessor {
 
 impl PostProcessor for FluidNCPostProcessor {
     fn process_command(&self, command: &GcodeCommand) -> Vec<GcodeCommand> {
-        let mut processed = command.clone();
+        let processed = command.clone();
 
         // FluidNC-specific modifications
         match command.command.as_str() {
@@ -493,7 +493,7 @@ pub fn path_segments_to_gcode(segments: &[PathSegment]) -> String {
     gcode_lines.push("G0 Z5 ; Safe Z".to_string());
 
     for segment in segments {
-        let start = &segment.start;
+        let _start = &segment.start;
         let end = &segment.end;
 
         match segment.move_type {

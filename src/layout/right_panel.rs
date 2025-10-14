@@ -6,7 +6,7 @@ use egui;
 /// tabbed box, and jigsaw puzzle widgets.
 pub fn show_right_panel(app: &mut GcodeKitApp, ctx: &egui::Context) {
     if app.ui.show_right_panel {
-        let response = egui::SidePanel::right("right_panel")
+            let response = egui::SidePanel::right("right_panel")
             .resizable(true)
             .default_width(250.0)
             .show(ctx, |ui| {

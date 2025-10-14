@@ -1,6 +1,8 @@
+use crate::cam::stl;
 use crate::cam::types::{CAMOperation, ContourDirection};
 use crate::designer::DesignerState;
 use eframe::egui;
+use std::path::PathBuf;
 
 /// Show the CAM operations widget
 pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerState) {
@@ -86,6 +88,38 @@ pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerStat
                     "Lathe Threading",
                 );
             });
+    });
+
+    ui.separator();
+
+    // STL Import section
+    ui.collapsing("3D Model Import", |ui| {
+        ui.label("Import STL files for 3D machining operations");
+
+        if ui.button("Import STL File").clicked() {
+            // TODO: Open file dialog and import STL
+            // For now, we'll use a placeholder path for testing
+            let test_stl_path = PathBuf::from("assets/test.stl");
+            match stl::load_stl(&test_stl_path) {
+                Ok(mesh) => {
+                    designer.current_mesh = Some(mesh);
+                    ui.label("STL loaded successfully!");
+                }
+                Err(e) => {
+                    ui.label(format!("Error loading STL: {}", e));
+                }
+            }
+        }
+
+        if let Some(mesh) = &designer.current_mesh {
+            ui.label(format!("Loaded mesh with {} triangles", mesh.triangles.len()));
+            ui.label(format!("Bounds: {:.1} x {:.1} x {:.1} mm",
+                mesh.bounds.max.x - mesh.bounds.min.x,
+                mesh.bounds.max.y - mesh.bounds.min.y,
+                mesh.bounds.max.z - mesh.bounds.min.z));
+        } else {
+            ui.label("No mesh loaded");
+        }
     });
 
     ui.separator();
@@ -187,18 +221,41 @@ pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerStat
 
     // Generate Toolpath button
     if ui.button("Generate Toolpath").clicked() {
-        // TODO: Generate toolpath from selected shapes using CAM operation
-        // This would integrate with the existing toolpath generation
+        use crate::cam::toolpaths;
+
+        let gcode = match &designer.selected_cam_operation {
+            CAMOperation::Waterline { .. } => {
+                if let Some(mesh) = &designer.current_mesh {
+                    toolpaths::generate_waterline_toolpath(mesh, &designer.cam_params, &designer.selected_cam_operation)
+                } else {
+                    ui.label("No 3D mesh loaded for waterline machining");
+                    return;
+                }
+            }
+            CAMOperation::Scanline { .. } => {
+                if let Some(mesh) = &designer.current_mesh {
+                    toolpaths::generate_scanline_toolpath(mesh, &designer.cam_params, &designer.selected_cam_operation)
+                } else {
+                    ui.label("No 3D mesh loaded for scanline machining");
+                    return;
+                }
+            }
+            _ => {
+                // For 2D operations, use existing shape-based generation
+                // TODO: Implement 2D toolpath generation
+                ui.label("2D toolpath generation not yet implemented");
+                return;
+            }
+        };
+
+        // TODO: Store or display the generated G-code
+        ui.label(format!("Generated {} lines of G-code", gcode.len()));
     }
 
     // Operation-specific parameters
     match &designer.selected_cam_operation {
         CAMOperation::None => {} // No specific parameters
-        CAMOperation::Contour2D {
-            depth,
-            stepover,
-            direction,
-        } => {
+        CAMOperation::Contour2D { direction, .. } => {
             ui.collapsing("Contour Parameters", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Depth:");
@@ -239,12 +296,7 @@ pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerStat
                 });
             });
         }
-        CAMOperation::SideProfile {
-            depth,
-            stepover,
-            direction,
-            wall_angle,
-        } => {
+        CAMOperation::SideProfile { .. } => {
             ui.collapsing("Side Profile Parameters", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Depth:");
@@ -263,12 +315,7 @@ pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerStat
                 });
             });
         }
-        CAMOperation::Waterline {
-            min_z,
-            max_z,
-            stepdown,
-            stepover,
-        } => {
+        CAMOperation::Waterline { .. } => {
             ui.collapsing("Waterline Parameters", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Min Z:");
@@ -292,13 +339,7 @@ pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerStat
                 });
             });
         }
-        CAMOperation::Scanline {
-            min_z,
-            max_z,
-            stepdown,
-            stepover,
-            angle,
-        } => {
+        CAMOperation::Scanline { .. } => {
             ui.collapsing("Scanline Parameters", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Min Z:");
@@ -327,13 +368,7 @@ pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerStat
                 });
             });
         }
-        CAMOperation::Turning {
-            diameter,
-            length,
-            finish_pass,
-            roughing_feed,
-            finishing_feed,
-        } => {
+        CAMOperation::Turning { .. } => {
             ui.collapsing("Turning Parameters", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Diameter:");
@@ -352,12 +387,7 @@ pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerStat
                 });
             });
         }
-        CAMOperation::Facing {
-            diameter,
-            width,
-            depth,
-            stepover,
-        } => {
+        CAMOperation::Facing { .. } => {
             ui.collapsing("Facing Parameters", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Diameter:");
@@ -381,12 +411,7 @@ pub fn show_cam_operations_widget(ui: &mut egui::Ui, designer: &mut DesignerStat
                 });
             });
         }
-        CAMOperation::Threading {
-            major_diameter,
-            minor_diameter,
-            pitch,
-            length,
-        } => {
+        CAMOperation::Threading { .. } => {
             ui.collapsing("Threading Parameters", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Major Diameter:");

@@ -1,6 +1,4 @@
-use crate::communication::{
-    CncController, ConnectionState, ErrorRecoveryConfig, RecoveryAction, RecoveryState,
-};
+use crate::communication::{CncController, ConnectionState, ErrorRecoveryConfig};
 use serialport::SerialPort;
 use std::any::Any;
 use std::error::Error;

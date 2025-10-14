@@ -1,5 +1,3 @@
-use eframe::egui;
-use chrono::Utc;
 use std::collections::HashMap;
 
 use crate::communication::{ConnectionState, ControllerType};
@@ -10,7 +8,7 @@ use crate::input::{Action, KeyBinding, create_default_keybindings};
 use crate::jobs::{JobQueue, JobType};
 use crate::materials::MaterialDatabase;
 use crate::materials::MaterialType;
-use crate::types::{MachineMode, MachinePosition, MoveType, PathSegment, Tab};
+use crate::types::{MachineMode, MachinePosition, PathSegment, Tab};
 
 // UI State - Ephemeral state for UI rendering and interaction
 #[derive(Debug, Clone)]
@@ -243,7 +241,6 @@ impl Default for GcodeKitApp {
 }
 
 impl GcodeKitApp {
-
     /// Executes a user-defined script for automation.
     /// Currently a placeholder - full implementation is TODO.
     pub fn run_script(&mut self) {

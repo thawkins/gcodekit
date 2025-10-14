@@ -278,7 +278,7 @@ impl GcodeEditorState {
         let mut lines = Vec::new();
         let mut current_angle = start_angle;
 
-        for i in 1..=num_segments {
+        for _i in 1..=num_segments {
             current_angle += angle_step;
 
             let x = arc_center_x + radius * current_angle.cos();

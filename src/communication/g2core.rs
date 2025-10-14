@@ -1,12 +1,12 @@
 use crate::MachinePosition;
 use crate::communication::grbl::Position;
 use crate::communication::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json;
 use serialport::{self, SerialPort};
 use std::collections::VecDeque;
 use std::io::{Read, Write};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct G2coreCommunication {

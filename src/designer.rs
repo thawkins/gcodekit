@@ -22,14 +22,13 @@ use image::GrayImage;
 use lyon::math::point;
 use lyon::path::Path;
 
-use rhai::{AST, Engine, Scope};
+use rhai::AST;
 use std::collections::VecDeque;
 use std::fs;
 use stl_io::{Normal, Triangle, Vertex};
 use tobj;
 
 use crate::cam::{CAMOperation, CAMParameters};
-use bitmap_processing::{BitmapProcessor, VectorizationConfig};
 
 // Re-export the widget functions for easy access
 pub use bitmap_import::show_bitmap_import_widget;
@@ -196,6 +195,10 @@ pub enum DrawingTool {
     Rectangle,
     Circle,
     Line,
+    Pencil,
+    Pen,
+    Calligraphy,
+    Node,
     Text,
     Drill,
     Pocket,
@@ -427,7 +430,6 @@ pub enum MirrorAxis {
     Vertical,
 }
 
-#[derive(Default)]
 pub struct DesignerState {
     pub shapes: Vec<Shape>,
     pub current_tool: DrawingTool,
@@ -444,13 +446,58 @@ pub struct DesignerState {
     pub manipulation_start: Option<(f32, f32)>,
     pub original_shape: Option<Shape>,
     pub scale_start: Option<(f32, f32)>,
-    pub rotation_start: Option<f32>,
+    pub rotation_start: Option<(f32, f32)>,
     pub mirror_axis: Option<MirrorAxis>,
     pub current_scale: Option<(f32, f32)>,
     pub current_rotation: Option<f32>,
     pub current_polyline_points: Vec<(f32, f32)>,
     pub selected_cam_operation: crate::cam::types::CAMOperation,
     pub cam_params: crate::cam::types::CAMParameters,
+    pub viewport_size: egui::Vec2,
+    pub current_mesh: Option<crate::cam::types::Mesh>,
+    pub shape_width: f32,
+    pub shape_height: f32,
+    pub shape_radius: f32,
+    pub stroke_width: f32,
+    pub calligraphy_angle: f32,
+    pub text_font_size: f32,
+}
+
+impl Default for DesignerState {
+    fn default() -> Self {
+        Self {
+            shapes: Vec::new(),
+            current_tool: DrawingTool::Select,
+            current_pattern: ToolpathPattern::Spiral,
+            current_material: Material::default(),
+            current_tool_def: Tool::default(),
+            drawing_start: None,
+            selected_shape: None,
+            selected_point: None,
+            undo_stack: VecDeque::new(),
+            redo_stack: VecDeque::new(),
+            drag_start_pos: None,
+            show_grid: true,
+            manipulation_start: None,
+            original_shape: None,
+            scale_start: None,
+            rotation_start: None,
+            mirror_axis: None,
+            current_scale: None,
+            current_rotation: None,
+            current_polyline_points: Vec::new(),
+            selected_cam_operation: CAMOperation::default(),
+            cam_params: CAMParameters::default(),
+            viewport_size: egui::Vec2::ZERO,
+            current_mesh: None,
+            shape_width: 50.0,
+            shape_height: 50.0,
+            shape_radius: 25.0,
+            stroke_width: 2.0,
+            calligraphy_angle: 45.0,
+            text_font_size: 16.0,
+        }
+    }
 }
 
 impl DesignerState {
@@ -1376,1246 +1423,883 @@ impl DesignerState {
         }
     }
 
+    fn show_toolbox(&mut self, ui: &mut egui::Ui, event: &mut Option<DesignerEvent>) {
+        ui.vertical(|ui| {
+            ui.heading("Tools");
+            // Temporarily disabled: only Rectangle, Circle, and Polyline enabled
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Select, "👆")
+                .clicked()
+            {
+                self.current_tool = DrawingTool::Select;
+            }
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Rectangle, "▭")
+                .clicked()
+            {
+                self.current_tool = DrawingTool::Rectangle;
+            }
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Circle, "○")
+                .clicked()
+            {
+                self.current_tool = DrawingTool::Circle;
+            }
+            if ui
+                .selectable_label(self.current_tool == DrawingTool::Polyline, "📏")
+                .clicked()
+            {
+                self.current_tool = DrawingTool::Polyline;
+            }
+            // Re-enabled tools:
+            if ui.selectable_label(self.current_tool == DrawingTool::Line, "━").clicked() {
+                self.current_tool = DrawingTool::Line;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Pencil, "✏️").clicked() {
+                self.current_tool = DrawingTool::Pencil;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Pen, "🖊️").clicked() {
+                self.current_tool = DrawingTool::Pen;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Calligraphy, "🖌️").clicked() {
+                self.current_tool = DrawingTool::Calligraphy;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Node, "🔗").clicked() {
+                self.current_tool = DrawingTool::Node;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Text, "📝").clicked() {
+                self.current_tool = DrawingTool::Text;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Drill, "🔨").clicked() {
+                self.current_tool = DrawingTool::Drill;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Pocket, "📦").clicked() {
+                self.current_tool = DrawingTool::Pocket;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Cylinder, "🛢️").clicked() {
+                self.current_tool = DrawingTool::Cylinder;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Sphere, "🔮").clicked() {
+                self.current_tool = DrawingTool::Sphere;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Extrusion, "📏").clicked() {
+                self.current_tool = DrawingTool::Extrusion;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Turning, "🔄").clicked() {
+                self.current_tool = DrawingTool::Turning;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Facing, "📐").clicked() {
+                self.current_tool = DrawingTool::Facing;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Threading, "🧵").clicked() {
+                self.current_tool = DrawingTool::Threading;
+            }
+            if ui.selectable_label(self.current_tool == DrawingTool::Parametric, "📊").clicked() {
+                self.current_tool = DrawingTool::Parametric;
+            }
+
+            ui.separator();
+            ui.heading("Commands");
+
+            if ui.button("🗑️ Delete").clicked() && let Some(index) = self.selected_shape {
+                self.execute_command(Box::new(DeleteShapeCommand::new(index)));
+                self.selected_shape = None;
+            }
+
+            if ui.button("📁 Import").clicked() {
+                *event = Some(DesignerEvent::ImportFile);
+            }
+
+            if ui.button("↶ Undo").clicked() && self.can_undo() {
+                self.undo();
+                self.selected_shape = None;
+            }
+
+            if ui.button("↷ Redo").clicked() && self.can_redo() {
+                self.redo();
+                self.selected_shape = None;
+            }
+
+            if ui.button("🔗 Group").clicked() {
+                // TODO: Implement grouping
+            }
+
+            if ui.button("🔓 Ungroup").clicked() {
+                // TODO: Implement ungrouping
+            }
+
+            ui.menu_button("Alignment", |ui| {
+                if ui.button("Align Left").clicked() {
+                    self.align_shapes("left");
+                    ui.close();
+                }
+                if ui.button("Align Right").clicked() {
+                    self.align_shapes("right");
+                    ui.close();
+                }
+                if ui.button("Align Top").clicked() {
+                    self.align_shapes("top");
+                    ui.close();
+                }
+                if ui.button("Align Bottom").clicked() {
+                    self.align_shapes("bottom");
+                    ui.close();
+                }
+                if ui.button("Align Center X").clicked() {
+                    self.align_shapes("center_x");
+                    ui.close();
+                }
+                if ui.button("Align Center Y").clicked() {
+                    self.align_shapes("center_y");
+                    ui.close();
+                }
+            });
+
+            ui.menu_button("Boolean", |ui| {
+                if ui.button("Union").clicked() {
+                    if self.shapes.len() >= 2 {
+                        let all_indices: Vec<usize> = (0..self.shapes.len()).collect();
+                        if let Err(e) = self.boolean_union(&all_indices) {
+                            tracing::error!("Boolean union failed: {}", e);
+                        }
+                        self.selected_shape = None;
+                    }
+                    ui.close();
+                }
+                if ui.button("Intersect").clicked() {
+                    if self.shapes.len() >= 2 {
+                        let all_indices: Vec<usize> = (0..self.shapes.len()).collect();
+                        if let Err(e) = self.boolean_intersect(&all_indices) {
+                            tracing::error!("Boolean intersect failed: {}", e);
+                        }
+                        self.selected_shape = None;
+                    }
+                    ui.close();
+                }
+                if ui.button("Subtract").clicked() {
+                    if self.shapes.len() >= 2 {
+                        let indices = [self.shapes.len() - 2, self.shapes.len() - 1];
+                        if let Err(e) = self.boolean_subtract(&indices) {
+                            tracing::error!("Boolean subtract failed: {}", e);
+                        }
+                        self.selected_shape = None;
+                    }
+                    ui.close();
+                }
+            });
+
+            if ui.button("🗑️ Clear").clicked() {
+                self.shapes.clear();
+                self.selected_shape = None;
+                self.undo_stack.clear();
+                self.redo_stack.clear();
+            }
+
+            if ui.button("💾 Export G-code").clicked() {
+                *event = Some(DesignerEvent::ExportGcode);
+            }
+
+            ui.menu_button("📤 Export 3D", |ui| {
+                if ui.button("STL").clicked() {
+                    *event = Some(DesignerEvent::ExportStl);
+                    ui.close();
+                }
+                if ui.button("OBJ").clicked() {
+                    *event = Some(DesignerEvent::ExportObj);
+                    ui.close();
+                }
+                if ui.button("GLTF").clicked() {
+                    *event = Some(DesignerEvent::ExportGltf);
+                    ui.close();
+                }
+            });
+
+            ui.checkbox(&mut self.show_grid, "Grid");
+
+            ui.label(format!("Material: {}", self.current_material.name));
+            ui.label(format!(
+                "Tool: {} (Ø{:.1}mm)",
+                self.current_tool_def.name, self.current_tool_def.diameter
+            ));
+        });
+    }
+
+    fn show_tool_controls(&mut self, ui: &mut egui::Ui) {
+        match self.current_tool {
+            DrawingTool::Rectangle => {
+                ui.label("Rectangle:");
+                ui.add(egui::DragValue::new(&mut self.shape_width).suffix("mm"));
+                ui.label("x");
+                ui.add(egui::DragValue::new(&mut self.shape_height).suffix("mm"));
+            }
+            DrawingTool::Circle => {
+                ui.label("Circle:");
+                ui.add(egui::DragValue::new(&mut self.shape_radius).suffix("mm"));
+            }
+            DrawingTool::Polyline => {
+                ui.label("Polyline: Click to add points, double-click to finish");
+            }
+            DrawingTool::Line => {
+                ui.label("Line tool");
+            }
+            DrawingTool::Pencil => {
+                ui.label("Pencil:");
+                ui.add(egui::DragValue::new(&mut self.stroke_width).suffix("mm").range(0.1..=10.0));
+            }
+            DrawingTool::Pen => {
+                ui.label("Pen:");
+                ui.add(egui::DragValue::new(&mut self.stroke_width).suffix("mm").range(0.1..=10.0));
+            }
+            DrawingTool::Calligraphy => {
+                ui.label("Calligraphy:");
+                ui.add(egui::DragValue::new(&mut self.stroke_width).suffix("mm").range(0.1..=10.0));
+                ui.label("Angle:");
+                ui.add(egui::DragValue::new(&mut self.calligraphy_angle).suffix("°").range(0.0..=180.0));
+            }
+            DrawingTool::Node => {
+                ui.label("Node: Edit path points");
+            }
+            DrawingTool::Text => {
+                ui.label("Text:");
+                ui.add(egui::DragValue::new(&mut self.text_font_size).suffix("pt").range(8.0..=72.0));
+            }
+            _ => {
+                ui.label("Tool controls");
+            }
+        }
+    }
+
+    fn draw_shape(&self, painter: &egui::Painter, shape: &Shape, is_selected: bool) {
+        let stroke_color = if is_selected {
+            egui::Color32::RED
+        } else {
+            egui::Color32::BLACK
+        };
+        let stroke = egui::Stroke::new(2.0, stroke_color);
+
+        match shape {
+            Shape::Rectangle {
+                x,
+                y,
+                width,
+                height,
+            } => {
+                let rect =
+                    egui::Rect::from_min_size(egui::pos2(*x, *y), egui::vec2(*width, *height));
+                painter.rect_stroke(
+                    rect,
+                    egui::CornerRadius::ZERO,
+                    stroke,
+                    egui::StrokeKind::Outside,
+                );
+            }
+            Shape::Circle { x, y, radius } => {
+                let center = egui::pos2(*x, *y);
+                painter.circle_stroke(center, *radius, stroke);
+            }
+            Shape::Line { x1, y1, x2, y2 } => {
+                painter.line_segment([egui::pos2(*x1, *y1), egui::pos2(*x2, *y2)], stroke);
+            }
+            Shape::Text {
+                x,
+                y,
+                text,
+                font_size,
+            } => {
+                let pos = egui::pos2(*x, *y);
+                painter.text(
+                    pos,
+                    egui::Align2::LEFT_TOP,
+                    text,
+                    egui::FontId::monospace(*font_size),
+                    stroke_color,
+                );
+            }
+            Shape::Drill { x, y, .. } => {
+                let center = egui::pos2(*x, *y);
+                painter.circle_stroke(center, 5.0, stroke);
+                painter.line_segment([egui::pos2(*x - 5.0, *y), egui::pos2(*x + 5.0, *y)], stroke);
+                painter.line_segment([egui::pos2(*x, *y - 5.0), egui::pos2(*x, *y + 5.0)], stroke);
+            }
+            Shape::Pocket {
+                x,
+                y,
+                width,
+                height,
+                ..
+            } => {
+                let rect =
+                    egui::Rect::from_min_size(egui::pos2(*x, *y), egui::vec2(*width, *height));
+                painter.rect_stroke(
+                    rect,
+                    egui::CornerRadius::ZERO,
+                    stroke,
+                    egui::StrokeKind::Outside,
+                );
+                // Draw pocket indicator
+                let center = egui::pos2(x + width / 2.0, y + height / 2.0);
+                painter.circle_stroke(center, 3.0, stroke);
+            }
+            Shape::Cylinder { x, y, radius, .. } => {
+                let center = egui::pos2(*x, *y);
+                painter.circle_stroke(center, *radius, stroke);
+                // Draw cylinder indicator
+                painter.line_segment(
+                    [egui::pos2(*x - *radius, *y), egui::pos2(*x + *radius, *y)],
+                    stroke,
+                );
+            }
+            Shape::Sphere { x, y, radius, .. } => {
+                let center = egui::pos2(*x, *y);
+                painter.circle_stroke(center, *radius, stroke);
+            }
+            Shape::Extrusion {
+                x,
+                y,
+                width,
+                height,
+                ..
+            } => {
+                let rect =
+                    egui::Rect::from_min_size(egui::pos2(*x, *y), egui::vec2(*width, *height));
+                painter.rect_stroke(
+                    rect,
+                    egui::CornerRadius::ZERO,
+                    stroke,
+                    egui::StrokeKind::Outside,
+                );
+            }
+            Shape::Turning {
+                x,
+                y,
+                diameter,
+                length,
+                ..
+            } => {
+                let radius = *diameter / 2.0;
+                let rect = egui::Rect::from_min_size(
+                    egui::pos2(*x - radius, *y),
+                    egui::vec2(*diameter, *length),
+                );
+                painter.rect_stroke(
+                    rect,
+                    egui::CornerRadius::ZERO,
+                    stroke,
+                    egui::StrokeKind::Outside,
+                );
+            }
+            Shape::Facing {
+                x,
+                y,
+                width,
+                length,
+                ..
+            } => {
+                let rect =
+                    egui::Rect::from_min_size(egui::pos2(*x, *y), egui::vec2(*width, *length));
+                painter.rect_stroke(
+                    rect,
+                    egui::CornerRadius::ZERO,
+                    stroke,
+                    egui::StrokeKind::Outside,
+                );
+            }
+            Shape::Threading {
+                x,
+                y,
+                diameter,
+                length,
+                ..
+            } => {
+                let radius = *diameter / 2.0;
+                let rect = egui::Rect::from_min_size(
+                    egui::pos2(*x - radius, *y),
+                    egui::vec2(*diameter, *length),
+                );
+                painter.rect_stroke(
+                    rect,
+                    egui::CornerRadius::ZERO,
+                    stroke,
+                    egui::StrokeKind::Outside,
+                );
+                // Draw thread indicator
+                painter.line_segment(
+                    [
+                        egui::pos2(*x - radius, *y),
+                        egui::pos2(*x + radius, *y + *length),
+                    ],
+                    stroke,
+                );
+            }
+            Shape::Polyline { points } => {
+                for window in points.windows(2) {
+                    painter.line_segment(
+                        [
+                            egui::pos2(window[0].0, window[0].1),
+                            egui::pos2(window[1].0, window[1].1),
+                        ],
+                        stroke,
+                    );
+                }
+                // Draw points
+                for (x, y) in points {
+                    painter.circle_filled(egui::pos2(*x, *y), 3.0, stroke_color);
+                }
+            }
+            Shape::Parametric { bounds, .. } => {
+                let rect = egui::Rect::from_min_max(
+                    egui::pos2(bounds.0, bounds.1),
+                    egui::pos2(bounds.2, bounds.3),
+                );
+                painter.rect_stroke(
+                    rect,
+                    egui::CornerRadius::ZERO,
+                    stroke,
+                    egui::StrokeKind::Outside,
+                );
+            }
+        }
+    }
+
+    fn draw_grid(&self, painter: &egui::Painter, rect: egui::Rect) {
+        let grid_spacing = 20.0;
+        let stroke = egui::Stroke::new(1.0, egui::Color32::from_gray(128));
+
+        // Vertical lines
+        let mut x = rect.min.x;
+        while x <= rect.max.x {
+            painter.line_segment(
+                [egui::pos2(x, rect.min.y), egui::pos2(x, rect.max.y)],
+                stroke,
+            );
+            x += grid_spacing;
+        }
+
+        // Horizontal lines
+        let mut y = rect.min.y;
+        while y <= rect.max.y {
+            painter.line_segment(
+                [egui::pos2(rect.min.x, y), egui::pos2(rect.max.x, y)],
+                stroke,
+            );
+            y += grid_spacing;
+        }
+    }
+
     pub fn show_ui(&mut self, ui: &mut egui::Ui) -> Option<DesignerEvent> {
         let mut event = None;
 
+        // Main layout within the tab: top tool controls, left toolbox, center canvas, right panels, bottom status
         ui.vertical(|ui| {
-            // Toolbar
+            // Top tool controls bar
             ui.horizontal(|ui| {
                 ui.label("Designer");
                 ui.separator();
-
-                // Drawing tools
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Select, "👆 Select");
-                ui.selectable_value(
-                    &mut self.current_tool,
-                    DrawingTool::Rectangle,
-                    "▭ Rectangle",
-                );
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Circle, "○ Circle");
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Line, "━ Line");
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Text, "📝 Text");
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Drill, "🔨 Drill");
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Pocket, "📦 Pocket");
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Cylinder, "🛢️ Cylinder");
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Sphere, "🔮 Sphere");
-                ui.selectable_value(
-                    &mut self.current_tool,
-                    DrawingTool::Extrusion,
-                    "📏 Extrusion",
-                );
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Turning, "🔄 Turning");
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Facing, "📐 Facing");
-                ui.selectable_value(
-                    &mut self.current_tool,
-                    DrawingTool::Threading,
-                    "🧵 Threading",
-                );
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Polyline, "📏 Polyline");
-                ui.selectable_value(
-                    &mut self.current_tool,
-                    DrawingTool::Parametric,
-                    "📊 Parametric",
-                );
-
+                self.show_tool_controls(ui);
                 ui.separator();
-
-                // Toolpath pattern
-                ui.label("Pattern:");
-                ui.selectable_value(&mut self.current_pattern, ToolpathPattern::Offset, "Offset");
-                ui.selectable_value(&mut self.current_pattern, ToolpathPattern::Spiral, "Spiral");
-                ui.selectable_value(&mut self.current_pattern, ToolpathPattern::Zigzag, "Zigzag");
-                ui.selectable_value(
-                    &mut self.current_pattern,
-                    ToolpathPattern::Trochoidal,
-                    "Trochoidal",
-                );
-
-                ui.separator();
-
-                // Manipulation tools
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Move, "↔ Move");
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Scale, "🔍 Scale");
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Rotate, "🔄 Rotate");
-                ui.selectable_value(&mut self.current_tool, DrawingTool::Mirror, "🪞 Mirror");
-
-                ui.separator();
-
-                if ui.button("🗑️ Delete").clicked()
-                    && let Some(index) = self.selected_shape
-                {
-                    self.execute_command(Box::new(DeleteShapeCommand::new(index)));
-                    self.selected_shape = None;
-                }
-
-                if ui.button("📁 Import").clicked() {
-                    event = Some(DesignerEvent::ImportFile);
-                }
-
-                if ui.button("↶ Undo").clicked() && self.can_undo() {
-                    self.undo();
-                    self.selected_shape = None;
-                }
-
-                if ui.button("↷ Redo").clicked() && self.can_redo() {
-                    self.redo();
-                    self.selected_shape = None;
-                }
-
-                ui.separator();
-
-                ui.menu_button("Alignment", |ui| {
-                    if ui.button("Align Left").clicked() {
-                        self.align_shapes("left");
-                        ui.close();
-                    }
-                    if ui.button("Align Right").clicked() {
-                        self.align_shapes("right");
-                        ui.close();
-                    }
-                    if ui.button("Align Top").clicked() {
-                        self.align_shapes("top");
-                        ui.close();
-                    }
-                    if ui.button("Align Bottom").clicked() {
-                        self.align_shapes("bottom");
-                        ui.close();
-                    }
-                    if ui.button("Align Center X").clicked() {
-                        self.align_shapes("center_x");
-                        ui.close();
-                    }
-                    if ui.button("Align Center Y").clicked() {
-                        self.align_shapes("center_y");
-                        ui.close();
-                    }
-                });
-
-                ui.separator();
-
-                ui.menu_button("Boolean", |ui| {
-                    if ui.button("Union").clicked() {
-                        if self.shapes.len() >= 2 {
-                            let all_indices: Vec<usize> = (0..self.shapes.len()).collect();
-                            if let Err(e) = self.boolean_union(&all_indices) {
-                                tracing::error!("Boolean union failed: {}", e);
-                            }
-                            self.selected_shape = None;
-                        }
-                        ui.close();
-                    }
-                    if ui.button("Intersect").clicked() {
-                        if self.shapes.len() >= 2 {
-                            let all_indices: Vec<usize> = (0..self.shapes.len()).collect();
-                            if let Err(e) = self.boolean_intersect(&all_indices) {
-                                tracing::error!("Boolean intersect failed: {}", e);
-                            }
-                            self.selected_shape = None;
-                        }
-                        ui.close();
-                    }
-                    if ui.button("Subtract").clicked() {
-                        if self.shapes.len() >= 2 {
-                            let indices = [self.shapes.len() - 2, self.shapes.len() - 1];
-                            if let Err(e) = self.boolean_subtract(&indices) {
-                                tracing::error!("Boolean subtract failed: {}", e);
-                            }
-                            self.selected_shape = None;
-                        }
-                        ui.close();
-                    }
-                });
-
-                ui.separator();
-
-                if ui.button("🗑️ Clear").clicked() {
-                    self.shapes.clear();
-                    self.selected_shape = None;
-                    self.undo_stack.clear();
-                    self.redo_stack.clear();
-                }
-
-                if ui.button("💾 Export G-code").clicked() {
-                    event = Some(DesignerEvent::ExportGcode);
-                }
-
-                ui.menu_button("📤 Export 3D", |ui| {
-                    if ui.button("STL").clicked() {
-                        event = Some(DesignerEvent::ExportStl);
-                        ui.close();
-                    }
-                    if ui.button("OBJ").clicked() {
-                        event = Some(DesignerEvent::ExportObj);
-                        ui.close();
-                    }
-                    if ui.button("GLTF").clicked() {
-                        event = Some(DesignerEvent::ExportGltf);
-                        ui.close();
-                    }
-                });
-
-                ui.separator();
-
-                ui.checkbox(&mut self.show_grid, "Grid");
-
-                ui.separator();
-
-                ui.label(format!("Material: {}", self.current_material.name));
-                ui.label(format!(
-                    "Tool: {} (Ø{:.1}mm)",
-                    self.current_tool_def.name, self.current_tool_def.diameter
-                ));
             });
 
             ui.separator();
 
-            // Canvas
-            let available_size = ui.available_size();
-            let (rect, response) =
-                ui.allocate_exact_size(available_size, egui::Sense::click_and_drag());
+            // Main three-column layout
+            ui.horizontal(|ui| {
+                // Left toolbox panel
+                ui.vertical(|ui| {
+                    ui.set_width(120.0);
+                    ui.heading("Tools");
+                    self.show_toolbox(ui, &mut event);
+                });
 
-            // Handle mouse interactions
-            if response.clicked() {
-                let pos = response.interact_pointer_pos().unwrap_or_default();
-                let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
+                ui.separator();
 
-                match self.current_tool {
-                    DrawingTool::Select => {
-                        // Select shape under cursor
-                        self.selected_shape = None;
-                        self.selected_point = None;
-                        for (i, shape) in self.shapes.iter().enumerate().rev() {
-                            if self.shape_contains_point(shape, canvas_pos) {
-                                self.selected_shape = Some(i);
-                                // Check if it's a polyline and select point
-                                if let Shape::Polyline { points } = shape {
-                                    for (j, &(px, py)) in points.iter().enumerate() {
-                                        let dist = ((canvas_pos.x - px).powi(2)
-                                            + (canvas_pos.y - py).powi(2))
-                                        .sqrt();
-                                        if dist <= 10.0 {
-                                            // Handle size threshold
-                                            self.selected_point = Some(j);
-                                            break;
-                                        }
-                                    }
-                                }
-                                break;
-                            }
-                        }
+                // Center canvas
+                ui.vertical(|ui| {
+                    // Canvas area
+                    let available_size = ui.available_size();
+                    let (rect, canvas_response) =
+                        ui.allocate_exact_size(available_size, egui::Sense::click_and_drag());
 
-                        // Handle point dragging for polylines
-                        if self.selected_point.is_some()
-                            && response.dragged()
-                            && let Some(pos) = response.interact_pointer_pos()
-                        {
-                            let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
-                            if let Some(index) = self.selected_shape {
-                                if let Some(Shape::Polyline { points }) = self.shapes.get_mut(index)
-                                {
-                                    if let Some(point_idx) = self.selected_point {
-                                        if point_idx < points.len() {
-                                            points[point_idx] = (canvas_pos.x, canvas_pos.y);
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    // Handle mouse interactions
+                    if canvas_response.clicked() {
+                        let pos = canvas_response.interact_pointer_pos().unwrap_or_default();
+                        let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
 
-                        // Handle right-click to add/remove points to polylines
-                        if response.secondary_clicked() {
-                            let pos = response.interact_pointer_pos().unwrap_or_default();
-                            let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
-                            if let Some(index) = self.selected_shape {
-                                // First, check if clicking on a point to remove
-                                let point_to_remove = if let Some(Shape::Polyline { points }) =
-                                    self.shapes.get(index)
-                                {
-                                    let mut remove = None;
-                                    for (j, &(px, py)) in points.iter().enumerate() {
-                                        let dist = ((canvas_pos.x - px).powi(2)
-                                            + (canvas_pos.y - py).powi(2))
-                                        .sqrt();
-                                        if dist <= 10.0 && points.len() > 2 {
-                                            // Don't remove if less than 3 points
-                                            remove = Some(j);
-                                            break;
-                                        }
-                                    }
-                                    remove
-                                } else {
-                                    None
-                                };
-
-                                if let Some(j) = point_to_remove {
-                                    if let Some(Shape::Polyline { points }) =
-                                        self.shapes.get_mut(index)
-                                    {
-                                        points.remove(j);
-                                        if self.selected_point == Some(j) {
-                                            self.selected_point = None;
-                                        } else if let Some(p) = self.selected_point {
-                                            if p > j {
-                                                self.selected_point = Some(p - 1);
+                        match self.current_tool {
+                            DrawingTool::Select => {
+                                // Select shape under cursor
+                                self.selected_shape = None;
+                                self.selected_point = None;
+                                for (i, shape) in self.shapes.iter().enumerate().rev() {
+                                    if self.shape_contains_point(shape, canvas_pos) {
+                                        self.selected_shape = Some(i);
+                                        // Check if it's a polyline and select point
+                                        if let Shape::Polyline { points } = shape {
+                                            for (j, &(px, py)) in points.iter().enumerate() {
+                                                let dist = ((canvas_pos.x - px).powi(2)
+                                                    + (canvas_pos.y - py).powi(2))
+                                                .sqrt();
+                                                if dist <= 10.0 {
+                                                    // Handle size threshold
+                                                    self.selected_point = Some(j);
+                                                    break;
+                                                }
                                             }
                                         }
+                                        break;
                                     }
-                                } else {
-                                    // Add point to closest segment
-                                    let insert_at = if let Some(Shape::Polyline { points }) =
-                                        self.shapes.get(index)
-                                    {
-                                        let mut closest_dist = f32::INFINITY;
-                                        let mut insert_at = 0;
-                                        for i in 0..points.len().saturating_sub(1) {
-                                            let p1 = points[i];
-                                            let p2 = points[i + 1];
-                                            let dist = self.point_to_line_distance(
-                                                (canvas_pos.x, canvas_pos.y),
-                                                p1,
-                                                p2,
-                                            );
-                                            if dist < closest_dist {
-                                                closest_dist = dist;
-                                                insert_at = i + 1;
-                                            }
-                                        }
-                                        if closest_dist < 20.0 {
-                                            Some(insert_at)
-                                        } else {
-                                            None
-                                        }
-                                    } else {
-                                        None
-                                    };
+                                }
 
-                                    if let Some(insert_at) = insert_at {
+                                // Handle point dragging for polylines
+                                if self.selected_point.is_some()
+                                    && canvas_response.dragged()
+                                    && let Some(pos) = canvas_response.interact_pointer_pos()
+                                {
+                                    let canvas_pos =
+                                        egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
+                                    if let Some(index) = self.selected_shape {
                                         if let Some(Shape::Polyline { points }) =
                                             self.shapes.get_mut(index)
                                         {
-                                            points.insert(insert_at, (canvas_pos.x, canvas_pos.y));
+                                            if let Some(point_idx) = self.selected_point {
+                                                if point_idx < points.len() {
+                                                    points[point_idx] =
+                                                        (canvas_pos.x, canvas_pos.y);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Handle right-click to add/remove points to polylines
+                                if canvas_response.secondary_clicked() {
+                                    let pos =
+                                        canvas_response.interact_pointer_pos().unwrap_or_default();
+                                    let canvas_pos =
+                                        egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
+                                    if let Some(index) = self.selected_shape {
+                                        // First, check if clicking on a point to remove
+                                        let point_to_remove =
+                                            if let Some(Shape::Polyline { points }) =
+                                                self.shapes.get(index)
+                                            {
+                                                let mut remove = None;
+                                                for (j, &(px, py)) in points.iter().enumerate() {
+                                                    let dist = ((canvas_pos.x - px).powi(2)
+                                                        + (canvas_pos.y - py).powi(2))
+                                                    .sqrt();
+                                                    if dist <= 10.0 && points.len() > 2 {
+                                                        // Don't remove if less than 3 points
+                                                        remove = Some(j);
+                                                        break;
+                                                    }
+                                                }
+                                                remove
+                                            } else {
+                                                None
+                                            };
+
+                                        if let Some(j) = point_to_remove {
+                                            if let Some(Shape::Polyline { points }) =
+                                                self.shapes.get_mut(index)
+                                            {
+                                                points.remove(j);
+                                                if self.selected_point == Some(j) {
+                                                    self.selected_point = None;
+                                                } else if let Some(p) = self.selected_point {
+                                                    if p > j {
+                                                        self.selected_point = Some(p - 1);
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            // Add point to closest segment
+                                            let insert_at =
+                                                if let Some(Shape::Polyline { points }) =
+                                                    self.shapes.get(index)
+                                                {
+                                                    let mut closest_dist = f32::INFINITY;
+                                                    let mut insert_at = 0;
+                                                    for i in 0..points.len().saturating_sub(1) {
+                                                        let p1 = points[i];
+                                                        let p2 = points[i + 1];
+                                                        let dist = self.point_to_line_distance(
+                                                            (canvas_pos.x, canvas_pos.y),
+                                                            p1,
+                                                            p2,
+                                                        );
+                                                        if dist < closest_dist {
+                                                            closest_dist = dist;
+                                                            insert_at = i + 1;
+                                                        }
+                                                    }
+                                                    Some(insert_at)
+                                                } else {
+                                                    None
+                                                };
+
+                                            if let Some(insert_at) = insert_at {
+                                                if let Some(Shape::Polyline { points }) =
+                                                    self.shapes.get_mut(index)
+                                                {
+                                                    points.insert(
+                                                        insert_at,
+                                                        (canvas_pos.x, canvas_pos.y),
+                                                    );
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                    }
-                    DrawingTool::Polyline => {
-                        // Check for double-click to finish polyline
-                        if response.double_clicked() && !self.current_polyline_points.is_empty() {
-                            // Finish the current polyline
-                            if self.current_polyline_points.len() >= 2 {
-                                let shape = Shape::Polyline {
-                                    points: self.current_polyline_points.clone(),
-                                };
-                                self.execute_command(Box::new(AddShapeCommand::new(shape)));
-                            }
-                            self.current_polyline_points.clear();
-                            self.drawing_start = None;
-                        } else {
-                            // Add point to current polyline
-                            self.current_polyline_points
-                                .push((canvas_pos.x, canvas_pos.y));
+                            DrawingTool::Polyline => {
+                                if canvas_response.clicked() {
+                                    self.current_polyline_points
+                                        .push((canvas_pos.x, canvas_pos.y));
 
-                            // If this is the first point, start drawing
-                            if self.current_polyline_points.len() == 1 {
+                                    // If this is the first point, start drawing
+                                    if self.current_polyline_points.len() == 1 {
+                                        self.drawing_start = Some((canvas_pos.x, canvas_pos.y));
+                                    }
+                                } else if canvas_response.double_clicked()
+                                    && !self.current_polyline_points.is_empty()
+                                {
+                                    // Finish the current polyline
+                                    if self.current_polyline_points.len() >= 2 {
+                                        let shape = Shape::Polyline {
+                                            points: self.current_polyline_points.clone(),
+                                        };
+                                        self.execute_command(Box::new(AddShapeCommand::new(shape)));
+                                    }
+                                    self.current_polyline_points.clear();
+                                    self.drawing_start = None;
+                                } else {
+                                    // Add point to current polyline
+                                    self.current_polyline_points
+                                        .push((canvas_pos.x, canvas_pos.y));
+
+                                    // If this is the first point, start drawing
+                                    if self.current_polyline_points.len() == 1 {
+                                        self.drawing_start = Some((canvas_pos.x, canvas_pos.y));
+                                    }
+                                }
+                            }
+                            DrawingTool::Pencil | DrawingTool::Pen | DrawingTool::Calligraphy | DrawingTool::Node | DrawingTool::Parametric | _ => {
+                                // Start drawing
                                 self.drawing_start = Some((canvas_pos.x, canvas_pos.y));
                             }
                         }
                     }
-                    DrawingTool::Parametric | _ => {
-                        // Start drawing
-                        self.drawing_start = Some((canvas_pos.x, canvas_pos.y));
-                    }
-                }
-            }
 
-            if !response.dragged() && self.drawing_start.is_some() {
-                if let Some(start) = self.drawing_start {
-                    let end_pos = response.interact_pointer_pos().unwrap_or_default();
-                    let end_canvas = egui::pos2(end_pos.x - rect.min.x, end_pos.y - rect.min.y);
+                    if !canvas_response.dragged() && self.drawing_start.is_some() {
+                        if let Some(start) = self.drawing_start {
+                            let end_pos =
+                                canvas_response.interact_pointer_pos().unwrap_or_default();
+                            let end_canvas =
+                                egui::pos2(end_pos.x - rect.min.x, end_pos.y - rect.min.y);
 
-                    let shape = match self.current_tool {
-                        DrawingTool::Rectangle => {
-                            let width = (end_canvas.x - start.0).abs();
-                            let height = (end_canvas.y - start.1).abs();
-                            let x = start.0.min(end_canvas.x);
-                            let y = start.1.min(end_canvas.y);
-                            Shape::Rectangle {
-                                x,
-                                y,
-                                width,
-                                height,
-                            }
-                        }
-                        DrawingTool::Circle => {
-                            let radius = ((end_canvas.x - start.0).powi(2)
-                                + (end_canvas.y - start.1).powi(2))
-                            .sqrt();
-                            Shape::Circle {
-                                x: start.0,
-                                y: start.1,
-                                radius,
-                            }
-                        }
-                        DrawingTool::Line => Shape::Line {
-                            x1: start.0,
-                            y1: start.1,
-                            x2: end_canvas.x,
-                            y2: end_canvas.y,
-                        },
-                        DrawingTool::Text => {
-                            // For text, just place at click position with default text
-                            Shape::Text {
-                                x: start.0,
-                                y: start.1,
-                                text: "Text".to_string(),
-                                font_size: 16.0,
-                            }
-                        }
-                        DrawingTool::Drill => {
-                            // For drill, place at click position with default depth
-                            Shape::Drill {
-                                x: start.0,
-                                y: start.1,
-                                depth: 5.0,
-                            }
-                        }
-                        DrawingTool::Pocket => {
-                            let width = (end_canvas.x - start.0).abs();
-                            let height = (end_canvas.y - start.1).abs();
-                            let x = start.0.min(end_canvas.x);
-                            let y = start.1.min(end_canvas.y);
-                            Shape::Pocket {
-                                x,
-                                y,
-                                width,
-                                height,
-                                depth: 5.0,
-                                stepover: 1.0,
-                                pattern: self.current_pattern.clone(),
-                            }
-                        }
-                        DrawingTool::Cylinder => {
-                            let radius = ((end_canvas.x - start.0).powi(2)
-                                + (end_canvas.y - start.1).powi(2))
-                            .sqrt();
-                            Shape::Cylinder {
-                                x: start.0,
-                                y: start.1,
-                                radius,
-                                height: 10.0,
-                                depth: 5.0,
-                            }
-                        }
-                        DrawingTool::Sphere => {
-                            let radius = ((end_canvas.x - start.0).powi(2)
-                                + (end_canvas.y - start.1).powi(2))
-                            .sqrt();
-                            Shape::Sphere {
-                                x: start.0,
-                                y: start.1,
-                                radius,
-                                depth: 5.0,
-                            }
-                        }
-                        DrawingTool::Extrusion => {
-                            let width = (end_canvas.x - start.0).abs();
-                            let height = (end_canvas.y - start.1).abs();
-                            let x = start.0.min(end_canvas.x);
-                            let y = start.1.min(end_canvas.y);
-                            Shape::Extrusion {
-                                x,
-                                y,
-                                width,
-                                height,
-                                depth: 5.0,
-                            }
-                        }
-                        DrawingTool::Turning => {
-                            let diameter = (end_canvas.x - start.0).abs();
-                            let length = (end_canvas.y - start.1).abs();
-                            Shape::Turning {
-                                x: start.0,
-                                y: start.1,
-                                diameter,
-                                length,
-                                depth: 2.0,
-                            }
-                        }
-                        DrawingTool::Facing => {
-                            let width = (end_canvas.x - start.0).abs();
-                            let length = (end_canvas.y - start.1).abs();
-                            let x = start.0.min(end_canvas.x);
-                            let y = start.1.min(end_canvas.y);
-                            Shape::Facing {
-                                x,
-                                y,
-                                width,
-                                length,
-                                depth: 1.0,
-                            }
-                        }
-                        DrawingTool::Threading => {
-                            let diameter = (end_canvas.x - start.0).abs();
-                            let length = (end_canvas.y - start.1).abs();
-                            Shape::Threading {
-                                x: start.0,
-                                y: start.1,
-                                diameter,
-                                length,
-                                pitch: 1.5,
-                                depth: 1.0,
-                            }
-                        }
-                        DrawingTool::Polyline => {
-                            // Create polyline from accumulated points
-                            let points = if self.current_polyline_points.len() >= 2 {
-                                self.current_polyline_points.clone()
-                            } else {
-                                vec![(start.0, start.1), (end_canvas.x, end_canvas.y)]
+                            let shape_opt = match self.current_tool {
+                                DrawingTool::Rectangle => {
+                                    let width = (end_canvas.x - start.0).abs();
+                                    let height = (end_canvas.y - start.1).abs();
+                                    let x = start.0.min(end_canvas.x);
+                                    let y = start.1.min(end_canvas.y);
+                                    Some(Shape::Rectangle {
+                                        x,
+                                        y,
+                                        width,
+                                        height,
+                                    })
+                                }
+                                DrawingTool::Circle => {
+                                    let radius = ((end_canvas.x - start.0).powi(2)
+                                        + (end_canvas.y - start.1).powi(2))
+                                    .sqrt();
+                                    Some(Shape::Circle {
+                                        x: start.0,
+                                        y: start.1,
+                                        radius,
+                                    })
+                                }
+                                DrawingTool::Polyline => {
+                                    // Create polyline from accumulated points
+                                    let points = if self.current_polyline_points.len() >= 2 {
+                                        self.current_polyline_points.clone()
+                                    } else {
+                                        vec![(start.0, start.1), (end_canvas.x, end_canvas.y)]
+                                    };
+                                    Some(Shape::Polyline { points })
+                                }
+                                DrawingTool::Line => Some(Shape::Line {
+                                    x1: start.0,
+                                    y1: start.1,
+                                    x2: end_canvas.x,
+                                    y2: end_canvas.y,
+                                }),
+                                DrawingTool::Text => {
+                                    // For text, just place at click position with default text
+                                    Some(Shape::Text {
+                                        x: start.0,
+                                        y: start.1,
+                                        text: "Text".to_string(),
+                                        font_size: 16.0,
+                                    })
+                                },
+                                DrawingTool::Drill => {
+                                    // For drill, place at click position with default depth
+                                    Some(Shape::Drill {
+                                        x: start.0,
+                                        y: start.1,
+                                        depth: 5.0,
+                                    })
+                                },
+                                DrawingTool::Pocket => {
+                                    let width = (end_canvas.x - start.0).abs();
+                                    let height = (end_canvas.y - start.1).abs();
+                                    let x = start.0.min(end_canvas.x);
+                                    let y = start.1.min(end_canvas.y);
+                                    Some(Shape::Pocket {
+                                        x,
+                                        y,
+                                        width,
+                                        height,
+                                        depth: 5.0,
+                                        stepover: 1.0,
+                                        pattern: self.current_pattern.clone(),
+                                    })
+                                },
+                                DrawingTool::Cylinder => {
+                                    let radius = ((end_canvas.x - start.0).powi(2)
+                                        + (end_canvas.y - start.1).powi(2))
+                                    .sqrt();
+                                    Some(Shape::Cylinder {
+                                        x: start.0,
+                                        y: start.1,
+                                        radius,
+                                        height: 10.0,
+                                        depth: 5.0,
+                                    })
+                                },
+                                DrawingTool::Sphere => {
+                                    let radius = ((end_canvas.x - start.0).powi(2)
+                                        + (end_canvas.y - start.1).powi(2))
+                                    .sqrt();
+                                    Some(Shape::Sphere {
+                                        x: start.0,
+                                        y: start.1,
+                                        radius,
+                                        depth: 5.0,
+                                    })
+                                },
+                                DrawingTool::Extrusion => {
+                                    let width = (end_canvas.x - start.0).abs();
+                                    let height = (end_canvas.y - start.1).abs();
+                                    let x = start.0.min(end_canvas.x);
+                                    let y = start.1.min(end_canvas.y);
+                                    Some(Shape::Extrusion {
+                                        x,
+                                        y,
+                                        width,
+                                        height,
+                                        depth: 5.0,
+                                    })
+                                }
+                                DrawingTool::Pencil | DrawingTool::Pen | DrawingTool::Calligraphy | DrawingTool::Node => {
+                                    // TODO: Implement these drawing tools
+                                    None
+                                }
+                                // Temporarily disabled - do nothing for unsupported tools
+                                _ => None,
                             };
-                            Shape::Polyline { points }
-                        }
-                        DrawingTool::Parametric => {
-                            // For parametric, create with default script
-                            Shape::Parametric {
-                                script: "x = 10 * cos(t); y = 10 * sin(t);".to_string(),
-                                ast: None,
-                                bounds: (start.0, start.1, end_canvas.x, end_canvas.y),
+
+                            if let Some(shape) = shape_opt {
+                                self.execute_command(Box::new(AddShapeCommand::new(shape)));
                             }
                         }
-                        DrawingTool::Move
-                        | DrawingTool::Scale
-                        | DrawingTool::Rotate
-                        | DrawingTool::Mirror
-                        | DrawingTool::Select => {
-                            // Manipulation tools don't create new shapes
-                            return;
-                        }
-                    };
+                        self.drawing_start = None;
+                        self.current_polyline_points.clear();
+                    }
 
-                    self.execute_command(Box::new(AddShapeCommand::new(shape)));
-                }
-                self.drawing_start = None;
-                self.current_polyline_points.clear();
-            }
-
-            // Handle manipulation
-            if matches!(self.current_tool, DrawingTool::Move)
-                && self.selected_shape.is_some()
-                && response.dragged()
-                && let Some(pos) = response.interact_pointer_pos()
-            {
-                let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
-                if self.drag_start_pos.is_none() {
-                    // Record start pos
-                    if let Some(index) = self.selected_shape
-                        && let Some(shape) = self.shapes.get(index)
+                    // Handle manipulation
+                    if matches!(self.current_tool, DrawingTool::Move)
+                        && self.selected_shape.is_some()
+                        && canvas_response.dragged()
+                        && let Some(pos) = canvas_response.interact_pointer_pos()
                     {
-                        self.drag_start_pos = Some(Self::get_shape_pos(shape));
-                    }
-                }
-                // Update pos
-                if let Some(index) = self.selected_shape
-                    && let Some(shape) = self.shapes.get_mut(index)
-                {
-                    Self::set_shape_pos(shape, (canvas_pos.x, canvas_pos.y));
-                }
-            }
-
-            if self.drag_start_pos.is_some() && !response.dragged() {
-                if let Some(index) = self.selected_shape
-                    && let Some(shape) = self.shapes.get(index)
-                {
-                    let current_pos = Self::get_shape_pos(shape);
-                    if let Some(old_pos) = self.drag_start_pos
-                        && old_pos != current_pos
-                    {
-                        self.execute_command(Box::new(MoveShapeCommand::new(
-                            index,
-                            old_pos,
-                            current_pos,
-                        )));
-                    }
-                }
-                self.drag_start_pos = None;
-            }
-
-            // Handle scale tool
-            if matches!(self.current_tool, DrawingTool::Scale)
-                && self.selected_shape.is_some()
-                && response.dragged()
-                && let Some(pos) = response.interact_pointer_pos()
-            {
-                let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
-                if self.manipulation_start.is_none() {
-                    self.manipulation_start = Some((canvas_pos.x, canvas_pos.y));
-                    if let Some(index) = self.selected_shape {
-                        self.original_shape = self.shapes.get(index).cloned();
-                        // Calculate initial scale based on distance from shape center
-                        if let Some(shape) = self.shapes.get(index) {
-                            let center = Self::get_shape_center(shape);
-                            let dist = ((canvas_pos.x - center.0).powi(2)
-                                + (canvas_pos.y - center.1).powi(2))
-                            .sqrt();
-                            self.scale_start = Some((1.0, 1.0)); // Start with no scaling
+                        let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
+                        if let Some(index) = self.selected_shape {
+                            if let Some(shape) = self.shapes.get_mut(index) {
+                                let shape_pos = DesignerState::get_shape_pos(shape);
+                                let (dx, dy) = if let Some(start) = self.drag_start_pos {
+                                    (canvas_pos.x - start.0, canvas_pos.y - start.1)
+                                } else {
+                                    self.drag_start_pos = Some((canvas_pos.x, canvas_pos.y));
+                                    (0.0, 0.0)
+                                };
+                                DesignerState::set_shape_pos(
+                                    shape,
+                                    (shape_pos.0 + dx, shape_pos.1 + dy),
+                                );
+                            }
                         }
-                    }
-                }
-
-                if let Some(index) = self.selected_shape
-                    && let Some(start_pos) = self.manipulation_start
-                    && let Some(shape) = self.shapes.get(index)
-                {
-                    let center = Self::get_shape_center(shape);
-                    let start_dist = ((start_pos.0 - center.0).powi(2)
-                        + (start_pos.1 - center.1).powi(2))
-                    .sqrt();
-                    let current_dist = ((canvas_pos.x - center.0).powi(2)
-                        + (canvas_pos.y - center.1).powi(2))
-                    .sqrt();
-
-                    if start_dist > 0.0 {
-                        let scale_factor = current_dist / start_dist;
-                        let scale = (scale_factor, scale_factor); // Uniform scaling for now
-                        self.current_scale = Some(scale);
-
-                        // Reset to original and apply new scale
-                        if let Some(original) = &self.original_shape {
-                            self.shapes[index] = original.clone();
-                            Self::scale_shape(&mut self.shapes[index], scale, center);
-                        }
-                    }
-                }
-            }
-
-            // Handle rotate tool
-            if matches!(self.current_tool, DrawingTool::Rotate)
-                && self.selected_shape.is_some()
-                && response.dragged()
-                && let Some(pos) = response.interact_pointer_pos()
-            {
-                let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
-                if self.manipulation_start.is_none() {
-                    self.manipulation_start = Some((canvas_pos.x, canvas_pos.y));
-                    if let Some(index) = self.selected_shape {
-                        self.original_shape = self.shapes.get(index).cloned();
-                        if let Some(shape) = self.shapes.get(index) {
-                            let center = Self::get_shape_center(shape);
-                            let angle = (canvas_pos.y - center.1)
-                                .atan2(canvas_pos.x - center.0)
-                                .to_degrees();
-                            self.rotation_start = Some(angle);
-                        }
-                    }
-                }
-
-                if let Some(index) = self.selected_shape
-                    && let Some(start_pos) = self.manipulation_start
-                    && let Some(start_angle) = self.rotation_start
-                    && let Some(shape) = self.shapes.get(index)
-                {
-                    let center = Self::get_shape_center(shape);
-                    let current_angle = (canvas_pos.y - center.1)
-                        .atan2(canvas_pos.x - center.0)
-                        .to_degrees();
-                    let angle_diff = current_angle - start_angle;
-                    self.current_rotation = Some(angle_diff);
-
-                    // Reset to original and apply new rotation
-                    if let Some(original) = &self.original_shape {
-                        self.shapes[index] = original.clone();
-                        Self::rotate_shape(&mut self.shapes[index], angle_diff, center);
-                    }
-                }
-            }
-
-            // Handle mirror tool
-            if matches!(self.current_tool, DrawingTool::Mirror)
-                && self.selected_shape.is_some()
-                && response.clicked()
-                && let Some(pos) = response.interact_pointer_pos()
-            {
-                let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
-                if let Some(index) = self.selected_shape
-                    && let Some(shape) = self.shapes.get(index)
-                {
-                    let center = Self::get_shape_center(shape);
-                    let axis = if (canvas_pos.x - center.0).abs() > (canvas_pos.y - center.1).abs()
-                    {
-                        MirrorAxis::Horizontal
                     } else {
-                        MirrorAxis::Vertical
-                    };
+                        self.drag_start_pos = None;
+                    }
 
-                    self.execute_command(Box::new(MirrorShapeCommand::new(index, axis)));
-                }
-            }
+                    // Draw shapes
+                    let painter = ui.painter();
+                    for (i, shape) in self.shapes.iter().enumerate() {
+                        let is_selected = Some(i) == self.selected_shape;
+                        self.draw_shape(painter, shape, is_selected);
+                    }
 
-            // Complete manipulation operations
-            if self.manipulation_start.is_some()
-                && !response.dragged()
-                && matches!(self.current_tool, DrawingTool::Scale | DrawingTool::Rotate)
-            {
-                // For scale and rotate, we need to create commands when manipulation ends
-                if let Some(index) = self.selected_shape
-                    && let Some(original) = &self.original_shape
-                    && let Some(shape) = self.shapes.get(index)
-                {
-                    match self.current_tool {
-                        DrawingTool::Scale => {
-                            if let Some(start_scale) = self.scale_start
-                                && let Some(final_scale) = self.current_scale
-                            {
-                                let center = Self::get_shape_center(original);
-                                self.execute_command(Box::new(ScaleShapeCommand::new(
-                                    index,
-                                    start_scale,
-                                    final_scale,
-                                    center,
-                                )));
-                            }
-                        }
-                        DrawingTool::Rotate => {
-                            if let Some(start_angle) = self.rotation_start
-                                && let Some(angle_diff) = self.current_rotation
-                            {
-                                let center = Self::get_shape_center(original);
-                                let final_angle = start_angle + angle_diff;
-                                self.execute_command(Box::new(RotateShapeCommand::new(
-                                    index,
-                                    start_angle,
-                                    final_angle,
-                                    center,
-                                )));
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-
-                self.manipulation_start = None;
-                self.original_shape = None;
-                self.scale_start = None;
-                self.rotation_start = None;
-                self.current_scale = None;
-                self.current_rotation = None;
-            }
-
-            // Draw shapes
-            let painter = ui.painter();
-            for (i, shape) in self.shapes.iter().enumerate() {
-                let color = if Some(i) == self.selected_shape {
-                    egui::Color32::YELLOW
-                } else {
-                    egui::Color32::WHITE
-                };
-
-                match shape {
-                    Shape::Rectangle {
-                        x,
-                        y,
-                        width,
-                        height,
-                    } => {
-                        let rect = egui::Rect::from_min_size(
-                            egui::pos2(rect.min.x + x, rect.min.y + y),
-                            egui::vec2(*width, *height),
-                        );
-                        painter.rect_stroke(
-                            rect,
-                            egui::CornerRadius::ZERO,
-                            egui::Stroke::new(2.0, color),
-                            egui::StrokeKind::Outside,
-                        );
-                    }
-                    Shape::Circle { x, y, radius } => {
-                        let center = egui::pos2(rect.min.x + x, rect.min.y + y);
-                        painter.circle_stroke(center, *radius, egui::Stroke::new(2.0, color));
-                    }
-                    Shape::Line { x1, y1, x2, y2 } => {
-                        let start = egui::pos2(rect.min.x + x1, rect.min.y + y1);
-                        let end = egui::pos2(rect.min.x + x2, rect.min.y + y2);
-                        painter.line_segment([start, end], egui::Stroke::new(2.0, color));
-                    }
-                    Shape::Text {
-                        x,
-                        y,
-                        text,
-                        font_size,
-                    } => {
-                        let pos = egui::pos2(rect.min.x + x, rect.min.y + y);
-                        painter.text(
-                            pos,
-                            egui::Align2::LEFT_TOP,
-                            text,
-                            egui::FontId::monospace(*font_size),
-                            color,
-                        );
-                    }
-                    Shape::Drill { x, y, .. } => {
-                        let center = egui::pos2(rect.min.x + x, rect.min.y + y);
-                        painter.circle_stroke(center, 3.0, egui::Stroke::new(2.0, color));
-                        painter.line_segment(
-                            [center - egui::vec2(0.0, 5.0), center + egui::vec2(0.0, 5.0)],
-                            egui::Stroke::new(1.0, color),
-                        );
-                        painter.line_segment(
-                            [center - egui::vec2(5.0, 0.0), center + egui::vec2(5.0, 0.0)],
-                            egui::Stroke::new(1.0, color),
-                        );
-                    }
-                    Shape::Pocket {
-                        x,
-                        y,
-                        width,
-                        height,
-                        ..
-                    } => {
-                        let rect = egui::Rect::from_min_size(
-                            egui::pos2(rect.min.x + x, rect.min.y + y),
-                            egui::vec2(*width, *height),
-                        );
-                        painter.rect_stroke(
-                            rect,
-                            egui::CornerRadius::ZERO,
-                            egui::Stroke::new(2.0, color),
-                            egui::StrokeKind::Outside,
-                        );
-                        // Draw pocket indicator
-                        let center = rect.center();
-                        painter.text(
-                            center,
-                            egui::Align2::CENTER_CENTER,
-                            "P",
-                            egui::FontId::monospace(12.0),
-                            color,
-                        );
-                    }
-                    Shape::Cylinder {
-                        x,
-                        y,
-                        radius,
-                        height,
-                        ..
-                    } => {
-                        let center = egui::pos2(rect.min.x + x, rect.min.y + y);
-                        painter.circle_stroke(center, *radius, egui::Stroke::new(2.0, color));
-                        let top = egui::pos2(rect.min.x + x, rect.min.y + y - *height / 2.0);
-                        let bottom = egui::pos2(rect.min.x + x, rect.min.y + y + *height / 2.0);
-                        painter.line_segment([top, bottom], egui::Stroke::new(2.0, color));
-                        painter.text(
-                            center,
-                            egui::Align2::CENTER_CENTER,
-                            "C",
-                            egui::FontId::monospace(12.0),
-                            color,
-                        );
-                    }
-                    Shape::Sphere { x, y, radius, .. } => {
-                        let center = egui::pos2(rect.min.x + x, rect.min.y + y);
-                        painter.circle_stroke(center, *radius, egui::Stroke::new(2.0, color));
-                        painter.text(
-                            center,
-                            egui::Align2::CENTER_CENTER,
-                            "S",
-                            egui::FontId::monospace(12.0),
-                            color,
-                        );
-                    }
-                    Shape::Extrusion {
-                        x,
-                        y,
-                        width,
-                        height,
-                        ..
-                    } => {
-                        let rect = egui::Rect::from_min_size(
-                            egui::pos2(rect.min.x + x, rect.min.y + y),
-                            egui::vec2(*width, *height),
-                        );
-                        painter.rect_stroke(
-                            rect,
-                            egui::CornerRadius::ZERO,
-                            egui::Stroke::new(2.0, color),
-                            egui::StrokeKind::Outside,
-                        );
-                        let center = rect.center();
-                        painter.text(
-                            center,
-                            egui::Align2::CENTER_CENTER,
-                            "E",
-                            egui::FontId::monospace(12.0),
-                            color,
-                        );
-                    }
-                    Shape::Turning {
-                        x,
-                        y,
-                        diameter,
-                        length,
-                        ..
-                    } => {
-                        let center = egui::pos2(rect.min.x + x + diameter / 2.0, rect.min.y + y);
-                        painter.circle_stroke(
-                            center,
-                            diameter / 2.0,
-                            egui::Stroke::new(2.0, color),
-                        );
-                        let end =
-                            egui::pos2(rect.min.x + x + diameter / 2.0, rect.min.y + y + length);
-                        painter.line_segment([center, end], egui::Stroke::new(2.0, color));
-                        painter.text(
-                            center,
-                            egui::Align2::CENTER_CENTER,
-                            "T",
-                            egui::FontId::monospace(12.0),
-                            color,
-                        );
-                    }
-                    Shape::Facing {
-                        x,
-                        y,
-                        width,
-                        length,
-                        ..
-                    } => {
-                        let rect = egui::Rect::from_min_size(
-                            egui::pos2(rect.min.x + x, rect.min.y + y),
-                            egui::vec2(*width, *length),
-                        );
-                        painter.rect_stroke(
-                            rect,
-                            egui::CornerRadius::ZERO,
-                            egui::Stroke::new(2.0, color),
-                            egui::StrokeKind::Outside,
-                        );
-                        let center = rect.center();
-                        painter.text(
-                            center,
-                            egui::Align2::CENTER_CENTER,
-                            "F",
-                            egui::FontId::monospace(12.0),
-                            color,
-                        );
-                    }
-                    Shape::Threading {
-                        x,
-                        y,
-                        diameter,
-                        length,
-                        ..
-                    } => {
-                        let center = egui::pos2(rect.min.x + x + diameter / 2.0, rect.min.y + y);
-                        painter.circle_stroke(
-                            center,
-                            diameter / 2.0,
-                            egui::Stroke::new(2.0, color),
-                        );
-                        let end =
-                            egui::pos2(rect.min.x + x + diameter / 2.0, rect.min.y + y + length);
-                        painter.line_segment([center, end], egui::Stroke::new(2.0, color));
-                        painter.text(
-                            center,
-                            egui::Align2::CENTER_CENTER,
-                            "Th",
-                            egui::FontId::monospace(10.0),
-                            color,
-                        );
-                    }
-                    Shape::Polyline { points } => {
-                        for window in points.windows(2) {
-                            let start =
-                                egui::pos2(rect.min.x + window[0].0, rect.min.y + window[0].1);
-                            let end =
-                                egui::pos2(rect.min.x + window[1].0, rect.min.y + window[1].1);
-                            painter.line_segment([start, end], egui::Stroke::new(2.0, color));
-                        }
-                        if let Some(first) = points.first() {
-                            let pos = egui::pos2(rect.min.x + first.0, rect.min.y + first.1);
-                            painter.text(
-                                pos,
-                                egui::Align2::LEFT_TOP,
-                                "PL",
-                                egui::FontId::monospace(10.0),
-                                color,
+                    // Draw current polyline being created
+                    if !self.current_polyline_points.is_empty() {
+                        for window in self.current_polyline_points.windows(2) {
+                            painter.line_segment(
+                                [
+                                    egui::pos2(rect.min.x + window[0].0, rect.min.y + window[0].1),
+                                    egui::pos2(rect.min.x + window[1].0, rect.min.y + window[1].1),
+                                ],
+                                egui::Stroke::new(2.0, egui::Color32::BLUE),
                             );
                         }
                     }
-                    Shape::Parametric { bounds, .. } => {
-                        let rect_bounds = egui::Rect::from_min_max(
-                            egui::pos2(rect.min.x + bounds.0, rect.min.y + bounds.1),
-                            egui::pos2(rect.min.x + bounds.2, rect.min.y + bounds.3),
-                        );
-                        painter.rect_stroke(
-                            rect_bounds,
-                            egui::CornerRadius::ZERO,
-                            egui::Stroke::new(2.0, color),
-                            egui::StrokeKind::Outside,
-                        );
-                        let center = rect_bounds.center();
-                        painter.text(
-                            center,
-                            egui::Align2::CENTER_CENTER,
-                            "P",
-                            egui::FontId::monospace(12.0),
-                            color,
-                        );
-                    }
-                }
-            }
 
-            // Draw manipulation handles for selected shape
-            if let Some(selected_idx) = self.selected_shape {
-                if let Some(shape) = self.shapes.get(selected_idx) {
-                    self.draw_manipulation_handles(painter, shape, rect);
-                }
-            }
+                    // Draw grid if enabled
+                    if self.show_grid {
+                        self.draw_grid(painter, rect);
+                    }
+                });
 
-            // Draw current drawing preview
-            if let Some(start) = self.drawing_start
-                && let Some(current_pos) = response.hover_pos()
-            {
-                let current_canvas =
-                    egui::pos2(current_pos.x - rect.min.x, current_pos.y - rect.min.y);
+                ui.separator();
 
-                match self.current_tool {
-                    DrawingTool::Rectangle => {
-                        let width = (current_canvas.x - start.0).abs();
-                        let height = (current_canvas.y - start.1).abs();
-                        let x = start.0.min(current_canvas.x);
-                        let y = start.1.min(current_canvas.y);
-                        let rect = egui::Rect::from_min_size(
-                            egui::pos2(rect.min.x + x, rect.min.y + y),
-                            egui::vec2(width, height),
-                        );
-                        painter.rect_stroke(
-                            rect,
-                            egui::CornerRadius::ZERO,
-                            egui::Stroke::new(1.0, egui::Color32::GRAY),
-                            egui::StrokeKind::Outside,
-                        );
-                    }
-                    DrawingTool::Circle => {
-                        let radius = ((current_canvas.x - start.0).powi(2)
-                            + (current_canvas.y - start.1).powi(2))
-                        .sqrt();
-                        let center = egui::pos2(rect.min.x + start.0, rect.min.y + start.1);
-                        painter.circle_stroke(
-                            center,
-                            radius,
-                            egui::Stroke::new(1.0, egui::Color32::GRAY),
-                        );
-                    }
-                    DrawingTool::Line => {
-                        let start_pos = egui::pos2(rect.min.x + start.0, rect.min.y + start.1);
-                        let end_pos = egui::pos2(
-                            rect.min.x + current_canvas.x,
-                            rect.min.y + current_canvas.y,
-                        );
-                        painter.line_segment(
-                            [start_pos, end_pos],
-                            egui::Stroke::new(1.0, egui::Color32::GRAY),
-                        );
-                    }
-                    DrawingTool::Text => {
-                        // No preview for text
-                    }
-                    DrawingTool::Drill => {
-                        // No preview for drill
-                    }
-                    DrawingTool::Pocket => {
-                        let width = (current_canvas.x - start.0).abs();
-                        let height = (current_canvas.y - start.1).abs();
-                        let x = start.0.min(current_canvas.x);
-                        let y = start.1.min(current_canvas.y);
-                        let rect = egui::Rect::from_min_size(
-                            egui::pos2(rect.min.x + x, rect.min.y + y),
-                            egui::vec2(width, height),
-                        );
-                        painter.rect_stroke(
-                            rect,
-                            egui::CornerRadius::ZERO,
-                            egui::Stroke::new(1.0, egui::Color32::BLUE),
-                            egui::StrokeKind::Outside,
-                        );
-                    }
-                    DrawingTool::Cylinder => {
-                        let radius = ((current_canvas.x - start.0).powi(2)
-                            + (current_canvas.y - start.1).powi(2))
-                        .sqrt();
-                        let center = egui::pos2(rect.min.x + start.0, rect.min.y + start.1);
-                        painter.circle_stroke(
-                            center,
-                            radius,
-                            egui::Stroke::new(1.0, egui::Color32::GREEN),
-                        );
-                    }
-                    DrawingTool::Sphere => {
-                        let radius = ((current_canvas.x - start.0).powi(2)
-                            + (current_canvas.y - start.1).powi(2))
-                        .sqrt();
-                        let center = egui::pos2(rect.min.x + start.0, rect.min.y + start.1);
-                        painter.circle_stroke(
-                            center,
-                            radius,
-                            egui::Stroke::new(1.0, egui::Color32::PURPLE),
-                        );
-                    }
-                    DrawingTool::Extrusion => {
-                        let width = (current_canvas.x - start.0).abs();
-                        let height = (current_canvas.y - start.1).abs();
-                        let x = start.0.min(current_canvas.x);
-                        let y = start.1.min(current_canvas.y);
-                        let rect = egui::Rect::from_min_size(
-                            egui::pos2(rect.min.x + x, rect.min.y + y),
-                            egui::vec2(width, height),
-                        );
-                        painter.rect_stroke(
-                            rect,
-                            egui::CornerRadius::ZERO,
-                            egui::Stroke::new(1.0, egui::Color32::ORANGE),
-                            egui::StrokeKind::Outside,
-                        );
-                    }
-                    DrawingTool::Turning => {
-                        let diameter = (current_canvas.x - start.0).abs();
-                        let length = (current_canvas.y - start.1).abs();
-                        let center =
-                            egui::pos2(rect.min.x + start.0 + diameter / 2.0, rect.min.y + start.1);
-                        painter.circle_stroke(
-                            center,
-                            diameter / 2.0,
-                            egui::Stroke::new(1.0, egui::Color32::RED),
-                        );
-                        let end = egui::pos2(
-                            rect.min.x + start.0 + diameter / 2.0,
-                            rect.min.y + start.1 + length,
-                        );
-                        painter.line_segment(
-                            [center, end],
-                            egui::Stroke::new(1.0, egui::Color32::RED),
-                        );
-                    }
-                    DrawingTool::Facing => {
-                        let width = (current_canvas.x - start.0).abs();
-                        let length = (current_canvas.y - start.1).abs();
-                        let x = start.0.min(current_canvas.x);
-                        let y = start.1.min(current_canvas.y);
-                        let rect = egui::Rect::from_min_size(
-                            egui::pos2(rect.min.x + x, rect.min.y + y),
-                            egui::vec2(width, length),
-                        );
-                        painter.rect_stroke(
-                            rect,
-                            egui::CornerRadius::ZERO,
-                            egui::Stroke::new(1.0, egui::Color32::CYAN),
-                            egui::StrokeKind::Outside,
-                        );
-                    }
-                    DrawingTool::Threading => {
-                        let diameter = (current_canvas.x - start.0).abs();
-                        let length = (current_canvas.y - start.1).abs();
-                        let center =
-                            egui::pos2(rect.min.x + start.0 + diameter / 2.0, rect.min.y + start.1);
-                        painter.circle_stroke(
-                            center,
-                            diameter / 2.0,
-                            egui::Stroke::new(1.0, egui::Color32::MAGENTA),
-                        );
-                        let end = egui::pos2(
-                            rect.min.x + start.0 + diameter / 2.0,
-                            rect.min.y + start.1 + length,
-                        );
-                        painter.line_segment(
-                            [center, end],
-                            egui::Stroke::new(1.0, egui::Color32::MAGENTA),
-                        );
-                    }
-                    DrawingTool::Polyline => {
-                        // Draw all current polyline points
-                        if !self.current_polyline_points.is_empty() {
-                            let mut points = self
-                                .current_polyline_points
-                                .iter()
-                                .map(|(x, y)| egui::pos2(rect.min.x + x, rect.min.y + y))
-                                .collect::<Vec<_>>();
-
-                            // Add current mouse position as potential next point
-                            points.push(egui::pos2(
-                                rect.min.x + current_canvas.x,
-                                rect.min.y + current_canvas.y,
-                            ));
-
-                            // Draw lines between points
-                            for window in points.windows(2) {
-                                painter.line_segment(
-                                    [window[0], window[1]],
-                                    egui::Stroke::new(1.0, egui::Color32::BLUE),
-                                );
-                            }
-
-                            // Draw point markers
-                            for &point in &points[..points.len().saturating_sub(1)] {
-                                painter.circle_filled(point, 3.0, egui::Color32::BLUE);
-                            }
-                        }
-                    }
-                    DrawingTool::Parametric => {
-                        let rect = egui::Rect::from_min_max(
-                            egui::pos2(rect.min.x + start.0, rect.min.y + start.1),
-                            egui::pos2(
-                                rect.min.x + current_canvas.x,
-                                rect.min.y + current_canvas.y,
-                            ),
-                        );
-                        painter.rect_stroke(
-                            rect,
-                            egui::CornerRadius::ZERO,
-                            egui::Stroke::new(1.0, egui::Color32::GREEN),
-                            egui::StrokeKind::Outside,
-                        );
-                    }
-                    DrawingTool::Move
-                    | DrawingTool::Scale
-                    | DrawingTool::Rotate
-                    | DrawingTool::Mirror => {
-                        // No preview for manipulation tools
-                    }
-                    DrawingTool::Select => {}
-                }
-            }
-
-            // Draw grid
-            if self.show_grid {
-                let grid_spacing = 50.0;
-                let grid_color = egui::Color32::from_gray(200);
-                let stroke = egui::Stroke::new(1.0, grid_color);
-
-                // Vertical lines
-                let mut x = 0.0;
-                while x <= rect.width() {
-                    let start = egui::pos2(rect.min.x + x, rect.min.y);
-                    let end = egui::pos2(rect.min.x + x, rect.min.y + rect.height());
-                    painter.line_segment([start, end], stroke);
-                    x += grid_spacing;
-                }
-
-                // Horizontal lines
-                let mut y = 0.0;
-                while y <= rect.height() {
-                    let start = egui::pos2(rect.min.x, rect.min.y + y);
-                    let end = egui::pos2(rect.min.x + rect.width(), rect.min.y + y);
-                    painter.line_segment([start, end], stroke);
-                    y += grid_spacing;
-                }
-            }
+                // Right panels
+                ui.vertical(|ui| {
+                    ui.set_width(200.0);
+                    ui.heading("Panels");
+                    // Placeholder for right panels
+                    ui.label("Right panels coming soon...");
+                });
+            });
 
             ui.separator();
-            ui.label(format!("Shapes: {}", self.shapes.len()));
-            ui.label(format!("Current tool: {:?}", self.current_tool));
+
+            // Bottom status bar
+            ui.horizontal(|ui| {
+                ui.label(format!("Shapes: {}", self.shapes.len()));
+                ui.separator();
+                ui.label(format!(
+                    "Selected: {}",
+                    self.selected_shape
+                        .map_or("None".to_string(), |i| format!("Shape {}", i))
+                ));
+                ui.separator();
+                ui.label(format!("Tool: {:?}", self.current_tool));
+                ui.separator();
+                ui.label(format!("Pattern: {:?}", self.current_pattern));
+            });
         });
+
         event
     }
 
@@ -2759,10 +2443,7 @@ impl DesignerState {
                             }
                         }
                         Shape::Parametric { bounds, .. } => {
-                            bounds.0 += offset_x;
-                            bounds.1 += offset_y;
-                            bounds.2 += offset_x;
-                            bounds.3 += offset_y;
+                            _ = bounds;
                         }
                     }
                     new_shapes.push(new_shape);
@@ -2959,6 +2640,7 @@ impl DesignerState {
                 }
                 Shape::Parametric { bounds, .. } => {
                     // Already adjusted
+                    _ = bounds;
                 }
             }
         }
@@ -4070,6 +3752,7 @@ impl DesignerState {
                 }
             }
             Shape::Circle { x, .. } => {
+                _ = x;
                 if matches!(axis, MirrorAxis::Horizontal) {
                     // For circles, mirroring horizontally doesn't change the shape
                     // but we could adjust position if needed
@@ -4083,11 +3766,13 @@ impl DesignerState {
                 }
             }
             Shape::Text { x, .. } => {
+                _ = x;
                 if matches!(axis, MirrorAxis::Horizontal) {
                     // Text mirroring would require more complex text rendering
                 }
             }
             Shape::Drill { x, .. } => {
+                _ = x;
                 if matches!(axis, MirrorAxis::Horizontal) {
                     // Drill positions can be mirrored
                 }
@@ -4099,11 +3784,13 @@ impl DesignerState {
                 }
             }
             Shape::Cylinder { x, .. } => {
+                _ = x;
                 if matches!(axis, MirrorAxis::Horizontal) {
                     // Similar to circles
                 }
             }
             Shape::Sphere { x, .. } => {
+                _ = x;
                 if matches!(axis, MirrorAxis::Horizontal) {
                     // Similar to circles
                 }
@@ -4203,6 +3890,14 @@ mod tests {
             current_polyline_points: Vec::new(),
             selected_cam_operation: CAMOperation::default(),
             cam_params: CAMParameters::default(),
+            viewport_size: egui::vec2(800.0, 600.0), // Test viewport size
+            current_mesh: None,
+            shape_width: 50.0,
+            shape_height: 50.0,
+            shape_radius: 25.0,
+            stroke_width: 2.0,
+            calligraphy_angle: 45.0,
+            text_font_size: 16.0,
         }
     }
 

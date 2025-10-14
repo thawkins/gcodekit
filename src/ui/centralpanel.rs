@@ -1,15 +1,10 @@
-use eframe::egui;
-use egui::text::{LayoutJob, TextFormat};
-use egui::text_edit::TextBuffer;
-use std::collections::HashMap;
-use std::time::Duration;
-
 use crate::GcodeKitApp;
-use crate::types::{MoveType, Tab};
+use crate::types::Tab;
 use crate::ui::tabs::{
     show_designer_tab, show_device_console_tab, show_gcode_editor_tab, show_job_manager_tab,
     show_visualizer_3d_tab,
 };
+use eframe::egui;
 
 impl GcodeKitApp {
     pub fn show_central_panel(&mut self, ctx: &egui::Context) {

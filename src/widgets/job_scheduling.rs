@@ -3,7 +3,7 @@ use eframe::egui;
 use std::time::Duration;
 
 use crate::jobs::manager::JobManager;
-use crate::jobs::{Job, JobType, RepeatInterval, ScheduledJob};
+use crate::jobs::{Job, JobType, RepeatInterval};
 
 pub struct JobSchedulingWidget {
     show_create_dialog: bool,

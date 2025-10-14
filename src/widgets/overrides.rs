@@ -35,7 +35,9 @@ pub fn show_overrides_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                 )
                 .changed()
             {
-                app.machine.communication.send_spindle_override(app.machine.spindle_override);
+                app.machine
+                    .communication
+                    .send_spindle_override(app.machine.spindle_override);
             }
         });
 
@@ -51,7 +53,9 @@ pub fn show_overrides_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                 )
                 .changed()
             {
-                app.machine.communication.send_feed_override(app.machine.feed_override);
+                app.machine
+                    .communication
+                    .send_feed_override(app.machine.feed_override);
             }
         });
 
@@ -60,8 +64,12 @@ pub fn show_overrides_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             if ui.button("Reset to 100%").clicked() {
                 app.machine.spindle_override = 100.0;
                 app.machine.feed_override = 100.0;
-                app.machine.communication.send_spindle_override(app.machine.spindle_override);
-                app.machine.communication.send_feed_override(app.machine.feed_override);
+                app.machine
+                    .communication
+                    .send_spindle_override(app.machine.spindle_override);
+                app.machine
+                    .communication
+                    .send_feed_override(app.machine.feed_override);
             }
         });
 

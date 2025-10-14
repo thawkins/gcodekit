@@ -103,4 +103,3 @@ pub fn show_connection_widget(ui: &mut egui::Ui, communication: &mut dyn CncCont
         }
     });
 }
-

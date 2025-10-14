@@ -61,8 +61,8 @@ pub fn generate_cam_toolpath(operation: &CAMOperation, params: &CAMParameters) -
 
 /// Generate 2D contour toolpath
 fn generate_2d_contour(
-    depth: f32,
-    stepover: f32,
+    _depth: f32,
+    _stepover: f32,
     direction: &ContourDirection,
     params: &CAMParameters,
 ) -> Vec<PathSegment> {
@@ -193,8 +193,8 @@ fn generate_2d_contour(
 
 /// Generate side profile machining toolpath
 fn generate_side_profile(
-    depth: f32,
-    stepover: f32,
+    _depth: f32,
+    _stepover: f32,
     direction: &ContourDirection,
     wall_angle: f32,
     params: &CAMParameters,
@@ -492,8 +492,8 @@ fn generate_turning(
     diameter: f32,
     length: f32,
     finish_pass: f32,
-    roughing_feed: f32,
-    finishing_feed: f32,
+    _roughing_feed: f32,
+    _finishing_feed: f32,
     params: &CAMParameters,
 ) -> Vec<PathSegment> {
     let mut segments = Vec::new();
@@ -615,7 +615,7 @@ fn generate_facing(
 fn generate_threading(
     major_diameter: f32,
     minor_diameter: f32,
-    pitch: f32,
+    _pitch: f32,
     length: f32,
     params: &CAMParameters,
 ) -> Vec<PathSegment> {
@@ -625,7 +625,7 @@ fn generate_threading(
 
     // Threading requires helical interpolation
     // This is a simplified representation
-    let mut current_z = 0.0;
+    let _current_z = 0.0;
     let thread_depth = (major_radius - minor_radius) / 2.0; // Total thread depth
 
     // Multiple threading passes
@@ -665,8 +665,8 @@ fn generate_threading(
 fn add_tabs_to_contour(
     points: &[(f32, f32)],
     tab_width: f32,
-    tab_height: f32,
-    z: f32,
+    _tab_height: f32,
+    _z: f32,
 ) -> Vec<(f32, f32)> {
     let mut result = Vec::new();
     for i in 0..points.len() - 1 {
