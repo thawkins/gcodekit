@@ -51,6 +51,7 @@ Architecture: Modular design with separate modules for:
 - materials: Material database and properties
 - widgets: Individual UI components for different functions
 - main: Application state and UI orchestration
+- tests: Unit and integration tests organized in hierarchy mirroring src/
 
 Development Tools:
 - cargo clippy: Linting with clippy
@@ -96,6 +97,9 @@ Additional Requirements:
   25. **G2core Controller Support**: Full JSON parsing for status reports, spindle/feed override commands, enhanced error recovery ✓
   26. **Configurable UI System**: Dockable window functionality with toggleable left/right panels via View menu ✓
   27. **Advanced CAM Operations**: Part nesting algorithm using bottom-left fill strategy with rotation support ✓
+28. **Test Reorganization**: Tests moved to tests/ folder with hierarchy mirroring src/ ✓
+29. **Build Fixes**: Compilation errors resolved and debug binary built ✓
+30. **Repository Updates**: Changes committed ✓
 
 ## Phase 9: Advanced Error Recovery System (99.9% Uptime Guarantee)
 

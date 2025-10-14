@@ -34,6 +34,23 @@ A professional desktop GUI application for controlling GRBL, Smoothieware, and T
 ## Project Structure
 
 ```
+
+tests/
+├── gcodeedit/
+│   └── mod.rs
+├── jobs/
+│   └── mod.rs
+├── widgets/
+│   ├── connection.rs
+│   ├── gcode_loading.rs
+│   ├── jog.rs
+│   ├── machine_control.rs
+│   ├── overrides.rs
+│   ├── safety.rs
+│   └── tool_management.rs
+├── designer.rs
+└── main.rs
+
 src/
 ├── communication/          # Multi-controller communication protocols
 │   ├── grbl.rs            # GRBL protocol implementation
@@ -62,6 +79,23 @@ src/
 └── communication.rs       # Communication abstraction layer
 ```
 
+tests/
+├── gcodeedit/
+│   └── mod.rs
+├── jobs/
+│   └── mod.rs
+├── widgets/
+│   ├── connection.rs
+│   ├── gcode_loading.rs
+│   ├── jog.rs
+│   ├── machine_control.rs
+│   ├── overrides.rs
+│   ├── safety.rs
+│   └── tool_management.rs
+├── designer.rs
+└── main.rs
+
+
 ## Requirements
 
 - **Rust**: 1.75+ (2024 edition)
@@ -75,10 +109,44 @@ src/
 cargo build --release
 ```
 
+tests/
+├── gcodeedit/
+│   └── mod.rs
+├── jobs/
+│   └── mod.rs
+├── widgets/
+│   ├── connection.rs
+│   ├── gcode_loading.rs
+│   ├── jog.rs
+│   ├── machine_control.rs
+│   ├── overrides.rs
+│   ├── safety.rs
+│   └── tool_management.rs
+├── designer.rs
+└── main.rs
+
+
 ### Development Build
 ```bash
 cargo build
 ```
+
+tests/
+├── gcodeedit/
+│   └── mod.rs
+├── jobs/
+│   └── mod.rs
+├── widgets/
+│   ├── connection.rs
+│   ├── gcode_loading.rs
+│   ├── jog.rs
+│   ├── machine_control.rs
+│   ├── overrides.rs
+│   ├── safety.rs
+│   └── tool_management.rs
+├── designer.rs
+└── main.rs
+
 
 ### Development Tools
 ```bash
@@ -87,6 +155,23 @@ cargo test           # Run unit tests
 cargo clippy         # Linting
 cargo fmt           # Code formatting
 ```
+
+tests/
+├── gcodeedit/
+│   └── mod.rs
+├── jobs/
+│   └── mod.rs
+├── widgets/
+│   ├── connection.rs
+│   ├── gcode_loading.rs
+│   ├── jog.rs
+│   ├── machine_control.rs
+│   ├── overrides.rs
+│   ├── safety.rs
+│   └── tool_management.rs
+├── designer.rs
+└── main.rs
+
 
 ## Usage
 
@@ -116,6 +201,9 @@ cargo fmt           # Code formatting
 - ✅ **G2core Controller Support**: Full JSON parsing for status reports, spindle/feed override commands
 - ✅ **Configurable UI System**: Dockable window functionality with toggleable left/right panels
 - ✅ **Advanced CAM Operations**: Part nesting algorithm using bottom-left fill strategy with rotation support
+- ✅ **Test Organization**: Tests reorganized into tests/ folder with hierarchy mirroring src/
+- ✅ **Build Stability**: Compilation errors fixed and debug binary successfully built
+- ✅ **Version Control**: Changes committed to repository
 - ✅ Vector import (SVG/DXF) with automatic conversion
 - ✅ Boolean operations for shape manipulation
 - ✅ Probing routines and auto-leveling
