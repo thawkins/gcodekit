@@ -63,17 +63,6 @@ pub fn show_center_panel(app: &mut GcodeKitApp, ctx: &egui::Context) {
             crate::types::Tab::Designer => {
                 crate::ui::tabs::show_designer_tab(app, ui);
             }
-            crate::types::Tab::Scripting => {
-                ui.vertical(|ui| {
-                    ui.label("Automation Scripting");
-                    ui.separator();
-                    ui.label("Use Rhai scripting to automate operations:");
-                    ui.text_edit_multiline(&mut app.script_content);
-                    if ui.button("Run Script").clicked() {
-                        app.run_script();
-                    }
-                });
-            }
         }
     });
 

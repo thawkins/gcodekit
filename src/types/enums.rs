@@ -7,9 +7,9 @@ pub enum Tab {
     DeviceConsole,
     JobManager,
     FeedsSpeeds,
-    Scripting,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub enum MachineMode {
     #[default]

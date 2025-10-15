@@ -1,6 +1,5 @@
 /// CAM operation types
-#[derive(Clone, Debug, PartialEq)]
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum CAMOperation {
     /// Default operation
     #[default]
@@ -56,7 +55,6 @@ pub enum CAMOperation {
         length: f32,
     },
 }
-
 
 /// Contour machining direction
 #[derive(Clone, Debug, PartialEq)]

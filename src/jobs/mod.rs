@@ -442,9 +442,10 @@ impl ScheduledJob {
 
         // Check if we've reached max runs
         if let Some(max) = self.max_runs
-            && self.run_count >= max {
-                return false;
-            }
+            && self.run_count >= max
+        {
+            return false;
+        }
 
         // Check if it's time to run
         if let Some(next_run) = self.next_run {

@@ -44,19 +44,6 @@ pub fn show_top_menu(app: &mut GcodeKitApp, ctx: &egui::Context) {
                                 Box::new(crate::communication::GrblCommunication::default());
                             app.machine.communication.refresh_ports();
                         }
-                        if ui
-                            .selectable_value(
-                                &mut app.machine.controller_type,
-                                ControllerType::Smoothieware,
-                                "Smoothieware",
-                            )
-                            .clicked()
-                        {
-                            app.machine.communication = Box::new(
-                                crate::communication::SmoothiewareCommunication::default(),
-                            );
-                            app.machine.communication.refresh_ports();
-                        }
                     });
                     ui.separator();
                     if ui.button("Connect").clicked() {

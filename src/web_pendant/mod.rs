@@ -170,9 +170,10 @@ impl WebPendant {
                 match result {
                     Ok(msg) => {
                         if let Ok(text) = msg.to_str()
-                            && let Ok(command) = serde_json::from_str::<WebPendantMessage>(text) {
-                                let _ = command_sender.send(command);
-                            }
+                            && let Ok(command) = serde_json::from_str::<WebPendantMessage>(text)
+                        {
+                            let _ = command_sender.send(command);
+                        }
                     }
                     Err(_) => break,
                 }
@@ -186,9 +187,10 @@ impl WebPendant {
         // Forward status updates to client
         while let Some(msg) = client_rx.recv().await {
             if let Ok(json) = serde_json::to_string(&msg)
-                && ws_sender.send(Message::text(json)).await.is_err() {
-                    break;
-                }
+                && ws_sender.send(Message::text(json)).await.is_err()
+            {
+                break;
+            }
         }
     }
 

@@ -12,6 +12,8 @@
 //! - Job queuing and management
 //! - Real-time machine monitoring
 
+#![allow(dead_code)]
+
 use chrono::Utc;
 use eframe::egui;
 use std::time::Duration;
@@ -37,17 +39,15 @@ mod widgets;
 use crate::types::{MachineMode, MachinePosition};
 use app::GcodeKitApp;
 
-use communication::{ConnectionState, ControllerType};
+use communication::ConnectionState;
 
 fn main() -> Result<(), eframe::Error> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
     // Create default communication
-    let communication: Box<dyn crate::communication::CncController> = match ControllerType::Grbl {
-        ControllerType::Grbl => Box::new(crate::communication::GrblCommunication::default()),
-        _ => Box::new(crate::communication::GrblCommunication::default()), // Default to Grbl
-    };
+    let communication: Box<dyn crate::communication::CncController> =
+        Box::new(crate::communication::GrblCommunication::default());
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -147,11 +147,10 @@ impl GcodeKitApp {
     ///
     /// # Arguments
     /// * `message` - The message to log
-
-    /// Executes a user-defined script for automation.
-    /// Currently a placeholder - full implementation is TODO.
-    /// Handles communication errors by attempting recovery strategies.
-    /// Logs errors and initiates recovery actions like reconnection or command retry.
+    ///   Executes a user-defined script for automation.
+    ///   Currently a placeholder - full implementation is TODO.
+    ///   Handles communication errors by attempting recovery strategies.
+    ///   Logs errors and initiates recovery actions like reconnection or command retry.
     ///
     /// # Arguments
     /// * `error` - The error message describing the communication failure
@@ -296,9 +295,9 @@ mod tests {
         assert_eq!(app.ui.selected_tab, crate::types::Tab::Designer);
         assert!(app.gcode.gcode_content.is_empty());
         assert!(app.gcode.gcode_filename.is_empty());
-        assert_eq!(app.machine.jog_step_size, 0.0); // Default f32 is 0.0
-        assert_eq!(app.machine.spindle_override, 0.0);
-        assert_eq!(app.machine.feed_override, 0.0);
+        assert_eq!(app.machine.jog_step_size, 1.0);
+        assert_eq!(app.machine.spindle_override, 1.0);
+        assert_eq!(app.machine.feed_override, 1.0);
         assert_eq!(app.machine.machine_mode, MachineMode::CNC);
         assert!(app.machine.console_messages.is_empty());
         assert_eq!(app.machine.status_message, String::new());

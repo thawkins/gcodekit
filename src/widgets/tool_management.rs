@@ -77,13 +77,13 @@ pub fn show_tool_management_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                 .tool_library
                 .iter()
                 .find(|t| t.tool_number == app.cam.current_tool as u32)
-            {
-                let cmd = format!(
-                    "G10 L1 P{} Z{} ; Set tool {} length offset to current position",
-                    tool.tool_number, tool.length_offset, tool.name
-                );
-                app.send_gcode(&cmd);
-            }
+        {
+            let cmd = format!(
+                "G10 L1 P{} Z{} ; Set tool {} length offset to current position",
+                tool.tool_number, tool.length_offset, tool.name
+            );
+            app.send_gcode(&cmd);
+        }
     });
 
     ui.separator();

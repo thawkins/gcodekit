@@ -544,7 +544,10 @@ impl GrblCommunication {
             return None;
         }
 
-        let mut status = GrblStatus { machine_state, ..Default::default() };
+        let mut status = GrblStatus {
+            machine_state,
+            ..Default::default()
+        };
 
         for part in &parts[1..] {
             if let Some(colon_pos) = part.find(':') {
@@ -789,6 +792,7 @@ impl GrblCommunication {
         self.probe_axis('Z', -distance.abs(), feed)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn auto_level_grid(
         &mut self,
         x_start: f32,
@@ -1193,11 +1197,12 @@ impl CncController for GrblCommunication {
             .error_patterns
             .iter()
             .find(|p| p.error_type.contains("timeout"))
-            && timeout_pattern.frequency > 3 {
-                optimizations.push(
-                    "Frequent timeouts detected - consider increasing command timeout".to_string(),
-                );
-            }
+            && timeout_pattern.frequency > 3
+        {
+            optimizations.push(
+                "Frequent timeouts detected - consider increasing command timeout".to_string(),
+            );
+        }
 
         optimizations
     }

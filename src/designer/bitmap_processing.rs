@@ -269,9 +269,10 @@ impl BitmapProcessor {
                 if img.get_pixel(x, y)[0] == 0 && !visited.contains(&(x, y)) {
                     // Found unvisited black pixel, start tracing
                     if let Some(contour) = Self::trace_single_contour(img, x, y, &mut visited)
-                        && contour.len() >= config.min_contour_length {
-                            contours.push(contour);
-                        }
+                        && contour.len() >= config.min_contour_length
+                    {
+                        contours.push(contour);
+                    }
                 }
             }
         }

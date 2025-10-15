@@ -8,8 +8,7 @@ pub mod bitmap_processing;
 pub mod cam_operations;
 pub mod image_engraving;
 pub mod jigsaw;
-pub mod parametric_design;
-pub mod parametric_ui;
+
 pub mod part_nesting;
 pub mod shape_generation;
 pub mod tabbed_box;
@@ -19,7 +18,6 @@ pub mod vector_import;
 use crate::errors::{GcodeKitError, Result};
 use eframe::egui;
 
-use rhai::AST;
 use std::collections::VecDeque;
 use std::fs;
 use stl_io::{Normal, Triangle, Vertex};
@@ -118,11 +116,6 @@ pub enum Shape {
     Polyline {
         points: Vec<(f32, f32)>,
     },
-    Parametric {
-        script: String,
-        ast: Option<AST>,
-        bounds: (f32, f32, f32, f32),
-    },
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -203,7 +196,6 @@ pub enum DrawingTool {
     Facing,
     Threading,
     Polyline,
-    Parametric,
     Move,
     Scale,
     Rotate,
@@ -546,7 +538,6 @@ impl DesignerState {
             Shape::Facing { x, y, .. } => (*x, *y),
             Shape::Threading { x, y, .. } => (*x, *y),
             Shape::Polyline { points } => points.first().copied().unwrap_or((0.0, 0.0)),
-            Shape::Parametric { bounds, .. } => (bounds.0, bounds.1),
         }
     }
 
@@ -609,11 +600,6 @@ impl DesignerState {
                         point.1 += dy;
                     }
                 }
-            }
-            Shape::Parametric { bounds, .. } => {
-                let dx = pos.0 - bounds.0;
-                let dy = pos.1 - bounds.1;
-                *bounds = (pos.0, pos.1, bounds.2 + dx, bounds.3 + dy);
             }
         }
     }
@@ -956,21 +942,6 @@ impl DesignerState {
                             gcode_lines.push(format!("G1 X{:.2} Y{:.2} F1000", x, y));
                         }
                     }
-                    gcode_lines.push("G0 Z5 ; Lift tool".to_string());
-                }
-                Shape::Parametric {
-                    script,
-                    ast: _,
-                    bounds,
-                } => {
-                    gcode_lines.push(format!("; Parametric shape: {}", script));
-                    // For now, just generate a simple rectangle based on bounds
-                    gcode_lines.push(format!("G0 X{:.2} Y{:.2}", bounds.0, bounds.1));
-                    gcode_lines.push("G1 Z-1 F500 ; Plunge".to_string());
-                    gcode_lines.push(format!("G1 X{:.2} Y{:.2} F1000", bounds.2, bounds.1));
-                    gcode_lines.push(format!("G1 X{:.2} Y{:.2}", bounds.2, bounds.3));
-                    gcode_lines.push(format!("G1 X{:.2} Y{:.2}", bounds.0, bounds.3));
-                    gcode_lines.push(format!("G1 X{:.2} Y{:.2}", bounds.0, bounds.1));
                     gcode_lines.push("G0 Z5 ; Lift tool".to_string());
                 }
             }
@@ -1361,12 +1332,6 @@ impl DesignerState {
                 }
                 false
             }
-            Shape::Parametric { bounds, .. } => {
-                point.x >= bounds.0
-                    && point.x <= bounds.2
-                    && point.y >= bounds.1
-                    && point.y <= bounds.3
-            }
         }
     }
 
@@ -1482,12 +1447,6 @@ impl DesignerState {
                 .clicked()
             {
                 self.current_tool = DrawingTool::Threading;
-            }
-            if ui
-                .selectable_label(self.current_tool == DrawingTool::Parametric, "📊")
-                .clicked()
-            {
-                self.current_tool = DrawingTool::Parametric;
             }
 
             ui.separator();
@@ -1860,18 +1819,6 @@ impl DesignerState {
                     painter.circle_filled(egui::pos2(*x, *y), 3.0, stroke_color);
                 }
             }
-            Shape::Parametric { bounds, .. } => {
-                let rect = egui::Rect::from_min_max(
-                    egui::pos2(bounds.0, bounds.1),
-                    egui::pos2(bounds.2, bounds.3),
-                );
-                painter.rect_stroke(
-                    rect,
-                    egui::CornerRadius::ZERO,
-                    stroke,
-                    egui::StrokeKind::Outside,
-                );
-            }
         }
     }
 
@@ -1938,6 +1885,7 @@ impl DesignerState {
                         let pos = canvas_response.interact_pointer_pos().unwrap_or_default();
                         let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
 
+                        #[allow(clippy::wildcard_in_or_patterns)]
                         match self.current_tool {
                             DrawingTool::Select => {
                                 // Select shape under cursor
@@ -1973,11 +1921,11 @@ impl DesignerState {
                                     if let Some(index) = self.selected_shape
                                         && let Some(Shape::Polyline { points }) =
                                             self.shapes.get_mut(index)
-                                            && let Some(point_idx) = self.selected_point
-                                                && point_idx < points.len() {
-                                                    points[point_idx] =
-                                                        (canvas_pos.x, canvas_pos.y);
-                                                }
+                                        && let Some(point_idx) = self.selected_point
+                                        && point_idx < points.len()
+                                    {
+                                        points[point_idx] = (canvas_pos.x, canvas_pos.y);
+                                    }
                                 }
 
                                 // Handle right-click to add/remove points to polylines
@@ -2016,9 +1964,10 @@ impl DesignerState {
                                                 if self.selected_point == Some(j) {
                                                     self.selected_point = None;
                                                 } else if let Some(p) = self.selected_point
-                                                    && p > j {
-                                                        self.selected_point = Some(p - 1);
-                                                    }
+                                                    && p > j
+                                                {
+                                                    self.selected_point = Some(p - 1);
+                                                }
                                             }
                                         } else {
                                             // Add point to closest segment
@@ -2049,12 +1998,12 @@ impl DesignerState {
                                             if let Some(insert_at) = insert_at
                                                 && let Some(Shape::Polyline { points }) =
                                                     self.shapes.get_mut(index)
-                                                {
-                                                    points.insert(
-                                                        insert_at,
-                                                        (canvas_pos.x, canvas_pos.y),
-                                                    );
-                                                }
+                                            {
+                                                points.insert(
+                                                    insert_at,
+                                                    (canvas_pos.x, canvas_pos.y),
+                                                );
+                                            }
                                         }
                                     }
                                 }
@@ -2091,11 +2040,11 @@ impl DesignerState {
                                     }
                                 }
                             }
+                            #[allow(clippy::wildcard_in_or_patterns)]
                             DrawingTool::Pencil
                             | DrawingTool::Pen
                             | DrawingTool::Calligraphy
                             | DrawingTool::Node
-                            | DrawingTool::Parametric
                             | _ => {
                                 // Start drawing
                                 self.drawing_start = Some((canvas_pos.x, canvas_pos.y));
@@ -2243,19 +2192,20 @@ impl DesignerState {
                     {
                         let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
                         if let Some(index) = self.selected_shape
-                            && let Some(shape) = self.shapes.get_mut(index) {
-                                let shape_pos = DesignerState::get_shape_pos(shape);
-                                let (dx, dy) = if let Some(start) = self.drag_start_pos {
-                                    (canvas_pos.x - start.0, canvas_pos.y - start.1)
-                                } else {
-                                    self.drag_start_pos = Some((canvas_pos.x, canvas_pos.y));
-                                    (0.0, 0.0)
-                                };
-                                DesignerState::set_shape_pos(
-                                    shape,
-                                    (shape_pos.0 + dx, shape_pos.1 + dy),
-                                );
-                            }
+                            && let Some(shape) = self.shapes.get_mut(index)
+                        {
+                            let shape_pos = DesignerState::get_shape_pos(shape);
+                            let (dx, dy) = if let Some(start) = self.drag_start_pos {
+                                (canvas_pos.x - start.0, canvas_pos.y - start.1)
+                            } else {
+                                self.drag_start_pos = Some((canvas_pos.x, canvas_pos.y));
+                                (0.0, 0.0)
+                            };
+                            DesignerState::set_shape_pos(
+                                shape,
+                                (shape_pos.0 + dx, shape_pos.1 + dy),
+                            );
+                        }
                     } else {
                         self.drag_start_pos = None;
                     }
@@ -2457,9 +2407,6 @@ impl DesignerState {
                                 *y += offset_y;
                             }
                         }
-                        Shape::Parametric { bounds, .. } => {
-                            _ = bounds;
-                        }
                     }
                     new_shapes.push(new_shape);
                 }
@@ -2626,12 +2573,6 @@ impl DesignerState {
                         *px += dx;
                     }
                 }
-                Shape::Parametric { bounds, .. } => {
-                    bounds.0 += dx;
-                    bounds.1 += dy;
-                    bounds.2 += dx;
-                    bounds.3 += dy;
-                }
             }
 
             // Also adjust y
@@ -2652,10 +2593,6 @@ impl DesignerState {
                     for (_, py) in points {
                         *py += dy;
                     }
-                }
-                Shape::Parametric { bounds, .. } => {
-                    // Already adjusted
-                    _ = bounds;
                 }
             }
         }
@@ -2935,7 +2872,6 @@ impl DesignerState {
                 }
                 (min_x, min_y, max_x, max_y)
             }
-            Shape::Parametric { bounds, .. } => *bounds,
         }
     }
 
@@ -3029,23 +2965,6 @@ impl DesignerState {
         let closest_y = y1 + t * dy;
 
         ((px - closest_x).powi(2) + (py - closest_y).powi(2)).sqrt()
-    }
-
-    pub fn evaluate_parametric(
-        &mut self,
-        index: usize,
-        config: &parametric_design::ParametricConfig,
-    ) -> Result<()> {
-        if let Some(Shape::Parametric { script, bounds, .. }) = self.shapes.get(index) {
-            // Use the parametric design system to evaluate the script
-            let points =
-                parametric_design::ParametricDesigner::evaluate_script(script, config, *bounds)?;
-
-            // Replace the parametric shape with a polyline
-            let polyline = Shape::Polyline { points };
-            self.shapes[index] = polyline;
-        }
-        Ok(())
     }
 
     fn parse_svg(&mut self, svg_content: &str) -> Result<()> {
@@ -3382,15 +3301,6 @@ impl DesignerState {
                     *y = py + (*y - py) * sy;
                 }
             }
-            Shape::Parametric { bounds, .. } => {
-                // Scale the bounds
-                let (x1, y1, x2, y2) = *bounds;
-                let new_x1 = px + (x1 - px) * sx;
-                let new_y1 = py + (y1 - py) * sy;
-                let new_x2 = px + (x2 - px) * sx;
-                let new_y2 = py + (y2 - py) * sy;
-                *bounds = (new_x1, new_y1, new_x2, new_y2);
-            }
         }
     }
 
@@ -3449,33 +3359,6 @@ impl DesignerState {
                 for point in points.iter_mut() {
                     *point = rotate_point(*point);
                 }
-            }
-            Shape::Parametric { bounds, .. } => {
-                // Rotate the bounds corners
-                let (x1, y1, x2, y2) = *bounds;
-                let corners = [
-                    rotate_point((x1, y1)),
-                    rotate_point((x2, y1)),
-                    rotate_point((x2, y2)),
-                    rotate_point((x1, y2)),
-                ];
-                let min_x = corners
-                    .iter()
-                    .map(|(x, _)| *x)
-                    .fold(f32::INFINITY, f32::min);
-                let max_x = corners
-                    .iter()
-                    .map(|(x, _)| *x)
-                    .fold(f32::NEG_INFINITY, f32::max);
-                let min_y = corners
-                    .iter()
-                    .map(|(_, y)| *y)
-                    .fold(f32::INFINITY, f32::min);
-                let max_y = corners
-                    .iter()
-                    .map(|(_, y)| *y)
-                    .fold(f32::NEG_INFINITY, f32::max);
-                *bounds = (min_x, min_y, max_x, max_y);
             }
         }
     }
@@ -3569,15 +3452,6 @@ impl DesignerState {
                     for (_, y) in points.iter_mut() {
                         *y = 2.0 * center_y - *y;
                     }
-                }
-            }
-            Shape::Parametric { bounds, .. } => {
-                if matches!(axis, MirrorAxis::Horizontal) {
-                    let (x1, y1, x2, y2) = *bounds;
-                    *bounds = (x2, y1, x1, y2); // Swap left/right
-                } else if matches!(axis, MirrorAxis::Vertical) {
-                    let (x1, y1, x2, y2) = *bounds;
-                    *bounds = (x1, y2, x2, y1); // Swap top/bottom
                 }
             }
         }

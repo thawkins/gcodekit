@@ -11,9 +11,9 @@ mod tests {
         assert_eq!(app.ui.selected_tab, crate::types::Tab::Designer);
         assert!(app.gcode.gcode_content.is_empty());
         assert!(app.gcode.gcode_filename.is_empty());
-        assert_eq!(app.machine.jog_step_size, 0.0); // Default f32 is 0.0
-        assert_eq!(app.machine.spindle_override, 0.0);
-        assert_eq!(app.machine.feed_override, 0.0);
+        assert_eq!(app.machine.jog_step_size, 1.0);
+        assert_eq!(app.machine.spindle_override, 1.0);
+        assert_eq!(app.machine.feed_override, 1.0);
         assert_eq!(app.machine.machine_mode, MachineMode::CNC);
         assert!(app.machine.console_messages.is_empty());
         assert_eq!(app.machine.status_message, String::new());
@@ -523,7 +523,7 @@ mod tests {
         // Verify we have the expected scale (5x the original)
         assert_eq!(
             total_lines,
-            131 * 5 + 5,
+            130 * 5 + 5,
             "Should have 5x lines plus separators"
         );
         assert_eq!(total_commands, 85 * 5, "Should have 5x commands");

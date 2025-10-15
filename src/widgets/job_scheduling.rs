@@ -81,20 +81,20 @@ impl JobSchedulingWidget {
                             if ui.button("❌").on_hover_text("Cancel schedule").clicked()
                                 && let Err(e) =
                                     job_manager.cancel_schedule(&scheduled_job.schedule_id)
-                                {
-                                    warn!("Failed to cancel schedule: {}", e);
-                                }
+                            {
+                                warn!("Failed to cancel schedule: {}", e);
+                            }
 
                             if scheduled_job.enabled {
                                 if ui.button("⏸️").on_hover_text("Disable").clicked()
                                     && let Err(e) =
                                         job_manager.disable_schedule(&scheduled_job.schedule_id)
-                                    {
-                                        warn!("Failed to disable schedule: {}", e);
-                                    }
+                                {
+                                    warn!("Failed to disable schedule: {}", e);
+                                }
                             } else if ui.button("▶️").on_hover_text("Enable").clicked()
-                            && let Err(e) =
-                                job_manager.enable_schedule(&scheduled_job.schedule_id)
+                                && let Err(e) =
+                                    job_manager.enable_schedule(&scheduled_job.schedule_id)
                             {
                                 warn!("Failed to enable schedule: {}", e);
                             }

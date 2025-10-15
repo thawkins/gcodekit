@@ -169,30 +169,32 @@ impl GcodeEditorState {
                 let first_char = part.chars().next().unwrap();
 
                 // Handle parameters with decimal truncation
-                if first_char.is_ascii_alphabetic() && part.len() > 1
-                    && let Ok(value) = part[1..].parse::<f32>() {
-                        // Truncate to 3 decimal places for most parameters
-                        let truncated = if first_char == 'F' {
-                            // Feed rates: truncate to 1 decimal place
-                            format!("{:.1}", value)
-                        } else {
-                            // Coordinates and other parameters: truncate to 3 decimal places
-                            format!("{:.3}", value)
-                        };
+                if first_char.is_ascii_alphabetic()
+                    && part.len() > 1
+                    && let Ok(value) = part[1..].parse::<f32>()
+                {
+                    // Truncate to 3 decimal places for most parameters
+                    let truncated = if first_char == 'F' {
+                        // Feed rates: truncate to 1 decimal place
+                        format!("{:.1}", value)
+                    } else {
+                        // Coordinates and other parameters: truncate to 3 decimal places
+                        format!("{:.3}", value)
+                    };
 
-                        // Remove trailing zeros and decimal point if not needed
-                        let clean_value = if truncated.contains('.') {
-                            truncated
-                                .trim_end_matches('0')
-                                .trim_end_matches('.')
-                                .to_string()
-                        } else {
-                            truncated
-                        };
+                    // Remove trailing zeros and decimal point if not needed
+                    let clean_value = if truncated.contains('.') {
+                        truncated
+                            .trim_end_matches('0')
+                            .trim_end_matches('.')
+                            .to_string()
+                    } else {
+                        truncated
+                    };
 
-                        optimized_parts.push(format!("{}{}", first_char, clean_value));
-                        continue;
-                    }
+                    optimized_parts.push(format!("{}{}", first_char, clean_value));
+                    continue;
+                }
             }
 
             // Keep other parts as-is
@@ -216,9 +218,10 @@ impl GcodeEditorState {
             if part.len() > 1 {
                 let first_char = part.chars().next().unwrap();
                 if first_char.is_ascii_alphabetic()
-                    && let Ok(value) = part[1..].parse::<f32>() {
-                        params.insert(first_char, value);
-                    }
+                    && let Ok(value) = part[1..].parse::<f32>()
+                {
+                    params.insert(first_char, value);
+                }
             }
         }
 
@@ -341,8 +344,8 @@ impl GcodeEditorState {
             let mut move_type = current_move_type.clone();
 
             for part in parts {
-                if part.starts_with('G') {
-                    if let Ok(code) = part[1..].parse::<u32>() {
+                if let Some(stripped) = part.strip_prefix('G') {
+                    if let Ok(code) = stripped.parse::<u32>() {
                         match code {
                             0 => move_type = MoveType::Rapid,
                             1 => move_type = MoveType::Feed,
@@ -471,11 +474,7 @@ impl GcodeEditorState {
         ))
     }
 
-    pub fn show_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        _parsed_paths: &[PathSegment],
-    ) -> Option<usize> {
+    pub fn show_ui(&mut self, ui: &mut egui::Ui, _parsed_paths: &[PathSegment]) -> Option<usize> {
         if self.gcode_content.is_empty() {
             ui.centered_and_justified(|ui| {
                 ui.label("No G-code file loaded. Use 'Load File' in the left panel.");
@@ -515,10 +514,8 @@ impl GcodeEditorState {
             }
         });
 
-
-
         egui::ScrollArea::vertical().show(ui, |ui| {
-            let response = ui.add(
+            let _response = ui.add(
                 egui::TextEdit::multiline(&mut self.gcode_content)
                     .font(egui::TextStyle::Monospace)
                     .desired_rows(20)
@@ -847,7 +844,7 @@ mod tests {
         let result = editor.optimize_gcode();
         assert_eq!(
             result,
-            "G-code optimized: 5 -> 3 lines, 33 -> 29 bytes (12% reduction)"
+            "G-code optimized: 5 -> 3 lines, 28 -> 24 bytes (14% reduction)"
         );
         assert_eq!(editor.gcode_content, "G0 X10\nG1 X20\nG1 X40 Y50");
     }

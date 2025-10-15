@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::communication::{ConnectionState, ControllerType};
 use crate::designer::bitmap_processing::VectorizationConfig;
-use crate::designer::parametric_design::ParametricConfig;
+
 use crate::designer::{DesignerState, Tool};
 use crate::input::{Action, KeyBinding, create_default_keybindings};
 use crate::jobs::{JobQueue, JobType};
@@ -87,8 +87,6 @@ pub struct CamState {
     pub current_tool: i32,
     pub tool_library: Vec<Tool>,
     pub vectorization_config: VectorizationConfig,
-    pub parametric_shape_type: String,
-    pub parametric_config: ParametricConfig,
 }
 
 impl Default for CamState {
@@ -133,20 +131,16 @@ impl Default for CamState {
                 },
             ],
             vectorization_config: VectorizationConfig::default(),
-            parametric_shape_type: "Custom".to_string(),
-            parametric_config: ParametricConfig::default(),
         }
     }
 }
 
 // Job State
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct JobState {
     pub job_queue: JobQueue,
     pub current_job_id: Option<String>,
 }
-
 
 // G-code State
 #[derive(Debug, Clone)]
@@ -217,7 +211,6 @@ pub struct GcodeKitApp {
     pub machine: MachineState,
     pub keybindings: HashMap<Action, KeyBinding>,
     pub designer: DesignerState,
-    pub script_content: String,
     pub material_database: MaterialDatabase,
 }
 
@@ -231,19 +224,12 @@ impl Default for GcodeKitApp {
             machine: MachineState::default(),
             keybindings: create_default_keybindings(),
             designer: DesignerState::default(),
-            script_content: String::new(),
             material_database: MaterialDatabase::default(),
         }
     }
 }
 
 impl GcodeKitApp {
-    /// Executes a user-defined script for automation.
-    /// Currently a placeholder - full implementation is TODO.
-    pub fn run_script(&mut self) {
-        // TODO: Implement script running
-        self.machine.status_message = "Running script...".to_string();
-    }
     /// Logs a message to the console with a timestamp.
     /// Maintains a rolling buffer of the last 1000 messages.
     ///

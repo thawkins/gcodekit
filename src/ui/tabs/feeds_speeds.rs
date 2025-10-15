@@ -16,7 +16,11 @@ pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     static mut UNITS_METRIC: bool = false;
     ui.horizontal(|ui| {
         ui.label("Units:");
-        ui.radio_value(&mut unsafe { UNITS_METRIC }, false, "Imperial (inches, SFM, IPM)");
+        ui.radio_value(
+            &mut unsafe { UNITS_METRIC },
+            false,
+            "Imperial (inches, SFM, IPM)",
+        );
         ui.radio_value(&mut unsafe { UNITS_METRIC }, true, "Metric (mm, SMM, MMPM)");
     });
 
@@ -111,7 +115,9 @@ pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         // Perform calculation
         let surface_speed = get_surface_speed(unsafe { MATERIAL }, unsafe { UNITS_METRIC });
         unsafe { CALCULATED_RPM = calculate_rpm(surface_speed, TOOL_DIAMETER, UNITS_METRIC) };
-        let chip_load = get_chip_load(unsafe { MATERIAL }, unsafe { OPERATION }, unsafe { UNITS_METRIC });
+        let chip_load = get_chip_load(unsafe { MATERIAL }, unsafe { OPERATION }, unsafe {
+            UNITS_METRIC
+        });
         let base_feed_rate = unsafe { CALCULATED_RPM } * unsafe { NUM_FLUTES } as f32 * chip_load;
         // Apply tool wear compensation
         let wear_factor = 1.0 - (unsafe { TOOL_WEAR_PERCENT } / 100.0);
@@ -121,9 +127,19 @@ pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
 
     if unsafe { HAS_RESULTS } {
         ui.separator();
-        ui.label(format!("Recommended Spindle Speed: {:.0} RPM", unsafe { CALCULATED_RPM }));
-        let feed_unit = if unsafe { UNITS_METRIC } { "MMPM" } else { "IPM" };
-        ui.label(format!("Recommended Feed Rate: {:.2} {}", unsafe { CALCULATED_FEED }, feed_unit));
+        ui.label(format!("Recommended Spindle Speed: {:.0} RPM", unsafe {
+            CALCULATED_RPM
+        }));
+        let feed_unit = if unsafe { UNITS_METRIC } {
+            "MMPM"
+        } else {
+            "IPM"
+        };
+        ui.label(format!(
+            "Recommended Feed Rate: {:.2} {}",
+            unsafe { CALCULATED_FEED },
+            feed_unit
+        ));
         ui.label("Note: These are starting recommendations. Adjust based on your machine capabilities and test cuts.");
 
         ui.separator();
@@ -132,8 +148,16 @@ pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
             if ui.button("Copy to Clipboard").clicked() {
                 let material_name = materials[unsafe { MATERIAL }];
                 let operation_name = operations[unsafe { OPERATION }];
-                let units_name = if unsafe { UNITS_METRIC } { "Metric" } else { "Imperial" };
-                let diameter_unit = if unsafe { UNITS_METRIC } { "mm" } else { "inches" };
+                let units_name = if unsafe { UNITS_METRIC } {
+                    "Metric"
+                } else {
+                    "Imperial"
+                };
+                let diameter_unit = if unsafe { UNITS_METRIC } {
+                    "mm"
+                } else {
+                    "inches"
+                };
 
                 let export_text = format!(
                     "Feeds & Speeds Calculator Results\n\
@@ -166,16 +190,16 @@ pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
 
 fn get_surface_speed(material_index: usize, metric: bool) -> f32 {
     let imperial_sfm = match material_index {
-        0 => 800.0,  // Aluminum
-        1 => 100.0,  // Steel
-        2 => 80.0,   // Stainless Steel
-        3 => 300.0,  // Brass
-        4 => 150.0,  // Titanium
-        5 => 200.0,  // Plastic
-        6 => 400.0,  // Wood
-        7 => 300.0,  // MDF
-        8 => 600.0,  // Carbon Fiber
-        9 => 400.0,  // Fiberglass
+        0 => 800.0, // Aluminum
+        1 => 100.0, // Steel
+        2 => 80.0,  // Stainless Steel
+        3 => 300.0, // Brass
+        4 => 150.0, // Titanium
+        5 => 200.0, // Plastic
+        6 => 400.0, // Wood
+        7 => 300.0, // MDF
+        8 => 600.0, // Carbon Fiber
+        9 => 400.0, // Fiberglass
         _ => 100.0,
     };
 

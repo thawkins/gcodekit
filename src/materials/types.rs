@@ -11,6 +11,7 @@ pub enum MaterialType {
     Other,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MaterialSubtype {
     // Wood

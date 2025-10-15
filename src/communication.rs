@@ -5,10 +5,8 @@
 //! interfaces for connecting, sending commands, and receiving responses.
 
 pub mod grbl;
-pub mod smoothieware;
 
 pub use grbl::GrblCommunication;
-pub use smoothieware::SmoothiewareCommunication;
 
 use std::time::{Duration, Instant};
 
@@ -140,20 +138,22 @@ impl HealthMetrics {
             .error_patterns
             .iter()
             .find(|p| p.error_type.contains("connection") || p.error_type.contains("timeout"))
-            && conn_pattern.frequency > 5 && conn_pattern.severity_score > 0.5 {
-                issues.push("High frequency of connection errors detected. Consider checking network stability.".to_string());
-            }
+            && conn_pattern.frequency > 5
+            && conn_pattern.severity_score > 0.5
+        {
+            issues.push("High frequency of connection errors detected. Consider checking network stability.".to_string());
+        }
 
         // Check for command errors
         if let Some(cmd_pattern) = self
             .error_patterns
             .iter()
             .find(|p| p.error_type.contains("command") || p.error_type.contains("syntax"))
-            && cmd_pattern.frequency > 3 {
-                issues.push(
-                    "Frequent command errors detected. G-code may need validation.".to_string(),
-                );
-            }
+            && cmd_pattern.frequency > 3
+        {
+            issues
+                .push("Frequent command errors detected. G-code may need validation.".to_string());
+        }
 
         // Check connection stability
         if self.connection_stability < 0.8 {
@@ -207,7 +207,6 @@ impl HealthMetrics {
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ControllerType {
     Grbl,
-    Smoothieware,
 }
 
 pub trait CncController {

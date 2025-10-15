@@ -802,29 +802,31 @@ pub fn perform_part_nesting(
 
             // Also try placing at origin if no good position found
             if best_position.is_none()
-                && rotated_width <= config.sheet_width && rotated_height <= config.sheet_height {
-                    let mut overlaps = false;
-                    for other in &placed_parts {
-                        if rectangles_overlap(
-                            0.0,
-                            0.0,
-                            rotated_width,
-                            rotated_height,
-                            other.x,
-                            other.y,
-                            other.width,
-                            other.height,
-                        ) {
-                            overlaps = true;
-                            break;
-                        }
-                    }
-
-                    if !overlaps {
-                        best_position = Some((0.0, 0.0));
-                        best_rotation = rotation;
+                && rotated_width <= config.sheet_width
+                && rotated_height <= config.sheet_height
+            {
+                let mut overlaps = false;
+                for other in &placed_parts {
+                    if rectangles_overlap(
+                        0.0,
+                        0.0,
+                        rotated_width,
+                        rotated_height,
+                        other.x,
+                        other.y,
+                        other.width,
+                        other.height,
+                    ) {
+                        overlaps = true;
+                        break;
                     }
                 }
+
+                if !overlaps {
+                    best_position = Some((0.0, 0.0));
+                    best_rotation = rotation;
+                }
+            }
         }
 
         // Place the part if a position was found
@@ -864,6 +866,7 @@ struct PlacedPart {
 }
 
 /// Check if two rectangles overlap
+#[allow(clippy::too_many_arguments)]
 fn rectangles_overlap(
     x1: f32,
     y1: f32,

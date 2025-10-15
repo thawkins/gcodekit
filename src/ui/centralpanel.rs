@@ -51,17 +51,6 @@ impl GcodeKitApp {
                 Tab::Designer => {
                     show_designer_tab(self, ui);
                 }
-                Tab::Scripting => {
-                    ui.vertical(|ui| {
-                        ui.label("Automation Scripting");
-                        ui.separator();
-                        ui.label("Use Rhai scripting to automate operations:");
-                        ui.text_edit_multiline(&mut self.script_content);
-                        if ui.button("Run Script").clicked() {
-                            self.run_script();
-                        }
-                    });
-                }
             }
         });
 

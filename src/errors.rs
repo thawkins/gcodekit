@@ -35,10 +35,6 @@ pub enum GcodeKitError {
     #[error("Job error: {0}")]
     Job(String),
 
-    /// Errors related to scripting (Rhai)
-    #[error("Script error: {0}")]
-    Script(String),
-
     /// Errors related to image processing
     #[error("Image processing error: {0}")]
     Image(#[from] image::ImageError),

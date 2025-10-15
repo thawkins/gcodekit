@@ -10,7 +10,6 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FirmwareType {
     Grbl,
-    Smoothieware,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,10 +75,6 @@ impl FirmwareManager {
             FirmwareType::Grbl => {
                 // Use avrdude or similar for AVR-based controllers
                 Err("AVR flashing not implemented".to_string())
-            }
-            FirmwareType::Smoothieware => {
-                // Use dfu-util or similar for STM32-based controllers
-                Err("STM32 flashing not implemented".to_string())
             }
         }
     }

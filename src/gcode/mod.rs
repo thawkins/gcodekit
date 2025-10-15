@@ -31,8 +31,8 @@ pub fn parse_gcode(gcode_content: &str) -> Vec<PathSegment> {
         let mut has_move_command = false;
 
         for part in parts {
-            if part.starts_with('G') {
-                if let Ok(code) = part[1..].parse::<u32>() {
+            if let Some(stripped) = part.strip_prefix('G') {
+                if let Ok(code) = stripped.parse::<u32>() {
                     match code {
                         0 => {
                             move_type = MoveType::Rapid;
