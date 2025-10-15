@@ -363,10 +363,8 @@ impl GrblCommunication {
                     }
                 }
             }
-        } else {
-            if self.debug_enabled {
-                debug!("DEBUG: send_grbl_command: No serial port available!");
-            }
+        } else if self.debug_enabled {
+            debug!("DEBUG: send_grbl_command: No serial port available!");
         }
     }
 
@@ -728,13 +726,11 @@ impl GrblCommunication {
             }
             self.send_grbl_command(&format!("{}\r\n", trimmed));
             self.queue_state = QueueState::WaitingForAck;
-        } else {
-            if self.debug_enabled {
-                debug!(
-                    "DEBUG: send_gcode_line: Adding '{}' to queue (state: {:?})",
-                    trimmed, self.queue_state
-                );
-            }
+        } else if self.debug_enabled {
+            debug!(
+                "DEBUG: send_gcode_line: Adding '{}' to queue (state: {:?})",
+                trimmed, self.queue_state
+            );
         }
 
         Ok(())
@@ -975,12 +971,10 @@ impl CncController for GrblCommunication {
                         );
                     }
                     let command_with_ending = format!("{}\r\n", next_line);
-                    let _ = self.send_grbl_command(&command_with_ending);
+                    self.send_grbl_command(&command_with_ending);
                     self.queue_state = QueueState::WaitingForAck;
-                } else {
-                    if self.debug_enabled {
-                        debug!("DEBUG: Queue: No more commands in queue");
-                    }
+                } else if self.debug_enabled {
+                    debug!("DEBUG: Queue: No more commands in queue");
                 }
                 None
             }
@@ -1200,13 +1194,11 @@ impl CncController for GrblCommunication {
             .error_patterns
             .iter()
             .find(|p| p.error_type.contains("timeout"))
-        {
-            if timeout_pattern.frequency > 3 {
+            && timeout_pattern.frequency > 3 {
                 optimizations.push(
                     "Frequent timeouts detected - consider increasing command timeout".to_string(),
                 );
             }
-        }
 
         optimizations
     }

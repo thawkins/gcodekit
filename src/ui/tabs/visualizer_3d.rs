@@ -10,11 +10,9 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         && app.gcode.selected_line.is_some()
         && *app.machine.communication.get_connection_state()
             == crate::communication::ConnectionState::Connected
-    {
-        if let Some(line_number) = app.gcode.selected_line {
+        && let Some(line_number) = app.gcode.selected_line {
             app.send_gcode_from_line(line_number);
         }
-    }
 
     ui.vertical(|ui| {
         ui.horizontal(|ui| {

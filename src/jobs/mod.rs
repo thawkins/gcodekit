@@ -441,11 +441,10 @@ impl ScheduledJob {
         }
 
         // Check if we've reached max runs
-        if let Some(max) = self.max_runs {
-            if self.run_count >= max {
+        if let Some(max) = self.max_runs
+            && self.run_count >= max {
                 return false;
             }
-        }
 
         // Check if it's time to run
         if let Some(next_run) = self.next_run {
@@ -633,7 +632,7 @@ impl JobScheduler {
 
         self.get_enabled_schedules()
             .into_iter()
-            .filter(|sj| sj.next_run.map_or(false, |next| next <= cutoff_time))
+            .filter(|sj| sj.next_run.is_some_and(|next| next <= cutoff_time))
             .collect()
     }
 
@@ -758,7 +757,7 @@ impl JobHistory {
         let cutoff = Utc::now() - chrono::Duration::days(days);
         self.completed_jobs
             .iter()
-            .filter(|job| job.completed_at.map_or(false, |dt| dt > cutoff))
+            .filter(|job| job.completed_at.is_some_and(|dt| dt > cutoff))
             .collect()
     }
 
@@ -781,7 +780,7 @@ impl JobHistory {
             .iter()
             .filter(|job| {
                 job.completed_at
-                    .map_or(false, |dt| dt >= start_date && dt <= end_date)
+                    .is_some_and(|dt| dt >= start_date && dt <= end_date)
             })
             .collect();
 

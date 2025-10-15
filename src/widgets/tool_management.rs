@@ -71,8 +71,8 @@ pub fn show_tool_management_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             app.send_gcode(&cmd);
         }
 
-        if ui.button("Set Tool Offset (G10 L1)").clicked() {
-            if let Some(tool) = app
+        if ui.button("Set Tool Offset (G10 L1)").clicked()
+            && let Some(tool) = app
                 .cam
                 .tool_library
                 .iter()
@@ -84,7 +84,6 @@ pub fn show_tool_management_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                 );
                 app.send_gcode(&cmd);
             }
-        }
     });
 
     ui.separator();

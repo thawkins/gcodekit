@@ -134,6 +134,12 @@ impl PostProcessor for StandardPostProcessor {
 /// GRBL-specific post-processor
 pub struct GrblPostProcessor;
 
+impl Default for GrblPostProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GrblPostProcessor {
     pub fn new() -> Self {
         Self
@@ -188,6 +194,12 @@ impl PostProcessor for GrblPostProcessor {
 
 /// Smoothieware-specific post-processor
 pub struct SmoothiewarePostProcessor;
+
+impl Default for SmoothiewarePostProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl SmoothiewarePostProcessor {
     pub fn new() -> Self {

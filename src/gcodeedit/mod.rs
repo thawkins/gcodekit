@@ -169,8 +169,8 @@ impl GcodeEditorState {
                 let first_char = part.chars().next().unwrap();
 
                 // Handle parameters with decimal truncation
-                if first_char.is_ascii_alphabetic() && part.len() > 1 {
-                    if let Ok(value) = part[1..].parse::<f32>() {
+                if first_char.is_ascii_alphabetic() && part.len() > 1
+                    && let Ok(value) = part[1..].parse::<f32>() {
                         // Truncate to 3 decimal places for most parameters
                         let truncated = if first_char == 'F' {
                             // Feed rates: truncate to 1 decimal place
@@ -193,7 +193,6 @@ impl GcodeEditorState {
                         optimized_parts.push(format!("{}{}", first_char, clean_value));
                         continue;
                     }
-                }
             }
 
             // Keep other parts as-is
@@ -216,11 +215,10 @@ impl GcodeEditorState {
         for part in &parts {
             if part.len() > 1 {
                 let first_char = part.chars().next().unwrap();
-                if first_char.is_ascii_alphabetic() {
-                    if let Ok(value) = part[1..].parse::<f32>() {
+                if first_char.is_ascii_alphabetic()
+                    && let Ok(value) = part[1..].parse::<f32>() {
                         params.insert(first_char, value);
                     }
-                }
             }
         }
 
@@ -451,7 +449,7 @@ impl GcodeEditorState {
         let lines_to_send = &lines[start_line..];
         let mut sent_count = 0;
 
-        for (_i, line) in lines_to_send.iter().enumerate() {
+        for line in lines_to_send.iter() {
             let trimmed = line.trim();
             if !trimmed.is_empty() && !trimmed.starts_with(';') {
                 match communication.send_gcode_line(trimmed) {
@@ -633,7 +631,7 @@ impl GcodeEditorState {
                                 } else if word
                                     .chars()
                                     .next()
-                                    .map_or(false, |c| c.is_ascii_alphabetic())
+                                    .is_some_and(|c| c.is_ascii_alphabetic())
                                 {
                                     // Word starts with letter but not a recognized command or parameter
                                     egui::Color32::from_rgb(255, 165, 0) // Orange for unrecognized commands

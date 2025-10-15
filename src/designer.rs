@@ -1971,18 +1971,14 @@ impl DesignerState {
                                 {
                                     let canvas_pos =
                                         egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
-                                    if let Some(index) = self.selected_shape {
-                                        if let Some(Shape::Polyline { points }) =
+                                    if let Some(index) = self.selected_shape
+                                        && let Some(Shape::Polyline { points }) =
                                             self.shapes.get_mut(index)
-                                        {
-                                            if let Some(point_idx) = self.selected_point {
-                                                if point_idx < points.len() {
+                                            && let Some(point_idx) = self.selected_point
+                                                && point_idx < points.len() {
                                                     points[point_idx] =
                                                         (canvas_pos.x, canvas_pos.y);
                                                 }
-                                            }
-                                        }
-                                    }
                                 }
 
                                 // Handle right-click to add/remove points to polylines
@@ -2020,11 +2016,10 @@ impl DesignerState {
                                                 points.remove(j);
                                                 if self.selected_point == Some(j) {
                                                     self.selected_point = None;
-                                                } else if let Some(p) = self.selected_point {
-                                                    if p > j {
+                                                } else if let Some(p) = self.selected_point
+                                                    && p > j {
                                                         self.selected_point = Some(p - 1);
                                                     }
-                                                }
                                             }
                                         } else {
                                             // Add point to closest segment
@@ -2052,8 +2047,8 @@ impl DesignerState {
                                                     None
                                                 };
 
-                                            if let Some(insert_at) = insert_at {
-                                                if let Some(Shape::Polyline { points }) =
+                                            if let Some(insert_at) = insert_at
+                                                && let Some(Shape::Polyline { points }) =
                                                     self.shapes.get_mut(index)
                                                 {
                                                     points.insert(
@@ -2061,7 +2056,6 @@ impl DesignerState {
                                                         (canvas_pos.x, canvas_pos.y),
                                                     );
                                                 }
-                                            }
                                         }
                                     }
                                 }
@@ -2249,8 +2243,8 @@ impl DesignerState {
                         && let Some(pos) = canvas_response.interact_pointer_pos()
                     {
                         let canvas_pos = egui::pos2(pos.x - rect.min.x, pos.y - rect.min.y);
-                        if let Some(index) = self.selected_shape {
-                            if let Some(shape) = self.shapes.get_mut(index) {
+                        if let Some(index) = self.selected_shape
+                            && let Some(shape) = self.shapes.get_mut(index) {
                                 let shape_pos = DesignerState::get_shape_pos(shape);
                                 let (dx, dy) = if let Some(start) = self.drag_start_pos {
                                     (canvas_pos.x - start.0, canvas_pos.y - start.1)
@@ -2263,7 +2257,6 @@ impl DesignerState {
                                     (shape_pos.0 + dx, shape_pos.1 + dy),
                                 );
                             }
-                        }
                     } else {
                         self.drag_start_pos = None;
                     }
@@ -2378,7 +2371,7 @@ impl DesignerState {
             for &idx in indices {
                 let idx = idx as usize * 3;
                 if idx + 2 < positions.len() {
-                    points.push((positions[idx] as f32, positions[idx + 1] as f32));
+                    points.push((positions[idx], positions[idx + 1]));
                 }
             }
             if !points.is_empty() {
@@ -3300,7 +3293,7 @@ impl DesignerState {
             } => {
                 *x = px + (*x - px) * sx;
                 *y = py + (*y - py) * sy;
-                *font_size = (*font_size as f32 * (sx + sy) / 2.0) as f32;
+                *font_size = (*font_size * (sx + sy) / 2.0);
             }
             Shape::Drill { x, y, .. } => {
                 *x = px + (*x - px) * sx;
@@ -3492,7 +3485,7 @@ impl DesignerState {
         match shape {
             Shape::Rectangle { x, width, .. } => {
                 if matches!(axis, MirrorAxis::Horizontal) {
-                    *x = *x + *width; // Mirror over vertical axis
+                    *x += *width; // Mirror over vertical axis
                     *width = -*width; // Flip width
                 }
             }
@@ -3524,7 +3517,7 @@ impl DesignerState {
             }
             Shape::Pocket { x, width, .. } => {
                 if matches!(axis, MirrorAxis::Horizontal) {
-                    *x = *x + *width;
+                    *x += *width;
                     *width = -*width;
                 }
             }
@@ -3542,25 +3535,25 @@ impl DesignerState {
             }
             Shape::Extrusion { x, width, .. } => {
                 if matches!(axis, MirrorAxis::Horizontal) {
-                    *x = *x + *width;
+                    *x += *width;
                     *width = -*width;
                 }
             }
             Shape::Turning { x, diameter, .. } => {
                 if matches!(axis, MirrorAxis::Horizontal) {
-                    *x = *x + *diameter;
+                    *x += *diameter;
                     *diameter = -*diameter;
                 }
             }
             Shape::Facing { x, width, .. } => {
                 if matches!(axis, MirrorAxis::Horizontal) {
-                    *x = *x + *width;
+                    *x += *width;
                     *width = -*width;
                 }
             }
             Shape::Threading { x, diameter, .. } => {
                 if matches!(axis, MirrorAxis::Horizontal) {
-                    *x = *x + *diameter;
+                    *x += *diameter;
                     *diameter = -*diameter;
                 }
             }

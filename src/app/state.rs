@@ -141,19 +141,12 @@ impl Default for CamState {
 
 // Job State
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct JobState {
     pub job_queue: JobQueue,
     pub current_job_id: Option<String>,
 }
 
-impl Default for JobState {
-    fn default() -> Self {
-        Self {
-            job_queue: JobQueue::default(),
-            current_job_id: None,
-        }
-    }
-}
 
 // G-code State
 #[derive(Debug, Clone)]

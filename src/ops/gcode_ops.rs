@@ -132,7 +132,7 @@ impl GcodeKitApp {
             content.len(),
             content.contains('\n')
         ));
-        if content.len() > 0 {
+        if !content.is_empty() {
             let preview = if content.len() > 50 {
                 &content[..50]
             } else {

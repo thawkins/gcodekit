@@ -801,8 +801,8 @@ pub fn perform_part_nesting(
             }
 
             // Also try placing at origin if no good position found
-            if best_position.is_none() {
-                if rotated_width <= config.sheet_width && rotated_height <= config.sheet_height {
+            if best_position.is_none()
+                && rotated_width <= config.sheet_width && rotated_height <= config.sheet_height {
                     let mut overlaps = false;
                     for other in &placed_parts {
                         if rectangles_overlap(
@@ -825,7 +825,6 @@ pub fn perform_part_nesting(
                         best_rotation = rotation;
                     }
                 }
-            }
         }
 
         // Place the part if a position was found

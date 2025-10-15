@@ -1,7 +1,9 @@
 /// CAM operation types
 #[derive(Clone, Debug, PartialEq)]
+#[derive(Default)]
 pub enum CAMOperation {
     /// Default operation
+    #[default]
     None,
     /// 2D contouring operation
     Contour2D {
@@ -55,11 +57,6 @@ pub enum CAMOperation {
     },
 }
 
-impl Default for CAMOperation {
-    fn default() -> Self {
-        CAMOperation::None
-    }
-}
 
 /// Contour machining direction
 #[derive(Clone, Debug, PartialEq)]
@@ -162,6 +159,12 @@ pub struct Mesh {
 pub struct BoundingBox {
     pub min: Point3D,
     pub max: Point3D,
+}
+
+impl Default for BoundingBox {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BoundingBox {

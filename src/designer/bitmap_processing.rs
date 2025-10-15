@@ -105,7 +105,7 @@ impl BitmapProcessor {
             histogram[pixel[0] as usize] += 1;
         }
 
-        let total_pixels = img.width() as u32 * img.height() as u32;
+        let total_pixels = img.width() * img.height();
         let mut sum = 0.0;
         for i in 0..256 {
             sum += i as f32 * histogram[i] as f32;
@@ -268,11 +268,10 @@ impl BitmapProcessor {
             for x in 0..img.width() {
                 if img.get_pixel(x, y)[0] == 0 && !visited.contains(&(x, y)) {
                     // Found unvisited black pixel, start tracing
-                    if let Some(contour) = Self::trace_single_contour(img, x, y, &mut visited) {
-                        if contour.len() >= config.min_contour_length {
+                    if let Some(contour) = Self::trace_single_contour(img, x, y, &mut visited)
+                        && contour.len() >= config.min_contour_length {
                             contours.push(contour);
                         }
-                    }
                 }
             }
         }

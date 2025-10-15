@@ -112,7 +112,7 @@ pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         let surface_speed = get_surface_speed(unsafe { MATERIAL }, unsafe { UNITS_METRIC });
         unsafe { CALCULATED_RPM = calculate_rpm(surface_speed, TOOL_DIAMETER, UNITS_METRIC) };
         let chip_load = get_chip_load(unsafe { MATERIAL }, unsafe { OPERATION }, unsafe { UNITS_METRIC });
-        let base_feed_rate = unsafe { CALCULATED_RPM } as f32 * unsafe { NUM_FLUTES } as f32 * chip_load;
+        let base_feed_rate = unsafe { CALCULATED_RPM } * unsafe { NUM_FLUTES } as f32 * chip_load;
         // Apply tool wear compensation
         let wear_factor = 1.0 - (unsafe { TOOL_WEAR_PERCENT } / 100.0);
         unsafe { CALCULATED_FEED = base_feed_rate * wear_factor };

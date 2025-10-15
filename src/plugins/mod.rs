@@ -49,6 +49,12 @@ pub struct PluginContext {
     pub data_dir: PathBuf,
 }
 
+impl Default for PluginContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PluginContext {
     pub fn new() -> Self {
         let base_dir = dirs::data_dir()
@@ -181,6 +187,12 @@ impl Default for PluginManager {
 // Example plugin implementation
 pub struct ExamplePlugin {
     info: PluginInfo,
+}
+
+impl Default for ExamplePlugin {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ExamplePlugin {

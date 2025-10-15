@@ -280,8 +280,8 @@ let y = amplitude * sin({t} * frequency * 2.0 * PI);
 
         for line in script.lines() {
             let line = line.trim();
-            if line.starts_with("// var ") || line.starts_with("// variable ") {
-                if let Some(eq_pos) = line.find('=') {
+            if (line.starts_with("// var ") || line.starts_with("// variable "))
+                && let Some(eq_pos) = line.find('=') {
                     let var_part = &line[7..eq_pos].trim(); // Skip "// var "
                     let value_part = &line[eq_pos + 1..].trim();
 
@@ -292,7 +292,6 @@ let y = amplitude * sin({t} * frequency * 2.0 * PI);
                         variables.insert(var_name.to_string(), value);
                     }
                 }
-            }
         }
 
         variables

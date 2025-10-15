@@ -389,7 +389,7 @@ impl CncController for SmoothiewareCommunication {
     }
 
     fn send_gcode_line(&mut self, line: &str) -> Result<(), Box<dyn Error>> {
-        self.send_gcode_line(line).map_err(|e| e)
+        self.send_gcode_line(line)
     }
 
     fn read_response(&mut self) -> Option<String> {
