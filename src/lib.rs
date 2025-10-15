@@ -11,8 +11,6 @@ pub mod jobs;
 pub mod layout;
 pub mod materials;
 pub mod ops;
-pub mod plugins;
-pub mod postprocessor;
 pub mod types;
 pub mod ui;
 pub mod web_pendant;

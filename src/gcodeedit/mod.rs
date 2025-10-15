@@ -475,7 +475,6 @@ impl GcodeEditorState {
         &mut self,
         ui: &mut egui::Ui,
         _parsed_paths: &[PathSegment],
-        postprocessor_manager: &mut crate::postprocessor::PostProcessorManager,
     ) -> Option<usize> {
         if self.gcode_content.is_empty() {
             ui.centered_and_justified(|ui| {
@@ -516,52 +515,7 @@ impl GcodeEditorState {
             }
         });
 
-        let mut changed = false;
 
-        // Post-processing controls
-        ui.horizontal(|ui| {
-            ui.label("Post-Processor:");
-
-            // Controller selection dropdown
-            let current_controller = postprocessor_manager.get_current_processor();
-            let available_controllers = postprocessor_manager.get_available_processors();
-
-            egui::ComboBox::from_label("")
-                .selected_text(current_controller.as_str())
-                .show_ui(ui, |ui| {
-                    for controller in &available_controllers {
-                        let selected = *controller == current_controller;
-                        if ui.selectable_label(selected, controller.as_str()).clicked() {
-                            postprocessor_manager.set_target_controller(*controller);
-                        }
-                    }
-                });
-
-            // Post-process button
-            if ui.button("🔄 Post-Process").clicked() {
-                // Parse current G-code
-                let commands = crate::postprocessor::parse_gcode(&self.gcode_content);
-
-                // Apply post-processing
-                let processed_commands = postprocessor_manager.process_gcode(&commands);
-
-                // Convert back to G-code string
-                self.gcode_content = crate::postprocessor::commands_to_gcode(&processed_commands);
-
-                // Re-parse for visualization
-                changed = true;
-            }
-
-            // Show current processor info
-            if let Some((name, description)) =
-                postprocessor_manager.get_processor_info(current_controller)
-            {
-                ui.separator();
-                ui.label(format!("{}: {}", name, description));
-            }
-        });
-
-        ui.separator();
 
         egui::ScrollArea::vertical().show(ui, |ui| {
             let response = ui.add(
@@ -756,16 +710,9 @@ impl GcodeEditorState {
                         ui.fonts_mut(|fonts| fonts.layout_job(job))
                     }),
             );
-            if response.changed() {
-                changed = true;
-            }
         });
 
-        if changed {
-            Some(0) // Signal that parsing should be updated
-        } else {
-            None
-        }
+        None
     }
 }
 

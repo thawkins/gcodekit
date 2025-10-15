@@ -29,8 +29,6 @@ mod jobs;
 mod layout;
 mod materials;
 mod ops;
-mod plugins;
-mod postprocessor;
 mod types;
 mod ui;
 mod web_pendant;
