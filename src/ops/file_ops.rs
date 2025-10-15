@@ -1,4 +1,4 @@
-use crate::{GcodeKitApp, errors::GcodeKitError};
+use crate::{errors::GcodeKitError, GcodeKitApp};
 
 impl GcodeKitApp {
     /// Opens a file dialog to select and load a G-code file.
@@ -22,8 +22,10 @@ impl GcodeKitApp {
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
+                    
+                    self.sync_gcode_to_editor();
                     self.parse_gcode();
-                    self.gcode.sending_from_line = None; // Clear sending indicator
+                    self.gcode_editor.sending_from_line = None; // Clear sending indicator
                     self.machine.status_message = format!("Loaded {}", self.gcode.gcode_filename);
                 }
                 Err(e) => {
@@ -84,13 +86,16 @@ impl GcodeKitApp {
             match result {
                 Ok(()) => {
                     tracing::info!("Successfully imported vector file: {}", path.display());
-                    // Optionally export to G-code immediately
+                    // Export to G-code
                     self.gcode.gcode_content = self.designer.export_to_gcode();
                     self.gcode.gcode_filename = path
                         .file_name()
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
+                    
+                    self.sync_gcode_to_editor();
+                    self.parse_gcode();
                 }
                 Err(e) => {
                     tracing::error!("Failed to import vector file: {}", e);

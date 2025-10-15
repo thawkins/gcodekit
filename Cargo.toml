@@ -33,3 +33,4 @@ rhai = "1.17"  # Scripting engine for parametric design
 stl_io = "0.8"  # STL file I/O
 tobj = "4.0"  # OBJ file loading
 gltf = "1.1"  # GLTF file handling
+regex = "1.12.2"

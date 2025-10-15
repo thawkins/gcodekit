@@ -259,13 +259,13 @@ pub fn show_visualizer_ui(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                 ui.label("Current position includes rotary coordinates");
             }
 
-            if let Some(sending_line) = app.sending_from_line {
+            if let Some(sending_line) = app.gcode_editor.sending_from_line {
                 ui.colored_label(
                     egui::Color32::GREEN,
                     format!("Sending from line {}", sending_line + 1),
                 );
             }
-            if let Some(sending_line) = app.sending_from_line {
+            if let Some(sending_line) = app.gcode_editor.sending_from_line {
                 ui.colored_label(
                     egui::Color32::GREEN,
                     format!("Sending from line {}", sending_line + 1),

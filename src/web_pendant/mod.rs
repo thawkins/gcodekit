@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use tracing::info;
-use warp::Filter;
 use warp::ws::{Message, WebSocket};
+use warp::Filter;
 
 pub type CommandSender = mpsc::UnboundedSender<WebPendantMessage>;
 pub type CommandReceiver = mpsc::UnboundedReceiver<WebPendantMessage>;
@@ -168,9 +168,14 @@ impl WebPendant {
         // Add this client to the receivers
         {
             match status_receivers.lock() {
-            Ok(mut receivers) => { receivers.insert(client_id.clone(), client_tx); },
-            Err(poisoned) => { let mut receivers = poisoned.into_inner(); receivers.insert(client_id.clone(), client_tx); },
-        }
+                Ok(mut receivers) => {
+                    receivers.insert(client_id.clone(), client_tx);
+                }
+                Err(poisoned) => {
+                    let mut receivers = poisoned.into_inner();
+                    receivers.insert(client_id.clone(), client_tx);
+                }
+            }
         }
 
         // Send initial status
@@ -204,9 +209,14 @@ impl WebPendant {
 
             // Remove client when connection closes
             match status_receivers_clone.lock() {
-            Ok(mut receivers) => { receivers.remove(&client_id_clone); },
-            Err(poisoned) => { let mut receivers = poisoned.into_inner(); receivers.remove(&client_id_clone); },
-        }
+                Ok(mut receivers) => {
+                    receivers.remove(&client_id_clone);
+                }
+                Err(poisoned) => {
+                    let mut receivers = poisoned.into_inner();
+                    receivers.remove(&client_id_clone);
+                }
+            }
         });
 
         // Forward status updates to client

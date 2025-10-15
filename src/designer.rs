@@ -1926,7 +1926,8 @@ impl DesignerState {
                                             {
                                                 if let Some(point_idx) = self.selected_point {
                                                     if point_idx < points.len() {
-                                                        points[point_idx] = (canvas_pos.x, canvas_pos.y);
+                                                        points[point_idx] =
+                                                            (canvas_pos.x, canvas_pos.y);
                                                     }
                                                 }
                                             }

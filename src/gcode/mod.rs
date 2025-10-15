@@ -52,7 +52,10 @@ pub fn parse_gcode(gcode_content: &str) -> Vec<PathSegment> {
                     }
                 }
             } else if part.len() > 1 {
-                let axis = match part.chars().next() { Some(c) => c, None => continue };
+                let axis = match part.chars().next() {
+                    Some(c) => c,
+                    None => continue,
+                };
                 if let Ok(value) = part[1..].parse::<f32>() {
                     if absolute_mode {
                         new_pos.set_axis(axis, value);

@@ -32,7 +32,9 @@ impl Selection {
     }
 
     pub fn normalize(&mut self) {
-        if (self.start.line > self.end.line) || (self.start.line == self.end.line && self.start.col > self.end.col) {
+        if (self.start.line > self.end.line)
+            || (self.start.line == self.end.line && self.start.col > self.end.col)
+        {
             std::mem::swap(&mut self.start, &mut self.end);
         }
     }
@@ -45,8 +47,15 @@ impl Selection {
 /// Simple edit operation for undo/redo
 #[derive(Debug, Clone)]
 pub enum EditOp {
-    Insert { pos: Cursor, text: String },
-    Delete { start: Cursor, end: Cursor, deleted: String },
+    Insert {
+        pos: Cursor,
+        text: String,
+    },
+    Delete {
+        start: Cursor,
+        end: Cursor,
+        deleted: String,
+    },
 }
 
 /// In-memory text buffer specialized for G-code
@@ -107,11 +116,18 @@ impl TextBufferCore {
         new_lines[last_idx] = format!("{}{}", new_lines[last_idx], tail);
 
         // Replace current line with new lines
-        self.lines.splice(self.cursor.line..=self.cursor.line, new_lines.clone());
+        self.lines
+            .splice(self.cursor.line..=self.cursor.line, new_lines.clone());
 
         // Push undo op
-        let end_cursor = Cursor::new(self.cursor.line + last_idx, new_lines[last_idx].len() - tail.len());
-        self.undo_stack.push(EditOp::Insert { pos: self.cursor, text: text.to_string() });
+        let end_cursor = Cursor::new(
+            self.cursor.line + last_idx,
+            new_lines[last_idx].len() - tail.len(),
+        );
+        self.undo_stack.push(EditOp::Insert {
+            pos: self.cursor,
+            text: text.to_string(),
+        });
         self.redo_stack.clear();
 
         // Advance cursor
@@ -133,7 +149,11 @@ impl TextBufferCore {
             let deleted = line[s.col..e.col].to_string();
             let new_line = format!("{}{}", &line[..s.col], &line[e.col..]);
             self.lines[s.line] = new_line;
-            self.undo_stack.push(EditOp::Delete { start: s, end: e, deleted });
+            self.undo_stack.push(EditOp::Delete {
+                start: s,
+                end: e,
+                deleted,
+            });
         } else {
             let mut deleted_parts = Vec::new();
             deleted_parts.push(self.lines[s.line][s.col..].to_string());
@@ -147,8 +167,13 @@ impl TextBufferCore {
             let suffix = self.lines[e.line][e.col..].to_string();
 
             // Replace range with single merged line
-            self.lines.splice(s.line..=e.line, vec![format!("{}{}", prefix, suffix)]);
-            self.undo_stack.push(EditOp::Delete { start: s, end: e, deleted });
+            self.lines
+                .splice(s.line..=e.line, vec![format!("{}{}", prefix, suffix)]);
+            self.undo_stack.push(EditOp::Delete {
+                start: s,
+                end: e,
+                deleted,
+            });
         }
 
         self.redo_stack.clear();
@@ -171,7 +196,11 @@ impl TextBufferCore {
                     }
                     self.delete_range(*pos, end);
                 }
-                EditOp::Delete { start, end, deleted } => {
+                EditOp::Delete {
+                    start,
+                    end,
+                    deleted,
+                } => {
                     // re-insert deleted text
                     self.cursor = *start;
                     self.insert_text(deleted);
@@ -205,7 +234,11 @@ impl TextBufferCore {
 
     /// Toggle fold for a line range (start inclusive, end exclusive)
     pub fn toggle_fold(&mut self, start: usize, end: usize) {
-        if let Some(idx) = self.folds.iter().position(|(a, b)| *a == start && *b == end) {
+        if let Some(idx) = self
+            .folds
+            .iter()
+            .position(|(a, b)| *a == start && *b == end)
+        {
             self.folds.remove(idx);
         } else {
             self.folds.push((start, end));
@@ -214,6 +247,31 @@ impl TextBufferCore {
 
     /// Check if a given line is folded
     pub fn is_line_folded(&self, line: usize) -> bool {
-        self.folds.iter().any(|(s, e)| *s <= line && line < *e)
+        self.folds.iter().any(|(s, e)| *s < line && line < *e)
+    }
+
+    /// Get fold region starting at a line
+    pub fn get_fold_at(&self, line: usize) -> Option<(usize, usize)> {
+        self.folds.iter().find(|(s, _)| *s == line).copied()
+    }
+
+    /// Check if a line is a fold header (start of a fold region)
+    pub fn is_fold_header(&self, line: usize) -> bool {
+        self.folds.iter().any(|(s, _)| *s == line)
+    }
+
+    /// Get number of lines
+    pub fn line_count(&self) -> usize {
+        self.lines.len()
+    }
+
+    /// Get line at index
+    pub fn get_line(&self, index: usize) -> Option<&String> {
+        self.lines.get(index)
+    }
+
+    /// Get all lines
+    pub fn lines(&self) -> &[String] {
+        &self.lines
     }
 }

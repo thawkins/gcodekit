@@ -1,8 +1,17 @@
 // G-code editor module.
-pub mod vocabulary;
-pub mod rules;
+pub mod autocomplete;
+pub mod config;
 pub mod editor;
+pub mod find_replace;
+pub mod rules;
 pub mod tokenizer;
+pub mod virtualized_view;
+pub mod vocabulary;
+
+// Re-export main types
+pub use editor::TextBufferCore;
+pub use rules::{Diagnostic, RuleSet, Severity};
+pub use tokenizer::{LineSyntax, TokenizerService};
 
 // This module provides functionality for editing, searching, and optimizing
 // G-code files with syntax highlighting and post-processing capabilities.
@@ -13,12 +22,14 @@ use egui::text_edit::TextBuffer;
 use std::path::PathBuf;
 
 use crate::communication::CncController;
-use crate::{MachinePosition, MoveType, PathSegment};
+use crate::types::{MachinePosition, MoveType, PathSegment};
 
 #[derive(Clone, Debug)]
 pub struct GcodeEditorState {
     pub gcode_content: String,
     pub buffer: crate::gcodeedit::editor::TextBufferCore,
+    pub tokenizer: crate::gcodeedit::tokenizer::TokenizerService,
+    pub last_parsed: Vec<crate::gcodeedit::tokenizer::LineSyntax>,
     pub gcode_filename: String,
     pub current_file_path: Option<PathBuf>,
     pub search_query: String,
@@ -28,6 +39,29 @@ pub struct GcodeEditorState {
     // Validation ruleset and diagnostics
     pub rules: crate::gcodeedit::rules::RuleSet,
     pub diagnostics: Vec<crate::gcodeedit::rules::Diagnostic>,
+    /// Content version for tracking changes and cache invalidation
+    content_version: u64,
+    // Auto-completion state
+    pub autocomplete: crate::gcodeedit::autocomplete::AutoCompleter,
+    pub show_autocomplete: bool,
+    pub autocomplete_suggestions: Vec<crate::gcodeedit::autocomplete::CompletionItem>,
+    pub autocomplete_selected: usize,
+    // Virtualization and performance
+    pub virtualized_state: crate::gcodeedit::virtualized_view::VirtualizedState,
+    pub virtualized_config: crate::gcodeedit::virtualized_view::VirtualizedConfig,
+    pub fold_manager: crate::gcodeedit::virtualized_view::FoldManager,
+    pub performance_metrics: crate::gcodeedit::virtualized_view::PerformanceMetrics,
+    pub enable_virtualization: bool,
+    // Find and Replace
+    pub find_replace: crate::gcodeedit::find_replace::FindReplace,
+    pub show_find_replace: bool,
+    pub show_replace: bool,
+    // Help and shortcuts
+    pub show_shortcuts_help: bool,
+    // Visualization and sending state (moved from GcodeState)
+    pub parsed_paths: Vec<PathSegment>,
+    pub sending_from_line: Option<usize>,
+    pub sending_progress: f32, // 0.0 to 1.0, progress of current send operation
 }
 
 impl Default for GcodeEditorState {
@@ -35,6 +69,8 @@ impl Default for GcodeEditorState {
         Self {
             gcode_content: String::new(),
             buffer: crate::gcodeedit::editor::TextBufferCore::new(),
+            tokenizer: crate::gcodeedit::tokenizer::TokenizerService::new(100),
+            last_parsed: Vec::new(),
             gcode_filename: String::new(),
             current_file_path: None,
             search_query: String::new(),
@@ -43,6 +79,23 @@ impl Default for GcodeEditorState {
             selected_line: None,
             rules: crate::gcodeedit::rules::RuleSet::default(),
             diagnostics: Vec::new(),
+            content_version: 0,
+            autocomplete: crate::gcodeedit::autocomplete::AutoCompleter::new("1.1"),
+            show_autocomplete: false,
+            autocomplete_suggestions: Vec::new(),
+            autocomplete_selected: 0,
+            virtualized_state: crate::gcodeedit::virtualized_view::VirtualizedState::default(),
+            virtualized_config: crate::gcodeedit::virtualized_view::VirtualizedConfig::default(),
+            fold_manager: crate::gcodeedit::virtualized_view::FoldManager::new(),
+            performance_metrics: crate::gcodeedit::virtualized_view::PerformanceMetrics::default(),
+            enable_virtualization: true, // Enable by default for performance
+            find_replace: crate::gcodeedit::find_replace::FindReplace::new(),
+            show_find_replace: false,
+            show_replace: false,
+            show_shortcuts_help: false,
+            parsed_paths: Vec::new(),
+            sending_from_line: None,
+            sending_progress: 0.0,
         }
     }
 }
@@ -62,13 +115,186 @@ impl GcodeEditorState {
         }
     }
 
-    pub fn on_buffer_change(&mut self) {
-        // Re-validate entire buffer for now (can be optimized to incremental)
-        self.diagnostics.clear();
-        for (i, line) in self.content().lines().enumerate() {
-            let mut diags = self.rules.validate_line(line, i);
-            self.diagnostics.append(&mut diags);
+    /// Update rule configuration and re-validate
+    pub fn update_rules(&mut self, new_rules: crate::gcodeedit::rules::RuleSet) {
+        self.rules = new_rules;
+        // Clear cache since rules changed
+        self.rules.clear_cache();
+        // Re-validate with new rules
+        self.on_buffer_change();
+    }
+
+    /// Enable a specific rule by ID and re-validate
+    pub fn enable_rule(&mut self, rule_id: &str) {
+        self.rules.enable_rule(rule_id);
+        self.rules.clear_cache();
+        self.on_buffer_change();
+    }
+
+    /// Disable a specific rule by ID and re-validate
+    pub fn disable_rule(&mut self, rule_id: &str) {
+        self.rules.disable_rule(rule_id);
+        self.rules.clear_cache();
+        self.on_buffer_change();
+    }
+
+    /// Trigger autocomplete at current cursor position
+    pub fn trigger_autocomplete(&mut self) {
+        let cursor = self.buffer.cursor;
+        let lines: Vec<String> = self.content().lines().map(|s| s.to_string()).collect();
+
+        if cursor.line < lines.len() {
+            let line = &lines[cursor.line];
+            let context = crate::gcodeedit::autocomplete::CompletionContext {
+                line_before_cursor: line[..cursor.col.min(line.len())].to_string(),
+                line_after_cursor: line[cursor.col.min(line.len())..].to_string(),
+                recent_commands: self.get_recent_commands(),
+                modal_state: crate::gcodeedit::autocomplete::ModalState::default(),
+            };
+
+            self.autocomplete_suggestions = self
+                .autocomplete
+                .get_suggestions(line, cursor.col, &context);
+
+            if !self.autocomplete_suggestions.is_empty() {
+                self.show_autocomplete = true;
+                self.autocomplete_selected = 0;
+            } else {
+                self.show_autocomplete = false;
+            }
         }
+    }
+
+    /// Accept the currently selected autocomplete suggestion
+    pub fn accept_autocomplete(&mut self) {
+        if self.show_autocomplete
+            && self.autocomplete_selected < self.autocomplete_suggestions.len()
+        {
+            let suggestion = &self.autocomplete_suggestions[self.autocomplete_selected];
+            let cursor = self.buffer.cursor;
+            let lines: Vec<String> = self.content().lines().map(|s| s.to_string()).collect();
+
+            if cursor.line < lines.len() {
+                let line = &lines[cursor.line];
+
+                // Find the start of the current word to replace
+                let mut start_col = cursor.col;
+                let before = &line[..cursor.col.min(line.len())];
+                for (i, c) in before.chars().rev().enumerate() {
+                    if c.is_whitespace() {
+                        start_col = cursor.col - i;
+                        break;
+                    }
+                    if i == before.len() - 1 {
+                        start_col = 0;
+                    }
+                }
+
+                // Delete current word and insert suggestion
+                let start = crate::gcodeedit::editor::Cursor::new(cursor.line, start_col);
+                self.buffer.delete_range(start, cursor);
+                self.buffer.insert_text(&suggestion.insert_text);
+            }
+
+            self.show_autocomplete = false;
+            self.on_buffer_change();
+        }
+    }
+
+    /// Move autocomplete selection up
+    pub fn autocomplete_prev(&mut self) {
+        if self.show_autocomplete && !self.autocomplete_suggestions.is_empty() {
+            if self.autocomplete_selected > 0 {
+                self.autocomplete_selected -= 1;
+            } else {
+                self.autocomplete_selected = self.autocomplete_suggestions.len() - 1;
+            }
+        }
+    }
+
+    /// Move autocomplete selection down
+    pub fn autocomplete_next(&mut self) {
+        if self.show_autocomplete && !self.autocomplete_suggestions.is_empty() {
+            self.autocomplete_selected =
+                (self.autocomplete_selected + 1) % self.autocomplete_suggestions.len();
+        }
+    }
+
+    /// Cancel autocomplete
+    pub fn cancel_autocomplete(&mut self) {
+        self.show_autocomplete = false;
+        self.autocomplete_suggestions.clear();
+        self.autocomplete_selected = 0;
+    }
+
+    /// Get recently used commands from the file for context-aware suggestions
+    fn get_recent_commands(&self) -> Vec<String> {
+        let mut commands = Vec::new();
+        let lines: Vec<String> = self.content().lines().map(|s| s.to_string()).collect();
+
+        for line in lines.iter().rev().take(20) {
+            let trimmed = line.trim();
+            if let Some(first) = trimmed.split_whitespace().next() {
+                if first.starts_with('G') || first.starts_with('M') {
+                    if !commands.contains(&first.to_string()) {
+                        commands.push(first.to_string());
+                    }
+                }
+            }
+        }
+
+        commands
+    }
+
+    /// Detect and update fold regions
+    pub fn detect_folds(&mut self) {
+        let lines: Vec<String> = self.content().lines().map(|s| s.to_string()).collect();
+        self.fold_manager.detect_folds(&lines);
+    }
+
+    /// Toggle fold at a specific line
+    pub fn toggle_fold_at_line(&mut self, line: usize) {
+        self.fold_manager.toggle_fold_at(line);
+    }
+
+    /// Expand all folds
+    pub fn expand_all_folds(&mut self) {
+        for region in &mut self.fold_manager.regions {
+            region.is_folded = false;
+        }
+    }
+
+    /// Collapse all folds
+    pub fn collapse_all_folds(&mut self) {
+        for region in &mut self.fold_manager.regions {
+            region.is_folded = true;
+        }
+    }
+
+    /// Scroll to a specific line (for virtualized rendering)
+    pub fn scroll_to_line(&mut self, line: usize) {
+        self.virtualized_state
+            .scroll_to_line(line, &self.virtualized_config);
+    }
+
+    pub fn on_buffer_change(&mut self) {
+        // Increment content version to track changes
+        self.content_version = self.content_version.wrapping_add(1);
+
+        // Submit to tokenizer service for debounced background parsing
+        let content = self.content();
+        self.tokenizer.submit_content(&content);
+
+        // Run immediate synchronous parse for near-instant diagnostics
+        let parsed = crate::gcodeedit::tokenizer::parse_content_sync(&content);
+
+        // Use incremental validation with caching
+        self.diagnostics = self
+            .rules
+            .validate_parsed(&parsed, Some(self.content_version));
+
+        // Update last_parsed snapshot
+        self.last_parsed = parsed;
     }
 
     pub fn load_gcode_file(&mut self) -> Result<(), String> {
@@ -80,6 +306,8 @@ impl GcodeEditorState {
                 Ok(content) => {
                     self.gcode_content = content.clone();
                     self.buffer.set_content(&content);
+                    // submit to tokenizer immediately
+                    self.tokenizer.submit_content(&content);
                     self.current_file_path = Some(path.clone());
                     self.gcode_filename = path
                         .file_name()
@@ -88,6 +316,8 @@ impl GcodeEditorState {
                         .to_string();
                     // Trigger validation after loading
                     self.on_buffer_change();
+                    // Detect fold regions
+                    self.detect_folds();
                     Ok(())
                 }
                 Err(e) => Err(format!("Error loading file: {}", e)),
@@ -217,7 +447,10 @@ impl GcodeEditorState {
 
         for part in parts {
             if part.len() > 1 {
-                let first_char = match part.chars().next() { Some(c) => c, None => continue };
+                let first_char = match part.chars().next() {
+                    Some(c) => c,
+                    None => continue,
+                };
 
                 // Handle parameters with decimal truncation
                 if first_char.is_ascii_alphabetic() && part.len() > 1 {
@@ -266,7 +499,10 @@ impl GcodeEditorState {
         // Parse parameters
         for part in &parts {
             if part.len() > 1 {
-                let first_char = match part.chars().next() { Some(c) => c, None => continue };
+                let first_char = match part.chars().next() {
+                    Some(c) => c,
+                    None => continue,
+                };
                 if first_char.is_ascii_alphabetic() {
                     if let Ok(value) = part[1..].parse::<f32>() {
                         params.insert(first_char, value);
@@ -359,7 +595,10 @@ impl GcodeEditorState {
 
         for part in parts {
             if part.len() > 1 {
-                let first_char = match part.chars().next() { Some(c) => c, None => continue };
+                let first_char = match part.chars().next() {
+                    Some(c) => c,
+                    None => continue,
+                };
                 if let Ok(value) = part[1..].parse::<f32>() {
                     match first_char {
                         'X' => pos.x = value,
@@ -404,7 +643,10 @@ impl GcodeEditorState {
                         }
                     }
                 } else if part.len() > 1 {
-                    let axis = match part.chars().next() { Some(c) => c, None => continue };
+                    let axis = match part.chars().next() {
+                        Some(c) => c,
+                        None => continue,
+                    };
                     if let Ok(value) = part[1..].parse::<f32>() {
                         new_pos.set_axis(axis, value);
                     }
@@ -572,7 +814,270 @@ impl GcodeEditorState {
             return None;
         }
 
-        // Search controls
+        // Keyboard shortcuts for Find/Replace
+        if ui.input(|i| i.key_pressed(egui::Key::F) && i.modifiers.ctrl) {
+            self.show_find_replace = true;
+            self.show_replace = false;
+        }
+        if ui.input(|i| i.key_pressed(egui::Key::H) && i.modifiers.ctrl) {
+            self.show_find_replace = true;
+            self.show_replace = true;
+        }
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+            self.show_find_replace = false;
+        }
+
+        // Additional keyboard shortcuts
+        // Undo/Redo
+        if ui.input(|i| i.key_pressed(egui::Key::Z) && i.modifiers.ctrl && !i.modifiers.shift) {
+            self.buffer.undo();
+            self.on_buffer_change();
+        }
+        if ui.input(|i| (i.key_pressed(egui::Key::Z) && i.modifiers.ctrl && i.modifiers.shift) 
+                        || (i.key_pressed(egui::Key::Y) && i.modifiers.ctrl)) {
+            self.buffer.redo();
+            self.on_buffer_change();
+        }
+
+        // Save
+        if ui.input(|i| i.key_pressed(egui::Key::S) && i.modifiers.ctrl) {
+            if let Err(e) = self.save_gcode_file() {
+                eprintln!("Failed to save: {}", e);
+            }
+        }
+
+        // Toggle comment (Ctrl+/)
+        if ui.input(|i| i.key_pressed(egui::Key::Slash) && i.modifiers.ctrl) {
+            if let Some(line_num) = self.selected_line {
+                let lines: Vec<String> = self.content().lines().map(|s| s.to_string()).collect();
+                if line_num < lines.len() {
+                    let mut new_lines = lines.clone();
+                    let line = &new_lines[line_num];
+                    
+                    // Toggle comment
+                    if line.trim_start().starts_with(';') {
+                        // Remove comment
+                        new_lines[line_num] = line.trim_start().trim_start_matches(';').trim_start().to_string();
+                    } else {
+                        // Add comment
+                        new_lines[line_num] = format!("; {}", line);
+                    }
+                    
+                    self.buffer.set_content(&new_lines.join("\n"));
+                    self.on_buffer_change();
+                }
+            }
+        }
+
+        // Fold/Unfold (Ctrl+])
+        if ui.input(|i| i.key_pressed(egui::Key::CloseBracket) && i.modifiers.ctrl) {
+            if let Some(line_num) = self.selected_line {
+                self.toggle_fold_at_line(line_num);
+            }
+        }
+
+        // Expand all folds (Ctrl+Shift+])
+        if ui.input(|i| i.key_pressed(egui::Key::CloseBracket) && i.modifiers.ctrl && i.modifiers.shift) {
+            self.expand_all_folds();
+        }
+
+        // Collapse all folds (Ctrl+Shift+[)
+        if ui.input(|i| i.key_pressed(egui::Key::OpenBracket) && i.modifiers.ctrl && i.modifiers.shift) {
+            self.collapse_all_folds();
+        }
+
+        // Go to line (Ctrl+L)
+        // TODO: Add goto line dialog
+
+        // Select all (Ctrl+A)
+        if ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.ctrl) {
+            // TODO: Implement select all
+        }
+
+        // Copy (Ctrl+C) - handled by egui
+        // Cut (Ctrl+X) - handled by egui
+        // Paste (Ctrl+V) - handled by egui
+
+        // Show shortcuts help (F1 or Ctrl+?)
+        if ui.input(|i| i.key_pressed(egui::Key::F1) 
+                        || (i.key_pressed(egui::Key::Slash) && i.modifiers.ctrl && i.modifiers.shift)) {
+            self.show_shortcuts_help = !self.show_shortcuts_help;
+        }
+
+        // Keyboard shortcuts help dialog
+        if self.show_shortcuts_help {
+            egui::Window::new("⌨️ Keyboard Shortcuts")
+                .open(&mut self.show_shortcuts_help)
+                .resizable(false)
+                .default_width(500.0)
+                .show(ui.ctx(), |ui| {
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        ui.heading("Navigation");
+                        ui.label("F7 / F8 - Navigate diagnostics");
+                        ui.label("Ctrl+G - Jump to next diagnostic");
+                        ui.add_space(10.0);
+
+                        ui.heading("Editing");
+                        ui.label("Ctrl+Z - Undo");
+                        ui.label("Ctrl+Y / Ctrl+Shift+Z - Redo");
+                        ui.label("Ctrl+/ - Toggle comment on selected line");
+                        ui.label("Ctrl+S - Save file");
+                        ui.label("Ctrl+A - Select all");
+                        ui.label("Ctrl+C - Copy");
+                        ui.label("Ctrl+X - Cut");
+                        ui.label("Ctrl+V - Paste");
+                        ui.add_space(10.0);
+
+                        ui.heading("Search & Replace");
+                        ui.label("Ctrl+F - Open find dialog");
+                        ui.label("Ctrl+H - Open find/replace dialog");
+                        ui.label("Esc - Close find/replace");
+                        ui.add_space(10.0);
+
+                        ui.heading("Code Folding");
+                        ui.label("Ctrl+] - Toggle fold at selected line");
+                        ui.label("Ctrl+Shift+] - Expand all folds");
+                        ui.label("Ctrl+Shift+[ - Collapse all folds");
+                        ui.add_space(10.0);
+
+                        ui.heading("Auto-completion");
+                        ui.label("Ctrl+Space - Trigger auto-completion");
+                        ui.label("↑↓ - Navigate suggestions");
+                        ui.label("Enter - Accept suggestion");
+                        ui.label("Esc - Cancel auto-completion");
+                        ui.add_space(10.0);
+
+                        ui.heading("Help");
+                        ui.label("F1 - Show/hide this help dialog");
+                    });
+                });
+        }
+
+        // Find/Replace panel
+        if self.show_find_replace {
+            let mut window_open = true;
+            let mut needs_find = false;
+            let mut needs_replace_current = false;
+            let mut needs_replace_all = false;
+            let mut nav_prev = false;
+            let mut nav_next = false;
+            
+            egui::Window::new("Find and Replace")
+                .open(&mut window_open)
+                .resizable(false)
+                .default_width(500.0)
+                .show(ui.ctx(), |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("Find:");
+                        let find_response = ui.text_edit_singleline(&mut self.find_replace.query);
+                        
+                        if find_response.changed() || ui.button("🔍 Find All").clicked() {
+                            needs_find = true;
+                        }
+                    });
+
+                    if self.show_replace {
+                        ui.horizontal(|ui| {
+                            ui.label("Replace:");
+                            ui.text_edit_singleline(&mut self.find_replace.replace_text);
+                        });
+                    }
+
+                    ui.horizontal(|ui| {
+                        ui.checkbox(&mut self.find_replace.options.case_sensitive, "Match case");
+                        ui.checkbox(&mut self.find_replace.options.whole_word, "Whole word");
+                        ui.checkbox(&mut self.find_replace.options.use_regex, "Use regex");
+                        ui.checkbox(&mut self.find_replace.options.wrap_around, "Wrap around");
+                    });
+
+                    ui.separator();
+
+                    ui.horizontal(|ui| {
+                        if ui.button("⬆️ Previous").clicked() {
+                            nav_prev = true;
+                        }
+
+                        if ui.button("⬇️ Next").clicked() {
+                            nav_next = true;
+                        }
+
+                        if !self.find_replace.matches.is_empty() {
+                            ui.label(format!(
+                                "{} / {}",
+                                self.find_replace.current_match_number(),
+                                self.find_replace.match_count()
+                            ));
+                        }
+                    });
+
+                    if self.show_replace {
+                        ui.horizontal(|ui| {
+                            if ui.button("Replace").clicked() && !self.find_replace.matches.is_empty() {
+                                needs_replace_current = true;
+                            }
+
+                            if ui.button("Replace All").clicked() && !self.find_replace.matches.is_empty() {
+                                needs_replace_all = true;
+                            }
+                        });
+                    }
+
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        ui.label("💡 Tip:");
+                        ui.label("Ctrl+F to find, Ctrl+H to replace, Esc to close");
+                    });
+                });
+
+            self.show_find_replace = window_open;
+
+            // Handle actions outside the window closure
+            if needs_find {
+                let content = self.content();
+                let count = self.find_replace.find(&content);
+                if count > 0 {
+                    if let Some(first_match) = self.find_replace.current() {
+                        self.selected_line = Some(first_match.line);
+                    }
+                }
+            }
+
+            if nav_prev {
+                if let Some(mat) = self.find_replace.prev_match() {
+                    let line = mat.line;
+                    self.selected_line = Some(line);
+                    self.scroll_to_line(line);
+                }
+            }
+
+            if nav_next {
+                if let Some(mat) = self.find_replace.next_match() {
+                    let line = mat.line;
+                    self.selected_line = Some(line);
+                    self.scroll_to_line(line);
+                }
+            }
+
+            if needs_replace_current {
+                let content = self.content();
+                let new_content = self.find_replace.replace_current(&content);
+                self.buffer.set_content(&new_content);
+                self.on_buffer_change();
+                
+                // Re-run find to update matches
+                let content = self.content();
+                self.find_replace.find(&content);
+            }
+
+            if needs_replace_all {
+                let content = self.content();
+                let (_new_content, _count) = self.find_replace.replace_all(&content);
+                self.buffer.set_content(&_new_content);
+                self.on_buffer_change();
+            }
+        }
+
+        // Legacy search controls (kept for compatibility, can be removed later)
         ui.horizontal(|ui| {
             ui.label("Search:");
             let search_response = ui.text_edit_singleline(&mut self.search_query);
@@ -624,45 +1129,143 @@ impl GcodeEditorState {
             }
         });
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            // Prepare lines
-                // Create a snapshot of the lines to avoid borrowing buffer content immutably across the UI closure
-            let content_clone = self.content();
-            let lines: Vec<String> = content_clone.lines().map(|s| s.to_string()).collect();
+        // Autocomplete keyboard shortcuts (outside text edit to capture globally)
+        if ui.input(|i| i.key_pressed(egui::Key::Space) && i.modifiers.ctrl) {
+            self.trigger_autocomplete();
+        }
+
+        if self.show_autocomplete {
+            if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
+                self.autocomplete_prev();
+            }
+            if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
+                self.autocomplete_next();
+            }
+            if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                self.accept_autocomplete();
+            }
+            if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                self.cancel_autocomplete();
+            }
+        }
+
+        // Performance monitoring
+        let render_start = std::time::Instant::now();
+
+        // Determine if we should use virtualization
+        let content_clone = self.content();
+        let lines: Vec<String> = content_clone.lines().map(|s| s.to_string()).collect();
+        let total_lines = lines.len();
+        let use_virtualization = self.enable_virtualization && total_lines > self.virtualized_config.max_rendered_lines;
+
+        // Add performance info header
+        ui.horizontal(|ui| {
+            ui.label(format!("Lines: {}", total_lines));
+            if use_virtualization {
+                ui.colored_label(egui::Color32::GREEN, "⚡ Virtualized");
+                ui.label(format!(
+                    "Rendering: {}-{}",
+                    self.virtualized_state.first_visible_line,
+                    self.virtualized_state.last_visible_line
+                ));
+            }
+            
+            // Fold controls
+            if ui.button("📁 Detect Folds").clicked() {
+                self.detect_folds();
+            }
+            if ui.button("➕ Expand All").clicked() {
+                self.expand_all_folds();
+            }
+            if ui.button("➖ Collapse All").clicked() {
+                self.collapse_all_folds();
+            }
+            
+            // Performance metrics
+            if !self.performance_metrics.summary().is_empty() {
+                ui.label(format!("⏱️ {}", self.performance_metrics.summary()));
+            }
+        });
+
+        ui.separator();
+
+        egui::ScrollArea::vertical()
+            .id_salt("gcode_editor_scroll")
+            .show(ui, |ui| {
+            // For now, render all non-folded lines
+            // TODO: Implement true virtualization with scroll tracking
+            
+            // Calculate visible lines (accounting for folds)
+            let visible_lines: Vec<usize> = if use_virtualization && total_lines > 1000 {
+                // Use virtualized range
+                let range = self.virtualized_state.visible_range();
+                range.filter(|&line| !self.fold_manager.is_line_folded(line)).collect()
+            } else {
+                // Render all lines (accounting for folds)
+                (0..total_lines)
+                    .filter(|&line| !self.fold_manager.is_line_folded(line))
+                    .collect()
+            };
 
             ui.horizontal(|ui| {
-                // Gutter column with clickable markers
+                // Gutter column with clickable markers and fold indicators
                 ui.vertical(|g| {
-                    for (i, _l) in lines.iter().enumerate() {
-                        let icon = if self.diagnostics.iter().any(|d| d.line == i && d.severity == crate::gcodeedit::rules::Severity::Error) {
-                            "❗"
-                        } else if self.diagnostics.iter().any(|d| d.line == i && d.severity == crate::gcodeedit::rules::Severity::Warn) {
-                            "⚠️"
-                        } else if self.diagnostics.iter().any(|d| d.line == i && d.severity == crate::gcodeedit::rules::Severity::Info) {
-                            "ℹ️"
-                        } else {
-                            "  "
-                        };
-                        let btn = g.selectable_label(self.selected_line == Some(i), format!("{} {:05}", icon, i + 1));
-                        if btn.clicked() {
-                            self.selected_line = Some(i);
-                        }
-                        // Attach hover UI to show diagnostics
-                        let diags: Vec<_> = self.diagnostics.iter().filter(|d| d.line == i).collect();
-                        if !diags.is_empty() {
-                            btn.on_hover_ui(|ui| {
-                                ui.vertical(|ui| {
-                                    for d in diags.iter() {
-                                        let sev = match d.severity {
-                                            crate::gcodeedit::rules::Severity::Error => "Error",
-                                            crate::gcodeedit::rules::Severity::Warn => "Warn",
-                                            crate::gcodeedit::rules::Severity::Info => "Info",
-                                        };
-                                        ui.label(format!("[{}] {}", sev, d.message));
-                                    }
+                    for &i in &visible_lines {
+                        g.horizontal(|ui| {
+                            // Fold indicator
+                            if let Some(region) = self.fold_manager.get_region_at(i) {
+                                let fold_icon = if region.is_folded { "▶️" } else { "🔽" };
+                                if ui.button(fold_icon).clicked() {
+                                    self.toggle_fold_at_line(i);
+                                }
+                            } else {
+                                ui.label("  ");
+                            }
+
+                            // Diagnostic icon
+                            let icon = if self.diagnostics.iter().any(|d| {
+                                d.line == i && d.severity == crate::gcodeedit::rules::Severity::Error
+                            }) {
+                                "❗"
+                            } else if self.diagnostics.iter().any(|d| {
+                                d.line == i && d.severity == crate::gcodeedit::rules::Severity::Warn
+                            }) {
+                                "⚠️"
+                            } else if self.diagnostics.iter().any(|d| {
+                                d.line == i && d.severity == crate::gcodeedit::rules::Severity::Info
+                            }) {
+                                "ℹ️"
+                            } else {
+                                "  "
+                            };
+                            
+                            let btn = ui.selectable_label(
+                                self.selected_line == Some(i),
+                                format!("{} {:05}", icon, i + 1),
+                            );
+                            
+                            if btn.clicked() {
+                                self.selected_line = Some(i);
+                            }
+                            
+                            // Attach hover UI to show diagnostics
+                            let diags: Vec<_> =
+                                self.diagnostics.iter().filter(|d| d.line == i).collect();
+                            if !diags.is_empty() {
+                                btn.on_hover_ui(|ui| {
+                                    ui.vertical(|ui| {
+                                        for d in diags.iter() {
+                                            let sev = match d.severity {
+                                                crate::gcodeedit::rules::Severity::Error => "Error",
+                                                crate::gcodeedit::rules::Severity::Warn => "Warn",
+                                                crate::gcodeedit::rules::Severity::Info => "Info",
+                                            };
+                                            ui.label(format!("[{}] {}", sev, d.message));
+                                        }
+                                    });
                                 });
-                            });
-                        }
+                            }
+                        });
                     }
                 });
 
@@ -674,95 +1277,257 @@ impl GcodeEditorState {
                         .layouter(&mut |ui: &egui::Ui, string: &dyn TextBuffer, _wrap_width| {
                             let mut job = LayoutJob::default();
                             let search_query_lower = self.search_query.to_lowercase();
-                            let has_search = !self.search_query.is_empty() && !self.search_results.is_empty();
+                            let has_search =
+                                !self.search_query.is_empty() && !self.search_results.is_empty();
 
-                            // Helper function for syntax highlighting; uses line_bg for background
-                            let append_with_syntax_highlight = |job: &mut LayoutJob, text: &str, line_bg: egui::Color32| {
-                                let words: Vec<&str> = text.split_whitespace().collect();
-                                for (j, word) in words.iter().enumerate() {
-                                    let color = if word.starts_with('G') && word.len() > 1 && word[1..].chars().all(|c| c.is_ascii_digit()) {
-                                        egui::Color32::BLUE
-                                    } else if word.starts_with('M') && word.len() > 1 && word[1..].chars().all(|c| c.is_ascii_digit()) {
-                                        egui::Color32::GREEN
-                                    } else if word.starts_with('X') || word.starts_with('Y') || word.starts_with('Z') || word.starts_with('A') || word.starts_with('B') || word.starts_with('C') || word.starts_with('U') || word.starts_with('V') || word.starts_with('W') || word.starts_with('I') || word.starts_with('J') || word.starts_with('K') || word.starts_with('R') || word.starts_with('F') || word.starts_with('S') || word.starts_with('T') || word.starts_with('H') || word.starts_with('D') || word.starts_with('P') || word.starts_with('Q') || word.starts_with('L') || word.starts_with('N') || word.starts_with('O') {
-                                        if word.len() > 1 {
-                                            let value_part = &word[1..];
-                                            if value_part.parse::<f32>().is_err() && !value_part.contains('.') && !value_part.starts_with('-') {
-                                                egui::Color32::from_rgb(255, 165, 0)
-                                            } else {
-                                                egui::Color32::RED
-                                            }
-                                        } else {
-                                            egui::Color32::RED
-                                        }
-                                    } else if word.starts_with(';') {
-                                        egui::Color32::GRAY
-                                    } else if word.chars().next().is_some_and(|c| c.is_ascii_alphabetic()) {
-                                        egui::Color32::from_rgb(255, 165, 0)
-                                    } else {
-                                        egui::Color32::BLACK
-                                    };
-                                    job.append(word, 0.0, TextFormat { font_id: egui::FontId::monospace(12.0), color, background: egui::Color32::WHITE, ..Default::default() });
-                                    if j < words.len() - 1 {
-                                        job.append(" ", 0.0, TextFormat::default());
-                                    }
-                                }
+                            // Get theme-aware colors
+                            let is_dark = ui.visuals().dark_mode;
+                            let text_color = ui.visuals().text_color();
+                            let bg_color = ui.visuals().extreme_bg_color;
+                            
+                            // Syntax highlighting colors that work in both themes
+                            let g_code_color = if is_dark {
+                                egui::Color32::from_rgb(100, 150, 255)  // Light blue for dark
+                            } else {
+                                egui::Color32::from_rgb(0, 0, 200)      // Dark blue for light
                             };
+                            
+                            let m_code_color = if is_dark {
+                                egui::Color32::from_rgb(100, 255, 150)  // Light green for dark
+                            } else {
+                                egui::Color32::from_rgb(0, 150, 0)      // Dark green for light
+                            };
+                            
+                            let param_color = if is_dark {
+                                egui::Color32::from_rgb(255, 120, 120)  // Light red for dark
+                            } else {
+                                egui::Color32::from_rgb(200, 0, 0)      // Dark red for light
+                            };
+                            
+                            let comment_color = if is_dark {
+                                egui::Color32::from_rgb(120, 120, 120)  // Light gray for dark
+                            } else {
+                                egui::Color32::from_rgb(100, 100, 100)  // Dark gray for light
+                            };
+                            
+                            let keyword_color = if is_dark {
+                                egui::Color32::from_rgb(255, 200, 100)  // Orange for dark
+                            } else {
+                                egui::Color32::from_rgb(200, 120, 0)    // Dark orange for light
+                            };
+
+                            // Helper function for syntax highlighting
+                            let append_with_syntax_highlight =
+                                |job: &mut LayoutJob, text: &str, line_bg: egui::Color32| {
+                                    let words: Vec<&str> = text.split_whitespace().collect();
+                                    for (j, word) in words.iter().enumerate() {
+                                        let color = if word.starts_with('G')
+                                            && word.len() > 1
+                                            && word[1..].chars().all(|c| c.is_ascii_digit())
+                                        {
+                                            g_code_color
+                                        } else if word.starts_with('M')
+                                            && word.len() > 1
+                                            && word[1..].chars().all(|c| c.is_ascii_digit())
+                                        {
+                                            m_code_color
+                                        } else if word.starts_with('X')
+                                            || word.starts_with('Y')
+                                            || word.starts_with('Z')
+                                            || word.starts_with('A')
+                                            || word.starts_with('B')
+                                            || word.starts_with('C')
+                                            || word.starts_with('U')
+                                            || word.starts_with('V')
+                                            || word.starts_with('W')
+                                            || word.starts_with('I')
+                                            || word.starts_with('J')
+                                            || word.starts_with('K')
+                                            || word.starts_with('R')
+                                            || word.starts_with('F')
+                                            || word.starts_with('S')
+                                            || word.starts_with('T')
+                                            || word.starts_with('H')
+                                            || word.starts_with('D')
+                                            || word.starts_with('P')
+                                            || word.starts_with('Q')
+                                            || word.starts_with('L')
+                                            || word.starts_with('N')
+                                            || word.starts_with('O')
+                                        {
+                                            if word.len() > 1 {
+                                                let value_part = &word[1..];
+                                                if value_part.parse::<f32>().is_err()
+                                                    && !value_part.contains('.')
+                                                    && !value_part.starts_with('-')
+                                                {
+                                                    keyword_color
+                                                } else {
+                                                    param_color
+                                                }
+                                            } else {
+                                                param_color
+                                            }
+                                        } else if word.starts_with(';') {
+                                            comment_color
+                                        } else if word
+                                            .chars()
+                                            .next()
+                                            .is_some_and(|c| c.is_ascii_alphabetic())
+                                        {
+                                            keyword_color
+                                        } else {
+                                            text_color
+                                        };
+                                        job.append(
+                                            word,
+                                            0.0,
+                                            TextFormat {
+                                                font_id: egui::FontId::monospace(12.0),
+                                                color,
+                                                background: line_bg,
+                                                ..Default::default()
+                                            },
+                                        );
+                                        if j < words.len() - 1 {
+                                            job.append(" ", 0.0, TextFormat {
+                                                background: line_bg,
+                                                ..Default::default()
+                                            });
+                                        }
+                                    }
+                                };
 
                             for (i, line) in string.as_str().lines().enumerate() {
                                 // Determine line background color based on diagnostics
-                                let mut line_bg = egui::Color32::WHITE;
+                                let mut line_bg = bg_color;
                                 for d in &self.diagnostics {
                                     if d.line == i {
                                         line_bg = match d.severity {
-                                            crate::gcodeedit::rules::Severity::Error => egui::Color32::from_rgb(255, 200, 200),
-                                            crate::gcodeedit::rules::Severity::Warn => egui::Color32::from_rgb(255, 230, 180),
-                                            crate::gcodeedit::rules::Severity::Info => egui::Color32::from_rgb(230, 240, 255),
+                                            crate::gcodeedit::rules::Severity::Error => {
+                                                if is_dark {
+                                                    egui::Color32::from_rgb(80, 30, 30)   // Dark red bg
+                                                } else {
+                                                    egui::Color32::from_rgb(255, 200, 200) // Light red bg
+                                                }
+                                            }
+                                            crate::gcodeedit::rules::Severity::Warn => {
+                                                if is_dark {
+                                                    egui::Color32::from_rgb(80, 60, 20)    // Dark yellow bg
+                                                } else {
+                                                    egui::Color32::from_rgb(255, 230, 180)  // Light yellow bg
+                                                }
+                                            }
+                                            crate::gcodeedit::rules::Severity::Info => {
+                                                if is_dark {
+                                                    egui::Color32::from_rgb(20, 40, 60)    // Dark blue bg
+                                                } else {
+                                                    egui::Color32::from_rgb(230, 240, 255) // Light blue bg
+                                                }
+                                            }
                                         };
                                         break;
                                     }
                                 }
 
                                 // Check if this line is the current search result
-                                let is_current_search_line = has_search && !self.search_results.is_empty() && i == self.search_results[self.current_search_index];
+                                let is_current_search_line = has_search
+                                    && !self.search_results.is_empty()
+                                    && i == self.search_results[self.current_search_index];
 
                                 if is_current_search_line {
                                     let line_lower = line.to_lowercase();
                                     let mut pos = 0;
-                                    while let Some(match_start) = line_lower[pos..].find(&search_query_lower) {
+                                    while let Some(match_start) =
+                                        line_lower[pos..].find(&search_query_lower)
+                                    {
                                         let match_start = pos + match_start;
                                         let match_end = match_start + search_query_lower.len();
 
                                         if match_start > pos {
-                                            append_with_syntax_highlight(&mut job, &line[pos..match_start], line_bg);
+                                            append_with_syntax_highlight(
+                                                &mut job,
+                                                &line[pos..match_start],
+                                                line_bg,
+                                            );
                                         }
 
-                                        job.append(&line[match_start..match_end], 0.0, TextFormat { font_id: egui::FontId::monospace(12.0), color: egui::Color32::BLACK, background: egui::Color32::YELLOW, ..Default::default() });
+                                        job.append(
+                                            &line[match_start..match_end],
+                                            0.0,
+                                            TextFormat {
+                                                font_id: egui::FontId::monospace(12.0),
+                                                color: if is_dark {
+                                                    egui::Color32::BLACK
+                                                } else {
+                                                    egui::Color32::BLACK
+                                                },
+                                                background: if is_dark {
+                                                    egui::Color32::from_rgb(180, 180, 0)  // Darker yellow
+                                                } else {
+                                                    egui::Color32::YELLOW                  // Bright yellow
+                                                },
+                                                ..Default::default()
+                                            },
+                                        );
 
                                         pos = match_end;
                                     }
 
                                     if pos < line.len() {
-                                        append_with_syntax_highlight(&mut job, &line[pos..], line_bg);
+                                        append_with_syntax_highlight(
+                                            &mut job,
+                                            &line[pos..],
+                                            line_bg,
+                                        );
                                     }
-                                } else if has_search && line.to_lowercase().contains(&search_query_lower) {
+                                } else if has_search
+                                    && line.to_lowercase().contains(&search_query_lower)
+                                {
                                     let line_lower = line.to_lowercase();
                                     let mut pos = 0;
-                                    while let Some(match_start) = line_lower[pos..].find(&search_query_lower) {
+                                    while let Some(match_start) =
+                                        line_lower[pos..].find(&search_query_lower)
+                                    {
                                         let match_start = pos + match_start;
                                         let match_end = match_start + search_query_lower.len();
 
                                         if match_start > pos {
-                                            append_with_syntax_highlight(&mut job, &line[pos..match_start], line_bg);
+                                            append_with_syntax_highlight(
+                                                &mut job,
+                                                &line[pos..match_start],
+                                                line_bg,
+                                            );
                                         }
 
-                                        job.append(&line[match_start..match_end], 0.0, TextFormat { font_id: egui::FontId::monospace(12.0), color: egui::Color32::BLACK, background: egui::Color32::from_rgb(255, 255, 200), ..Default::default() });
+                                        job.append(
+                                            &line[match_start..match_end],
+                                            0.0,
+                                            TextFormat {
+                                                font_id: egui::FontId::monospace(12.0),
+                                                color: if is_dark {
+                                                    egui::Color32::BLACK
+                                                } else {
+                                                    egui::Color32::BLACK
+                                                },
+                                                background: if is_dark {
+                                                    egui::Color32::from_rgb(160, 160, 0)  // Darker yellow
+                                                } else {
+                                                    egui::Color32::from_rgb(255, 255, 200) // Light yellow
+                                                },
+                                                ..Default::default()
+                                            },
+                                        );
 
                                         pos = match_end;
                                     }
 
                                     if pos < line.len() {
-                                        append_with_syntax_highlight(&mut job, &line[pos..], line_bg);
+                                        append_with_syntax_highlight(
+                                            &mut job,
+                                            &line[pos..],
+                                            line_bg,
+                                        );
                                     }
                                 } else {
                                     append_with_syntax_highlight(&mut job, line, line_bg);
@@ -781,14 +1546,83 @@ impl GcodeEditorState {
                 if !diags.is_empty() {
                     ui.separator();
                     ui.horizontal(|ui| {
-                        ui.colored_label(egui::Color32::LIGHT_RED, format!("Diagnostics for line {}:", sel + 1));
+                        ui.colored_label(
+                            egui::Color32::LIGHT_RED,
+                            format!("Diagnostics for line {}:", sel + 1),
+                        );
                     });
                     for d in diags {
-                        ui.label(format!("- [{}] {}", match d.severity { crate::gcodeedit::rules::Severity::Error => "Error", crate::gcodeedit::rules::Severity::Warn => "Warn", crate::gcodeedit::rules::Severity::Info => "Info" }, d.message));
+                        ui.label(format!(
+                            "- [{}] {}",
+                            match d.severity {
+                                crate::gcodeedit::rules::Severity::Error => "Error",
+                                crate::gcodeedit::rules::Severity::Warn => "Warn",
+                                crate::gcodeedit::rules::Severity::Info => "Info",
+                            },
+                            d.message
+                        ));
                     }
                 }
             }
         });
+
+        // Update performance metrics
+        let render_time = render_start.elapsed();
+        let lines_to_track = if use_virtualization { 
+            self.virtualized_state.last_visible_line - self.virtualized_state.first_visible_line
+        } else {
+            total_lines
+        };
+        self.performance_metrics.update(
+            lines_to_track,
+            render_time.as_micros() as u64,
+            total_lines,
+        );
+
+        // Render autocomplete popup
+        if self.show_autocomplete && !self.autocomplete_suggestions.is_empty() {
+            let suggestions_clone = self.autocomplete_suggestions.clone();
+            let selected_idx = self.autocomplete_selected;
+
+            egui::Window::new("Autocomplete")
+                .title_bar(false)
+                .resizable(false)
+                .collapsible(false)
+                .fixed_pos(ui.cursor().min + egui::vec2(200.0, 0.0))
+                .show(ui.ctx(), |ui| {
+                    ui.set_max_width(400.0);
+                    ui.set_max_height(300.0);
+
+                    ui.label("Suggestions (↑↓ to navigate, Enter to accept, Esc to cancel):");
+                    ui.separator();
+
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        for (idx, suggestion) in suggestions_clone.iter().enumerate() {
+                            let is_selected = idx == selected_idx;
+                            let label_text =
+                                format!("{} - {}", suggestion.label, suggestion.detail);
+
+                            let response = ui.selectable_label(is_selected, label_text);
+
+                            if response.clicked() {
+                                self.autocomplete_selected = idx;
+                                self.accept_autocomplete();
+                            }
+
+                            if is_selected {
+                                response.scroll_to_me(Some(egui::Align::Center));
+                            }
+                        }
+                    });
+
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        ui.label("Tip: Press");
+                        ui.monospace("Ctrl+Space");
+                        ui.label("to show completions");
+                    });
+                });
+        }
 
         None
     }
@@ -797,6 +1631,7 @@ impl GcodeEditorState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::MoveType;
 
     #[test]
     fn test_gcode_editor_new() {
@@ -835,7 +1670,7 @@ mod tests {
         assert_eq!(paths[0].start.y, 0.0);
         assert_eq!(paths[0].end.x, 10.0);
         assert_eq!(paths[0].end.y, 20.0);
-        assert_eq!(paths[0].move_type, crate::MoveType::Rapid);
+        assert_eq!(paths[0].move_type, MoveType::Rapid);
         assert_eq!(paths[0].line_number, 0);
 
         // Second segment: G1 X30 Y40 F100
@@ -843,7 +1678,7 @@ mod tests {
         assert_eq!(paths[1].start.y, 20.0);
         assert_eq!(paths[1].end.x, 30.0);
         assert_eq!(paths[1].end.y, 40.0);
-        assert_eq!(paths[1].move_type, crate::MoveType::Feed);
+        assert_eq!(paths[1].move_type, MoveType::Feed);
         assert_eq!(paths[1].line_number, 1);
     }
 
@@ -871,9 +1706,9 @@ mod tests {
         let paths = editor.parse_gcode();
 
         assert_eq!(paths.len(), 3);
-        assert_eq!(paths[0].move_type, crate::MoveType::Rapid);
-        assert_eq!(paths[1].move_type, crate::MoveType::Arc);
-        assert_eq!(paths[2].move_type, crate::MoveType::Arc);
+        assert_eq!(paths[0].move_type, MoveType::Rapid);
+        assert_eq!(paths[1].move_type, MoveType::Arc);
+        assert_eq!(paths[2].move_type, MoveType::Arc);
     }
 
     #[test]

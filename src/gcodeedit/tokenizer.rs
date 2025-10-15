@@ -5,8 +5,8 @@
 //! validation and editor features (folding, breadcrumbs, autocompletion).
 
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
 use std::thread;
+use std::time::{Duration, Instant};
 
 /// Token kinds for a G-code line.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,11 +35,22 @@ pub struct LineSyntax {
 }
 
 /// The tokenizer service holds the latest content snapshot and parsed lines.
+#[derive(Clone)]
 pub struct TokenizerService {
     content: Arc<Mutex<String>>,
     parsed: Arc<Mutex<Vec<LineSyntax>>>,
     debounce_ms: u64,
     last_update: Arc<Mutex<Instant>>,
+}
+
+impl std::fmt::Debug for TokenizerService {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TokenizerService")
+            .field("debounce_ms", &self.debounce_ms)
+            .field("content_len", &self.content.lock().ok().map(|c| c.len()))
+            .field("parsed_lines", &self.parsed.lock().ok().map(|p| p.len()))
+            .finish()
+    }
 }
 
 impl TokenizerService {
@@ -90,16 +101,42 @@ impl TokenizerService {
                             if pos > 0 {
                                 let before = &s[..pos].trim();
                                 for part in before.split_whitespace() {
-                                    let kind = if part.starts_with('G') || part.starts_with('M') { TokenKind::Command } else { TokenKind::Parameter };
-                                    tokens.push(Token { kind, text: part.to_string(), line: i, start_col: col, end_col: col + part.len() });
+                                    let kind = if part.starts_with('G') || part.starts_with('M') {
+                                        TokenKind::Command
+                                    } else {
+                                        TokenKind::Parameter
+                                    };
+                                    tokens.push(Token {
+                                        kind,
+                                        text: part.to_string(),
+                                        line: i,
+                                        start_col: col,
+                                        end_col: col + part.len(),
+                                    });
                                     col += part.len() + 1;
                                 }
                             }
-                            tokens.push(Token { kind: TokenKind::Comment, text: comment.to_string(), line: i, start_col: pos, end_col: s.len() });
+                            tokens.push(Token {
+                                kind: TokenKind::Comment,
+                                text: comment.to_string(),
+                                line: i,
+                                start_col: pos,
+                                end_col: s.len(),
+                            });
                         } else {
                             for part in s.split_whitespace() {
-                                let kind = if part.starts_with('G') || part.starts_with('M') { TokenKind::Command } else { TokenKind::Parameter };
-                                tokens.push(Token { kind, text: part.to_string(), line: i, start_col: col, end_col: col + part.len() });
+                                let kind = if part.starts_with('G') || part.starts_with('M') {
+                                    TokenKind::Command
+                                } else {
+                                    TokenKind::Parameter
+                                };
+                                tokens.push(Token {
+                                    kind,
+                                    text: part.to_string(),
+                                    line: i,
+                                    start_col: col,
+                                    end_col: col + part.len(),
+                                });
                                 col += part.len() + 1;
                             }
                         }
@@ -135,16 +172,42 @@ pub fn parse_content_sync(content: &str) -> Vec<LineSyntax> {
             if pos > 0 {
                 let before = &s[..pos].trim();
                 for part in before.split_whitespace() {
-                    let kind = if part.starts_with('G') || part.starts_with('M') { TokenKind::Command } else { TokenKind::Parameter };
-                    tokens.push(Token { kind, text: part.to_string(), line: i, start_col: col, end_col: col + part.len() });
+                    let kind = if part.starts_with('G') || part.starts_with('M') {
+                        TokenKind::Command
+                    } else {
+                        TokenKind::Parameter
+                    };
+                    tokens.push(Token {
+                        kind,
+                        text: part.to_string(),
+                        line: i,
+                        start_col: col,
+                        end_col: col + part.len(),
+                    });
                     col += part.len() + 1;
                 }
             }
-            tokens.push(Token { kind: TokenKind::Comment, text: comment.to_string(), line: i, start_col: pos, end_col: s.len() });
+            tokens.push(Token {
+                kind: TokenKind::Comment,
+                text: comment.to_string(),
+                line: i,
+                start_col: pos,
+                end_col: s.len(),
+            });
         } else {
             for part in s.split_whitespace() {
-                let kind = if part.starts_with('G') || part.starts_with('M') { TokenKind::Command } else { TokenKind::Parameter };
-                tokens.push(Token { kind, text: part.to_string(), line: i, start_col: col, end_col: col + part.len() });
+                let kind = if part.starts_with('G') || part.starts_with('M') {
+                    TokenKind::Command
+                } else {
+                    TokenKind::Parameter
+                };
+                tokens.push(Token {
+                    kind,
+                    text: part.to_string(),
+                    line: i,
+                    start_col: col,
+                    end_col: col + part.len(),
+                });
                 col += part.len() + 1;
             }
         }

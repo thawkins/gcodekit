@@ -1,7 +1,6 @@
 use crate::{
-    GcodeKitApp,
-    input::{Action, handle_keyboard_shortcuts},
-    materials,
+    input::{handle_keyboard_shortcuts, Action},
+    materials, GcodeKitApp,
 };
 
 impl GcodeKitApp {

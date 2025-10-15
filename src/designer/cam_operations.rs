@@ -179,13 +179,13 @@ fn generate_2d_contour(
         // Return to safe Z
         segments.push(PathSegment {
             start: MachinePosition::new(
-                points.last().copied().unwrap_or((0.0,0.0)).0,
-                points.last().copied().unwrap_or((0.0,0.0)).1,
+                points.last().copied().unwrap_or((0.0, 0.0)).0,
+                points.last().copied().unwrap_or((0.0, 0.0)).1,
                 current_z,
             ),
             end: MachinePosition::new(
-                points.last().copied().unwrap_or((0.0,0.0)).0,
-                points.last().copied().unwrap_or((0.0,0.0)).1,
+                points.last().copied().unwrap_or((0.0, 0.0)).0,
+                points.last().copied().unwrap_or((0.0, 0.0)).1,
                 params.safe_z,
             ),
             move_type: MoveType::Rapid,
@@ -701,7 +701,9 @@ fn add_tabs_to_contour(
             result.push(tab_end);
         }
     }
-    if let Some(&pt) = points.last() { result.push(pt); };
+    if let Some(&pt) = points.last() {
+        result.push(pt);
+    };
     result
 }
 

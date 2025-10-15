@@ -151,8 +151,9 @@ impl HealthMetrics {
             .find(|p| p.error_type.contains("command") || p.error_type.contains("syntax"))
         {
             if cmd_pattern.frequency > 3 {
-                issues
-                    .push("Frequent command errors detected. G-code may need validation.".to_string());
+                issues.push(
+                    "Frequent command errors detected. G-code may need validation.".to_string(),
+                );
             }
         }
 

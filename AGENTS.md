@@ -28,7 +28,8 @@
 
 ## Documentation standards 
 -  For all functions create DOCBLOCK documentation comments above each function that describes the purpose of the function, and documents any arguments and return vaulues
--  For all modules place a DOCBLOCK at the top of the File that describes the purpose of the module, and any dependancies. 
+-  For all modules place a DOCBLOCK at the top of the File that describes the purpose of the module, and any dependancies.
+-  **Documentation Files**: All documentation markdown files (*.md) should be created in the `docs/` folder, except for `AGENTS.md`, `README.md`, and `SPEC.md` which remain in the project root. 
 
 ## Code Style Guidelines
 - **Formatting**: 4 spaces, max 100 width, reorder_imports=true, Unix newlines

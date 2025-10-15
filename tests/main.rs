@@ -29,32 +29,27 @@ mod tests {
         app.generate_rectangle();
 
         assert!(app.gcode.gcode_content.contains("G21 ; Set units to mm"));
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("G90 ; Absolute positioning")
-        );
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("G90 ; Absolute positioning"));
         assert!(app.gcode.gcode_content.contains("G0 X0 Y0 ; Go to origin"));
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("G1 X100 Y0 F500 ; Bottom edge")
-        );
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("G1 X100 Y50 F500 ; Right edge")
-        );
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("G1 X0 Y50 F500 ; Top edge")
-        );
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("G1 X0 Y0 F500 ; Left edge")
-        );
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("G1 X100 Y0 F500 ; Bottom edge"));
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("G1 X100 Y50 F500 ; Right edge"));
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("G1 X0 Y50 F500 ; Top edge"));
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("G1 X0 Y0 F500 ; Left edge"));
         assert!(app.gcode.gcode_content.contains("M30 ; End program"));
         assert_eq!(app.gcode.gcode_filename, "generated_rectangle.gcode");
         assert_eq!(
@@ -72,21 +67,18 @@ mod tests {
         app.generate_circle();
 
         assert!(app.gcode.gcode_content.contains("G21 ; Set units to mm"));
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("G90 ; Absolute positioning")
-        );
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("G0 X25 Y25 ; Go to circle center")
-        );
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("G2 I-25 J-25 F300 ; Clockwise circle")
-        );
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("G90 ; Absolute positioning"));
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("G0 X25 Y25 ; Go to circle center"));
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("G2 I-25 J-25 F300 ; Clockwise circle"));
         assert!(app.gcode.gcode_content.contains("M30 ; End program"));
         assert_eq!(app.gcode.gcode_filename, "generated_circle.gcode");
         assert_eq!(
@@ -237,11 +229,10 @@ mod tests {
         assert!(app.gcode.gcode_content.contains("; Image engraving G-code"));
         assert!(app.gcode.gcode_content.contains("; Resolution: 300 dpi"));
         assert!(app.gcode.gcode_content.contains("; Max Power: 80%"));
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("; TODO: Implement actual image processing")
-        );
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("; TODO: Implement actual image processing"));
         assert!(app.gcode.gcode_content.contains("M30 ; End program"));
         assert_eq!(app.gcode.gcode_filename, "image_engraving.gcode");
         assert_eq!(
@@ -261,17 +252,15 @@ mod tests {
         app.generate_tabbed_box();
 
         assert!(app.gcode.gcode_content.contains("; Tabbed box G-code"));
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("; Dimensions: 100x80x50mm")
-        );
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("; Dimensions: 100x80x50mm"));
         assert!(app.gcode.gcode_content.contains("; Tab size: 10mm"));
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("; TODO: Implement actual box cutting paths")
-        );
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("; TODO: Implement actual box cutting paths"));
         assert!(app.gcode.gcode_content.contains("M30 ; End program"));
         assert_eq!(app.gcode.gcode_filename, "tabbed_box.gcode");
         assert_eq!(
@@ -291,11 +280,10 @@ mod tests {
         assert!(app.gcode.gcode_content.contains("; Jigsaw puzzle G-code"));
         assert!(app.gcode.gcode_content.contains("; Pieces: 50"));
         assert!(app.gcode.gcode_content.contains("; Complexity: 3"));
-        assert!(
-            app.gcode
-                .gcode_content
-                .contains("; TODO: Implement actual puzzle piece cutting")
-        );
+        assert!(app
+            .gcode
+            .gcode_content
+            .contains("; TODO: Implement actual puzzle piece cutting"));
         assert!(app.gcode.gcode_content.contains("M30 ; End program"));
         assert_eq!(app.gcode.gcode_filename, "jigsaw_puzzle.gcode");
         assert_eq!(

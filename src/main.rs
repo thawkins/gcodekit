@@ -26,6 +26,7 @@ mod designer;
 mod errors;
 mod firmware;
 mod gcode;
+mod gcodeedit;  // Add the gcodeedit module so app can see it
 mod input;
 mod jobs;
 mod layout;
@@ -99,7 +100,7 @@ impl GcodeKitApp {
     fn disconnect_from_device(&mut self) {
         self.machine.communication.disconnect();
         self.machine.connection_state = ConnectionState::Disconnected;
-        self.gcode.sending_from_line = None; // Clear sending indicator
+        self.gcode_editor.sending_from_line = None; // Clear sending indicator
         let msg = self.machine.communication.get_status_message().to_string();
         self.log_console(&msg);
     }

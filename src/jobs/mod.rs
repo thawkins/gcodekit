@@ -269,7 +269,9 @@ impl Job {
 
     /// Calculate efficiency metrics
     pub fn efficiency(&self) -> f32 {
-        if let (Some(total_duration), Some(machine_time)) = (self.actual_duration, self.machine_time) {
+        if let (Some(total_duration), Some(machine_time)) =
+            (self.actual_duration, self.machine_time)
+        {
             if total_duration.as_secs_f32() > 0.0 {
                 machine_time.as_secs_f32() / total_duration.as_secs_f32()
             } else {
@@ -1064,7 +1066,9 @@ mod tests {
         queue.add_job(job2);
 
         // Should get high priority job first
-        let next = queue.get_next_pending_job().expect("expected next pending job");
+        let next = queue
+            .get_next_pending_job()
+            .expect("expected next pending job");
         assert_eq!(next.name, "Job 2");
         assert_eq!(next.priority, 10);
     }
@@ -1099,17 +1103,25 @@ mod tests {
         }
 
         // Verify job is interrupted
-        let job = job_manager.job_queue.get_job(&job_id).expect("expected job in queue");
+        let job = job_manager
+            .job_queue
+            .get_job(&job_id)
+            .expect("expected job in queue");
         assert_eq!(job.status, JobStatus::Paused);
         assert_eq!(job.last_completed_line, Some(2));
         assert!(job.can_resume_job());
 
         // Test resume functionality
-        let resume_line = job_manager.resume_job(&job_id).expect("expected resume line");
+        let resume_line = job_manager
+            .resume_job(&job_id)
+            .expect("expected resume line");
         assert_eq!(resume_line, 2);
 
         // Verify job is running again
-        let job = job_manager.job_queue.get_job(&job_id).expect("expected job in queue");
+        let job = job_manager
+            .job_queue
+            .get_job(&job_id)
+            .expect("expected job in queue");
         assert_eq!(job.status, JobStatus::Running);
         assert_eq!(job.last_completed_line, Some(2)); // Should still have the resume point
     }

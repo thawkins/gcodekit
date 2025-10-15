@@ -9,6 +9,12 @@ async fn test_tokenizer_basic() {
     let parsed = svc.get_parsed();
     assert_eq!(parsed.len(), 2);
     // First line: G1 X10 Y20 ; move -> tokens: G1,X10,Y20,;move => comment included
-    assert!(parsed[0].tokens.iter().any(|t| t.kind == TokenKind::Command));
-    assert!(parsed[1].tokens.iter().any(|t| t.kind == TokenKind::Command));
+    assert!(parsed[0]
+        .tokens
+        .iter()
+        .any(|t| t.kind == TokenKind::Command));
+    assert!(parsed[1]
+        .tokens
+        .iter()
+        .any(|t| t.kind == TokenKind::Command));
 }

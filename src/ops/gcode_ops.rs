@@ -1,11 +1,26 @@
 use crate::GcodeKitApp;
 
 impl GcodeKitApp {
+    /// Helper function to sync G-code content to the enhanced editor
+    pub(crate) fn sync_gcode_to_editor(&mut self) {
+        let content = self.gcode.gcode_content.clone();
+        self.gcode_editor.buffer.set_content(&content);
+        self.gcode_editor.gcode_content = content;
+        self.gcode_editor.gcode_filename = self.gcode.gcode_filename.clone();
+        self.gcode_editor.on_buffer_change();
+        self.gcode_editor.detect_folds();
+        self.gcode_editor.selected_line = Some(0);
+        self.gcode_editor.virtualized_state = Default::default();
+        self.gcode_editor.expand_all_folds();
+        // Parse gcode and store in editor
+        self.gcode_editor.parsed_paths = crate::gcode::parse_gcode(&self.gcode.gcode_content);
+    }
+
     /// Parses the currently loaded G-code content and extracts path segments.
     /// Identifies move commands (G0, G1, G2, G3) and creates PathSegment objects
     /// for visualization and analysis. Handles absolute/incremental positioning modes.
     pub fn parse_gcode(&mut self) {
-        self.gcode.parsed_paths = crate::gcode::parse_gcode(&self.gcode.gcode_content);
+        self.gcode_editor.parsed_paths = crate::gcode::parse_gcode(&self.gcode.gcode_content);
     }
 
     /// Optimizes the currently loaded G-code by removing comments, empty lines,
@@ -43,6 +58,7 @@ impl GcodeKitApp {
         }
 
         self.gcode.gcode_content = optimized_lines.join("\n");
+        self.sync_gcode_to_editor();
         self.parse_gcode(); // Re-parse the optimized G-code
 
         let optimized_line_count = optimized_lines.len();
@@ -80,6 +96,7 @@ impl GcodeKitApp {
         );
         self.gcode.gcode_content = gcode;
         self.gcode.gcode_filename = "generated_rectangle.gcode".to_string();
+        self.sync_gcode_to_editor();
         self.parse_gcode();
         self.machine.status_message = "Rectangle G-code generated".to_string();
     }
@@ -101,6 +118,7 @@ impl GcodeKitApp {
         );
         self.gcode.gcode_content = gcode;
         self.gcode.gcode_filename = "generated_circle.gcode".to_string();
+        self.sync_gcode_to_editor();
         self.parse_gcode();
         self.machine.status_message = "Circle G-code generated".to_string();
     }
@@ -117,6 +135,7 @@ impl GcodeKitApp {
                 self.cam.tool_spindle_speed, self.cam.tool_feed_rate
             );
             self.gcode.gcode_content = format!("{}{}", header, self.gcode.gcode_content);
+            self.sync_gcode_to_editor();
             self.parse_gcode();
             self.machine.status_message = "Toolpath parameters added".to_string();
         } else {
@@ -147,6 +166,7 @@ impl GcodeKitApp {
                 "send_gcode: Multi-line content detected, calling send_gcode_to_device",
             );
             self.gcode.gcode_content = content.to_string();
+            self.sync_gcode_to_editor();
             self.send_gcode_to_device();
         } else {
             // Single command
@@ -204,7 +224,7 @@ impl GcodeKitApp {
         ));
 
         // Reset progress
-        self.gcode.sending_progress = 0.0;
+        self.gcode_editor.sending_progress = 0.0;
 
         for (line_idx, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
@@ -234,7 +254,7 @@ impl GcodeKitApp {
             }
 
             // Update progress
-            self.gcode.sending_progress = ((line_idx + 1) as f32) / (lines.len() as f32);
+            self.gcode_editor.sending_progress = ((line_idx + 1) as f32) / (lines.len() as f32);
 
             // Small delay between commands
             std::thread::sleep(std::time::Duration::from_millis(50));
@@ -246,19 +266,19 @@ impl GcodeKitApp {
                 "G-code queued successfully ({} commands sent sequentially)",
                 sent_count
             );
-            self.gcode.sending_progress = 1.0;
+            self.gcode_editor.sending_progress = 1.0;
         } else if sent_count > 0 {
             self.machine.status_message = format!(
                 "G-code partially queued: {} commands sent, {} errors. Check console for details.",
                 sent_count, error_count
             );
-            self.gcode.sending_progress = (sent_count as f32) / (sent_count + error_count) as f32;
+            self.gcode_editor.sending_progress = (sent_count as f32) / (sent_count + error_count) as f32;
         } else {
             self.machine.status_message = format!(
                 "Failed to send any G-code commands ({} errors)",
                 error_count
             );
-            self.gcode.sending_progress = 0.0;
+            self.gcode_editor.sending_progress = 0.0;
         }
     }
 
@@ -337,7 +357,7 @@ impl GcodeKitApp {
             }
         }
 
-        self.gcode.sending_from_line = Some(start_line);
+        self.gcode_editor.sending_from_line = Some(start_line);
         self.machine.status_message = format!(
             "Sent {} G-code lines from line {}",
             sent_count,
@@ -366,6 +386,7 @@ impl GcodeKitApp {
         );
         self.gcode.gcode_content = gcode;
         self.gcode.gcode_filename = "image_engraving.gcode".to_string();
+        self.sync_gcode_to_editor();
         self.machine.status_message = "Image engraving G-code generated (placeholder)".to_string();
     }
 
@@ -384,6 +405,7 @@ impl GcodeKitApp {
         );
         self.gcode.gcode_content = gcode;
         self.gcode.gcode_filename = "tabbed_box.gcode".to_string();
+        self.sync_gcode_to_editor();
         self.machine.status_message = "Tabbed box G-code generated (placeholder)".to_string();
     }
 
@@ -402,6 +424,7 @@ impl GcodeKitApp {
         );
         self.gcode.gcode_content = gcode;
         self.gcode.gcode_filename = "jigsaw_puzzle.gcode".to_string();
+        self.sync_gcode_to_editor();
         self.machine.status_message = "Jigsaw G-code generated (placeholder)".to_string();
     }
 }

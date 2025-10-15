@@ -1,5 +1,5 @@
 use chrono::Utc;
-use serialport::{DataBits, FlowControl, Parity, SerialPort, StopBits, available_ports};
+use serialport::{available_ports, DataBits, FlowControl, Parity, SerialPort, StopBits};
 use std::any::Any;
 use std::collections::VecDeque;
 use std::error::Error;
@@ -191,16 +191,25 @@ impl GrblCommunication {
         // Check for common GRBL port patterns
         if port_name.starts_with("/dev/ttyACM") {
             // "/dev/ttyACM" is 11 chars, check if next char is digit
-            port_name.chars().nth(11).is_some_and(|c| c.is_ascii_digit())
+            port_name
+                .chars()
+                .nth(11)
+                .is_some_and(|c| c.is_ascii_digit())
         } else if port_name.starts_with("/dev/ttyUSB") {
             // "/dev/ttyUSB" is 11 chars, check if next char is digit
-            port_name.chars().nth(11).is_some_and(|c| c.is_ascii_digit())
+            port_name
+                .chars()
+                .nth(11)
+                .is_some_and(|c| c.is_ascii_digit())
         } else if port_name.starts_with("COM") {
             // "COM" is 3 chars, check if next char is digit
             port_name.chars().nth(3).is_some_and(|c| c.is_ascii_digit())
         } else if port_name.starts_with("/dev/tty.usbserial") {
             // "/dev/tty.usbserial" is 18 chars, check if next char is digit
-            port_name.chars().nth(18).is_some_and(|c| c.is_ascii_digit())
+            port_name
+                .chars()
+                .nth(18)
+                .is_some_and(|c| c.is_ascii_digit())
         } else {
             false
         }
@@ -220,7 +229,8 @@ impl GrblCommunication {
                 if self.available_ports.is_empty() {
                     self.status_message = "No compatible serial ports found".to_string();
                 } else {
-                    self.status_message = format!("Found {} compatible ports", self.available_ports.len());
+                    self.status_message =
+                        format!("Found {} compatible ports", self.available_ports.len());
                 }
             }
             Err(e) => {
@@ -485,7 +495,7 @@ impl GrblCommunication {
         // GRBL typically responds with something like: "Grbl 1.1f ['$' for help]"
         if let Some(version_start) = response.find("Grbl ") {
             let after_grbl = &response[version_start + 5..]; // Skip "Grbl "
-            // Find the end of the version (space, bracket, or end of string)
+                                                             // Find the end of the version (space, bracket, or end of string)
             let end_pos = after_grbl
                 .find(' ')
                 .or_else(|| after_grbl.find('['))
@@ -579,18 +589,14 @@ impl GrblCommunication {
                 let value = &part[colon_pos + 1..];
 
                 match key {
-                    "MPos" => {
-                        match self.parse_position(value) {
-                            Some(pos) => status.machine_position = pos,
-                            None => return Err(format!("Failed to parse MPos: {}", value)),
-                        }
-                    }
-                    "WPos" => {
-                        match self.parse_position(value) {
-                            Some(pos) => status.work_position = pos,
-                            None => return Err(format!("Failed to parse WPos: {}", value)),
-                        }
-                    }
+                    "MPos" => match self.parse_position(value) {
+                        Some(pos) => status.machine_position = pos,
+                        None => return Err(format!("Failed to parse MPos: {}", value)),
+                    },
+                    "WPos" => match self.parse_position(value) {
+                        Some(pos) => status.work_position = pos,
+                        None => return Err(format!("Failed to parse WPos: {}", value)),
+                    },
                     "F" => {
                         if let Ok(feed) = value.parse::<f32>() {
                             status.feed_rate = Some(feed);
@@ -1362,7 +1368,9 @@ mod tests {
         // Test complete status response
         let status_str =
             "<Idle|MPos:10.000,20.000,30.000|WPos:5.000,15.000,25.000|F:1000.0|S:12000.0>";
-        let status = comm.parse_grbl_status(status_str).expect("failed to parse status string");
+        let status = comm
+            .parse_grbl_status(status_str)
+            .expect("failed to parse status string");
 
         assert_eq!(status.machine_state, MachineState::Idle);
         assert_eq!(status.machine_position.x, 10.0);
@@ -1381,7 +1389,9 @@ mod tests {
 
         // Test minimal status response
         let status_str = "<Run|MPos:1.000,2.000,3.000>";
-        let status = comm.parse_grbl_status(status_str).expect("failed to parse status string");
+        let status = comm
+            .parse_grbl_status(status_str)
+            .expect("failed to parse status string");
 
         assert_eq!(status.machine_state, MachineState::Run);
         assert_eq!(status.machine_position.x, 1.0);
@@ -1680,7 +1690,10 @@ mod tests {
         let state = comm.get_recovery_state();
         assert_eq!(state.reconnect_attempts, 1);
         assert!(state.last_reconnect_attempt.is_some());
-        assert_eq!(state.last_error.as_ref().expect("expected last_error set"), "connection lost");
+        assert_eq!(
+            state.last_error.as_ref().expect("expected last_error set"),
+            "connection lost"
+        );
         assert_eq!(state.recovery_actions_taken.len(), 1);
         assert_eq!(
             state.recovery_actions_taken[0],
@@ -1701,7 +1714,10 @@ mod tests {
 
         let state = comm.get_recovery_state();
         assert_eq!(state.command_retry_count, 1);
-        assert_eq!(state.last_error.as_ref().expect("expected last_error set"), "Command syntax error");
+        assert_eq!(
+            state.last_error.as_ref().expect("expected last_error set"),
+            "Command syntax error"
+        );
         assert_eq!(state.recovery_actions_taken.len(), 1);
         assert_eq!(
             state.recovery_actions_taken[0],

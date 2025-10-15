@@ -20,7 +20,11 @@ pub fn show_feeds_speeds_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
             false,
             "Imperial (inches, SFM, IPM)",
         );
-        ui.radio_value(&mut app.ui.feeds_speeds.units_metric, true, "Metric (mm, SMM, MMPM)");
+        ui.radio_value(
+            &mut app.ui.feeds_speeds.units_metric,
+            true,
+            "Metric (mm, SMM, MMPM)",
+        );
     });
 
     ui.separator();
@@ -60,7 +64,11 @@ pub fn show_feeds_speeds_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     } else {
         0.0625..=2.0
     };
-    let diameter_speed = if app.ui.feeds_speeds.units_metric { 0.1 } else { 0.01 };
+    let diameter_speed = if app.ui.feeds_speeds.units_metric {
+        0.1
+    } else {
+        0.01
+    };
     ui.horizontal(|ui| {
         ui.label(diameter_label);
         ui.add(
@@ -103,10 +111,22 @@ pub fn show_feeds_speeds_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     // Calculate button
     if ui.button("Calculate").clicked() {
         // Perform calculation
-        let surface_speed = get_surface_speed(app.ui.feeds_speeds.material, app.ui.feeds_speeds.units_metric);
-        app.ui.feeds_speeds.calculated_rpm = calculate_rpm(surface_speed, app.ui.feeds_speeds.tool_diameter, app.ui.feeds_speeds.units_metric);
-        let chip_load = get_chip_load(app.ui.feeds_speeds.material, app.ui.feeds_speeds.operation, app.ui.feeds_speeds.units_metric);
-        let base_feed_rate = app.ui.feeds_speeds.calculated_rpm * app.ui.feeds_speeds.num_flutes as f32 * chip_load;
+        let surface_speed = get_surface_speed(
+            app.ui.feeds_speeds.material,
+            app.ui.feeds_speeds.units_metric,
+        );
+        app.ui.feeds_speeds.calculated_rpm = calculate_rpm(
+            surface_speed,
+            app.ui.feeds_speeds.tool_diameter,
+            app.ui.feeds_speeds.units_metric,
+        );
+        let chip_load = get_chip_load(
+            app.ui.feeds_speeds.material,
+            app.ui.feeds_speeds.operation,
+            app.ui.feeds_speeds.units_metric,
+        );
+        let base_feed_rate =
+            app.ui.feeds_speeds.calculated_rpm * app.ui.feeds_speeds.num_flutes as f32 * chip_load;
         // Apply tool wear compensation
         let wear_factor = 1.0 - (app.ui.feeds_speeds.tool_wear_percent / 100.0);
         app.ui.feeds_speeds.calculated_feed = base_feed_rate * wear_factor;
@@ -115,7 +135,10 @@ pub fn show_feeds_speeds_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
 
     if app.ui.feeds_speeds.has_results {
         ui.separator();
-        ui.label(format!("Recommended Spindle Speed: {:.0} RPM", app.ui.feeds_speeds.calculated_rpm));
+        ui.label(format!(
+            "Recommended Spindle Speed: {:.0} RPM",
+            app.ui.feeds_speeds.calculated_rpm
+        ));
         let feed_unit = if app.ui.feeds_speeds.units_metric {
             "MMPM"
         } else {
@@ -123,8 +146,7 @@ pub fn show_feeds_speeds_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         };
         ui.label(format!(
             "Recommended Feed Rate: {:.2} {}",
-            app.ui.feeds_speeds.calculated_feed,
-            feed_unit
+            app.ui.feeds_speeds.calculated_feed, feed_unit
         ));
         ui.label("Note: These are starting recommendations. Adjust based on your machine capabilities and test cuts.");
 

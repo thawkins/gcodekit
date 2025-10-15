@@ -1,94 +1,48 @@
 use eframe::egui;
-use egui::text::{LayoutJob, TextFormat};
-use egui::text_edit::TextBuffer;
 
 use crate::GcodeKitApp;
 
-/// Shows the G-code editor tab
+/// Shows the G-code editor tab with all enhanced features
 pub fn show_gcode_editor_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
-    if app.gcode.gcode_content.is_empty() {
-        ui.centered_and_justified(|ui| {
-            ui.label("No G-code file loaded. Use 'Load File' in the left panel.");
+    // Sync content between old GcodeState and new GcodeEditorState on first load
+    if !app.gcode.gcode_content.is_empty() && app.gcode_editor.buffer.get_content().is_empty() {
+        app.gcode_editor.buffer.set_content(&app.gcode.gcode_content);
+        app.gcode_editor.gcode_content = app.gcode.gcode_content.clone();
+        app.gcode_editor.gcode_filename = app.gcode.gcode_filename.clone();
+        app.gcode_editor.on_buffer_change();
+        app.gcode_editor.detect_folds();
+        
+        // Reset to top of file
+        app.gcode_editor.selected_line = Some(0);
+        app.gcode_editor.virtualized_state = Default::default();
+        app.gcode_editor.expand_all_folds();  // Start with all folds expanded
+    }
+
+    // Show sending progress if active
+    if app.gcode_editor.sending_progress > 0.0 && app.gcode_editor.sending_progress < 1.0 {
+        ui.horizontal(|ui| {
+            ui.label("Sending G-code:");
+            let progress_bar = egui::ProgressBar::new(app.gcode_editor.sending_progress)
+                .show_percentage()
+                .animate(true);
+            ui.add(progress_bar);
         });
-    } else {
-        // Show sending progress if active
-        if app.gcode.sending_progress > 0.0 && app.gcode.sending_progress < 1.0 {
-            ui.horizontal(|ui| {
-                ui.label("Sending G-code:");
-                let progress_bar = egui::ProgressBar::new(app.gcode.sending_progress)
-                    .show_percentage()
-                    .animate(true);
-                ui.add(progress_bar);
-            });
-            ui.separator();
-        }
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            let response = ui.add(
-                egui::TextEdit::multiline(&mut app.gcode.gcode_content)
-                    .font(egui::TextStyle::Monospace)
-                    .desired_rows(20)
-                    .layouter(&mut |ui: &egui::Ui, string: &dyn TextBuffer, _wrap_width| {
-                        let mut job = LayoutJob::default();
-                        for (i, line) in string.as_str().lines().enumerate() {
-                            // Line number
-                            job.append(
-                                &format!("{:05}: ", i + 1),
-                                0.0,
-                                TextFormat {
-                                    font_id: egui::FontId::monospace(12.0),
-                                    color: egui::Color32::DARK_GRAY,
-                                    ..Default::default()
-                                },
-                            );
-                            // Parse line for highlighting
-                            let words: Vec<&str> = line.split_whitespace().collect();
-                            for (j, word) in words.iter().enumerate() {
-                                let color = if word.starts_with('G')
-                                    && word.len() > 1
-                                    && word[1..].chars().all(|c| c.is_ascii_digit())
-                                {
-                                    egui::Color32::BLUE
-                                } else if word.starts_with('M')
-                                    && word.len() > 1
-                                    && word[1..].chars().all(|c| c.is_ascii_digit())
-                                {
-                                    egui::Color32::GREEN
-                                } else if word.starts_with('X')
-                                    || word.starts_with('Y')
-                                    || word.starts_with('Z')
-                                    || word.starts_with('I')
-                                    || word.starts_with('J')
-                                    || word.starts_with('K')
-                                    || word.starts_with('F')
-                                    || word.starts_with('S')
-                                {
-                                    egui::Color32::RED
-                                } else if word.starts_with(';') {
-                                    egui::Color32::GRAY
-                                } else {
-                                    egui::Color32::BLACK
-                                };
-                                job.append(
-                                    word,
-                                    0.0,
-                                    TextFormat {
-                                        font_id: egui::FontId::monospace(12.0),
-                                        color,
-                                        ..Default::default()
-                                    },
-                                );
-                                if j < words.len() - 1 {
-                                    job.append(" ", 0.0, TextFormat::default());
-                                }
-                            }
-                            job.append("\n", 0.0, TextFormat::default());
-                        }
-                        ui.fonts_mut(|fonts| fonts.layout_job(job))
-                    }),
-            );
-            if response.changed() {
-                app.parse_gcode();
-            }
-        });
+        ui.separator();
+    }
+
+    // Use the enhanced editor with all features
+    app.gcode_editor.show_ui(ui, &app.gcode_editor.parsed_paths.clone());
+
+    // Sync any changes back to the old GcodeState for compatibility with other parts of the app
+    let current_content = app.gcode_editor.buffer.get_content();
+    if current_content != app.gcode.gcode_content {
+        app.gcode.gcode_content = current_content;
+        // Re-parse to update visualizer
+        app.parse_gcode();
+    }
+
+    // Sync selected line for visualizer integration
+    if app.gcode_editor.selected_line != app.gcode.selected_line {
+        app.gcode.selected_line = app.gcode_editor.selected_line;
     }
 }

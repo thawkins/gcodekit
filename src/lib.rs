@@ -28,6 +28,7 @@ pub use designer::DesignerState;
 pub use designer::DrawingTool;
 pub use designer::Shape;
 pub use designer::ToolpathPattern;
+pub use gcodeedit::GcodeEditorState;
 pub use jobs::Job;
 pub use jobs::JobType;
 pub use materials::MaterialDatabase;

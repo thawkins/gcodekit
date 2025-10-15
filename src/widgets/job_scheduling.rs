@@ -79,19 +79,25 @@ impl JobSchedulingWidget {
                         ui.label(&scheduled_job.job.name);
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui.button("❌").on_hover_text("Cancel schedule").clicked() {
-                                if let Err(e) = job_manager.cancel_schedule(&scheduled_job.schedule_id) {
+                                if let Err(e) =
+                                    job_manager.cancel_schedule(&scheduled_job.schedule_id)
+                                {
                                     warn!("Failed to cancel schedule: {}", e);
                                 }
                             }
 
                             if scheduled_job.enabled {
                                 if ui.button("⏸️").on_hover_text("Disable").clicked() {
-                                    if let Err(e) = job_manager.disable_schedule(&scheduled_job.schedule_id) {
+                                    if let Err(e) =
+                                        job_manager.disable_schedule(&scheduled_job.schedule_id)
+                                    {
                                         warn!("Failed to disable schedule: {}", e);
                                     }
                                 }
                             } else if ui.button("▶️").on_hover_text("Enable").clicked() {
-                                if let Err(e) = job_manager.enable_schedule(&scheduled_job.schedule_id) {
+                                if let Err(e) =
+                                    job_manager.enable_schedule(&scheduled_job.schedule_id)
+                                {
                                     warn!("Failed to enable schedule: {}", e);
                                 }
                             }

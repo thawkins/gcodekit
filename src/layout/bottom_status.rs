@@ -1,5 +1,5 @@
 use crate::app::GcodeKitApp;
-use crate::communication::{ConnectionState, grbl};
+use crate::communication::{grbl, ConnectionState};
 use egui;
 #[allow(unused_imports)]
 use std::any::Any;

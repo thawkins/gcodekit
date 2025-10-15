@@ -621,7 +621,9 @@ mod tests {
         assert!(test_queue.save_to_file(&temp_path).is_ok());
 
         // Load using manager method
-        let loaded_queue = manager.load_jobs_from_file(&temp_path).expect("failed to load jobs from file");
+        let loaded_queue = manager
+            .load_jobs_from_file(&temp_path)
+            .expect("failed to load jobs from file");
 
         // Verify loaded queue
         assert_eq!(loaded_queue.jobs.len(), 2);
@@ -694,7 +696,9 @@ mod tests {
 
         // Load jobs into new manager
         let new_manager = JobManager::new();
-        let loaded_queue = new_manager.load_jobs_from_file(&temp_path).expect("failed to load jobs from file");
+        let loaded_queue = new_manager
+            .load_jobs_from_file(&temp_path)
+            .expect("failed to load jobs from file");
         let mut new_manager = JobManager::new();
         new_manager.replace_job_queue(loaded_queue);
 

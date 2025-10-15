@@ -2,13 +2,15 @@ use std::collections::HashMap;
 
 use crate::communication::{ConnectionState, ControllerType};
 use crate::designer::bitmap_processing::VectorizationConfig;
-
 use crate::designer::{DesignerState, Tool};
-use crate::input::{Action, KeyBinding, create_default_keybindings};
+use crate::input::{create_default_keybindings, Action, KeyBinding};
 use crate::jobs::{JobQueue, JobType};
 use crate::materials::MaterialDatabase;
 use crate::materials::MaterialType;
 use crate::types::{MachineMode, MachinePosition, PathSegment, Tab};
+
+// Import the enhanced editor state - this will work because gcodeedit is a public module
+use crate::gcodeedit::GcodeEditorState;
 
 // Feeds and Speeds Calculator State
 #[derive(Debug, Clone)]
@@ -179,10 +181,7 @@ pub struct JobState {
 pub struct GcodeState {
     pub gcode_content: String,
     pub gcode_filename: String,
-    pub parsed_paths: Vec<PathSegment>,
     pub selected_line: Option<usize>,
-    pub sending_from_line: Option<usize>,
-    pub sending_progress: f32, // 0.0 to 1.0, progress of current send operation
 }
 
 impl Default for GcodeState {
@@ -190,10 +189,7 @@ impl Default for GcodeState {
         Self {
             gcode_content: String::new(),
             gcode_filename: String::new(),
-            parsed_paths: Vec::new(),
             selected_line: None,
-            sending_from_line: None,
-            sending_progress: 0.0,
         }
     }
 }
@@ -240,6 +236,7 @@ pub struct GcodeKitApp {
     pub cam: CamState,
     pub job: JobState,
     pub gcode: GcodeState,
+    pub gcode_editor: GcodeEditorState,
     pub machine: MachineState,
     pub keybindings: HashMap<Action, KeyBinding>,
     pub designer: DesignerState,
@@ -253,6 +250,7 @@ impl Default for GcodeKitApp {
             cam: CamState::default(),
             job: JobState::default(),
             gcode: GcodeState::default(),
+            gcode_editor: GcodeEditorState::default(),
             machine: MachineState::default(),
             keybindings: create_default_keybindings(),
             designer: DesignerState::default(),
