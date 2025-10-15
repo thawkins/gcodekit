@@ -191,16 +191,16 @@ impl GrblCommunication {
         // Check for common GRBL port patterns
         if port_name.starts_with("/dev/ttyACM") {
             // "/dev/ttyACM" is 11 chars, check if next char is digit
-            port_name.chars().nth(11).map_or(false, |c| c.is_ascii_digit())
+            port_name.chars().nth(11).is_some_and(|c| c.is_ascii_digit())
         } else if port_name.starts_with("/dev/ttyUSB") {
             // "/dev/ttyUSB" is 11 chars, check if next char is digit
-            port_name.chars().nth(11).map_or(false, |c| c.is_ascii_digit())
+            port_name.chars().nth(11).is_some_and(|c| c.is_ascii_digit())
         } else if port_name.starts_with("COM") {
             // "COM" is 3 chars, check if next char is digit
-            port_name.chars().nth(3).map_or(false, |c| c.is_ascii_digit())
+            port_name.chars().nth(3).is_some_and(|c| c.is_ascii_digit())
         } else if port_name.starts_with("/dev/tty.usbserial") {
             // "/dev/tty.usbserial" is 18 chars, check if next char is digit
-            port_name.chars().nth(18).map_or(false, |c| c.is_ascii_digit())
+            port_name.chars().nth(18).is_some_and(|c| c.is_ascii_digit())
         } else {
             false
         }
