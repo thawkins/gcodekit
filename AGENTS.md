@@ -37,4 +37,10 @@
 - **Logging**: Use `tracing` with structured logging, avoid `println!` in production
 - **Documentation**: `//!` for crate docs, `///` for public APIs, `//` for internal comments
 - **Linting**: No wildcard imports, cognitive complexity ≤30, warn on missing docs
-- **Best Practices**: Read the best practices at https://www.djamware.com/post/68b2c7c451ce620c6f5efc56/rust-project-structure-and-best-practices-for-clean-scalable-code and apply to the project. 
+- **Best Practices**: Read the best practices at https://www.djamware.com/post/68b2c7c451ce620c6f5efc56/rust-project-structure-and-best-practices-for-clean-scalable-code and apply to the project.
+
+## Issue Handling Process
+When dealing with issues in the remote repository:
+1. **Analyze and Comment**: Place a comment in the issue that records your analysis of the issue and your proposed plan for fixing it
+2. **Implement Fix**: After analysis, implement the proposed solution
+3. **Wait for Confirmation**: Do not close the issue until the reporter has confirmed the fix is working 
