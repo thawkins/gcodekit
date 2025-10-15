@@ -1,6 +1,8 @@
 // G-code editor module.
 pub mod vocabulary;
 pub mod rules;
+pub mod editor;
+pub mod tokenizer;
 
 // This module provides functionality for editing, searching, and optimizing
 // G-code files with syntax highlighting and post-processing capabilities.
@@ -16,6 +18,7 @@ use crate::{MachinePosition, MoveType, PathSegment};
 #[derive(Clone, Debug)]
 pub struct GcodeEditorState {
     pub gcode_content: String,
+    pub buffer: crate::gcodeedit::editor::TextBufferCore,
     pub gcode_filename: String,
     pub current_file_path: Option<PathBuf>,
     pub search_query: String,
@@ -31,6 +34,7 @@ impl Default for GcodeEditorState {
     fn default() -> Self {
         Self {
             gcode_content: String::new(),
+            buffer: crate::gcodeedit::editor::TextBufferCore::new(),
             gcode_filename: String::new(),
             current_file_path: None,
             search_query: String::new(),
@@ -48,10 +52,20 @@ impl GcodeEditorState {
         Self::default()
     }
 
+    /// Return the effective content: prefer buffer content if non-empty, otherwise fall back to gcode_content
+    pub fn content(&self) -> String {
+        let buf = self.buffer.get_content();
+        if !buf.is_empty() {
+            buf
+        } else {
+            self.gcode_content.clone()
+        }
+    }
+
     pub fn on_buffer_change(&mut self) {
         // Re-validate entire buffer for now (can be optimized to incremental)
         self.diagnostics.clear();
-        for (i, line) in self.gcode_content.lines().enumerate() {
+        for (i, line) in self.content().lines().enumerate() {
             let mut diags = self.rules.validate_line(line, i);
             self.diagnostics.append(&mut diags);
         }
@@ -64,7 +78,8 @@ impl GcodeEditorState {
         {
             match std::fs::read_to_string(&path) {
                 Ok(content) => {
-                    self.gcode_content = content;
+                    self.gcode_content = content.clone();
+                    self.buffer.set_content(&content);
                     self.current_file_path = Some(path.clone());
                     self.gcode_filename = path
                         .file_name()
@@ -84,7 +99,7 @@ impl GcodeEditorState {
 
     pub fn save_gcode_file(&mut self) -> Result<(), String> {
         if let Some(path) = &self.current_file_path {
-            match std::fs::write(path, &self.gcode_content) {
+            match std::fs::write(path, &self.buffer.get_content()) {
                 Ok(_) => Ok(()),
                 Err(e) => Err(format!("Error saving file: {}", e)),
             }
@@ -94,7 +109,7 @@ impl GcodeEditorState {
     }
 
     pub fn save_gcode_file_as(&mut self) -> Result<(), String> {
-        if self.gcode_content.is_empty() {
+        if self.buffer.get_content().is_empty() {
             return Err("No G-code to save".to_string());
         }
 
@@ -103,7 +118,7 @@ impl GcodeEditorState {
             .set_file_name(&self.gcode_filename)
             .save_file()
         {
-            match std::fs::write(&path, &self.gcode_content) {
+            match std::fs::write(&path, &self.buffer.get_content()) {
                 Ok(_) => {
                     self.current_file_path = Some(path.clone());
                     self.gcode_filename = path
@@ -121,16 +136,16 @@ impl GcodeEditorState {
     }
 
     pub fn optimize_gcode(&mut self) -> String {
-        if self.gcode_content.is_empty() {
+        if self.content().is_empty() {
             return "No G-code to optimize".to_string();
         }
 
-        let original_size = self.gcode_content.len();
-        let original_lines = self.gcode_content.lines().count();
+        let original_size = self.content().len();
+        let original_lines = self.content().lines().count();
         let mut optimized_lines = Vec::new();
         let mut current_pos = MachinePosition::new(0.0, 0.0, 0.0);
 
-        for line in self.gcode_content.lines() {
+        for line in self.content().lines() {
             let line = line.trim();
 
             // Skip empty lines and comments
@@ -172,11 +187,13 @@ impl GcodeEditorState {
             }
         }
 
-        self.gcode_content = optimized_lines.join("\n");
+        let new_content = optimized_lines.join("\n");
+        self.buffer.set_content(&new_content);
+        self.gcode_content = self.buffer.get_content();
         // Re-validate optimized content
         self.on_buffer_change();
 
-        let optimized_size = self.gcode_content.len();
+        let optimized_size = self.content().len();
         let optimized_line_count = optimized_lines.len();
         let size_reduction = if original_size > 0 && optimized_size <= original_size {
             ((original_size - optimized_size) as f32 / original_size as f32 * 100.0) as i32
@@ -366,7 +383,7 @@ impl GcodeEditorState {
         let mut current_pos = MachinePosition::new(0.0, 0.0, 0.0);
         let mut current_move_type = MoveType::Rapid;
 
-        for (line_idx, line) in self.gcode_content.lines().enumerate() {
+        for (line_idx, line) in self.content().lines().enumerate() {
             let line = line.trim();
             if line.is_empty() || line.starts_with(';') {
                 continue;
@@ -428,7 +445,7 @@ impl GcodeEditorState {
         self.search_results.clear();
         let query = self.search_query.to_lowercase();
 
-        for (line_num, line) in self.gcode_content.lines().enumerate() {
+        for (line_num, line) in self.content().lines().enumerate() {
             if line.to_lowercase().contains(&query) {
                 self.search_results.push(line_num);
             }
@@ -513,11 +530,11 @@ impl GcodeEditorState {
             return Err("Not connected to device".to_string());
         }
 
-        if self.gcode_content.is_empty() {
+        if self.content().is_empty() {
             return Err("No G-code loaded".to_string());
         }
 
-        let lines: Vec<String> = self.gcode_content.lines().map(|s| s.to_string()).collect();
+        let lines: Vec<String> = self.content().lines().map(|s| s.to_string()).collect();
         if start_line >= lines.len() {
             return Err("Invalid line number".to_string());
         }
@@ -548,7 +565,7 @@ impl GcodeEditorState {
     }
 
     pub fn show_ui(&mut self, ui: &mut egui::Ui, _parsed_paths: &[PathSegment]) -> Option<usize> {
-        if self.gcode_content.is_empty() {
+        if self.buffer.get_content().is_empty() {
             ui.centered_and_justified(|ui| {
                 ui.label("No G-code file loaded. Use 'Load File' in the left panel.");
             });
@@ -609,8 +626,8 @@ impl GcodeEditorState {
 
         egui::ScrollArea::vertical().show(ui, |ui| {
             // Prepare lines
-            // Create a snapshot of the lines to avoid borrowing self.gcode_content immutably across the UI closure
-            let content_clone = self.gcode_content.clone();
+                // Create a snapshot of the lines to avoid borrowing buffer content immutably across the UI closure
+            let content_clone = self.content();
             let lines: Vec<String> = content_clone.lines().map(|s| s.to_string()).collect();
 
             ui.horizontal(|ui| {
@@ -651,7 +668,7 @@ impl GcodeEditorState {
 
                 // Editor column
                 let _response = ui.add(
-                    egui::TextEdit::multiline(&mut self.gcode_content)
+                    egui::TextEdit::multiline(&mut self.buffer.get_content())
                         .font(egui::TextStyle::Monospace)
                         .desired_rows(20)
                         .layouter(&mut |ui: &egui::Ui, string: &dyn TextBuffer, _wrap_width| {
