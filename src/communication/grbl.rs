@@ -186,17 +186,41 @@ impl GrblCommunication {
         Ok(())
     }
 
+    /// Check if a port name matches patterns commonly used by GRBL devices
+    fn is_grbl_port(&self, port_name: &str) -> bool {
+        // Check for common GRBL port patterns
+        if port_name.starts_with("/dev/ttyACM") {
+            // "/dev/ttyACM" is 11 chars, check if next char is digit
+            port_name.chars().nth(11).map_or(false, |c| c.is_ascii_digit())
+        } else if port_name.starts_with("/dev/ttyUSB") {
+            // "/dev/ttyUSB" is 11 chars, check if next char is digit
+            port_name.chars().nth(11).map_or(false, |c| c.is_ascii_digit())
+        } else if port_name.starts_with("COM") {
+            // "COM" is 3 chars, check if next char is digit
+            port_name.chars().nth(3).map_or(false, |c| c.is_ascii_digit())
+        } else if port_name.starts_with("/dev/tty.usbserial") {
+            // "/dev/tty.usbserial" is 18 chars, check if next char is digit
+            port_name.chars().nth(18).map_or(false, |c| c.is_ascii_digit())
+        } else {
+            false
+        }
+    }
+
     pub fn refresh_ports(&mut self) {
         self.available_ports.clear();
         match available_ports() {
             Ok(ports) => {
                 for port in ports {
-                    self.available_ports.push(port.port_name);
+                    let port_name = port.port_name;
+                    // Filter ports to only include those likely to have GRBL devices
+                    if self.is_grbl_port(&port_name) {
+                        self.available_ports.push(port_name);
+                    }
                 }
                 if self.available_ports.is_empty() {
-                    self.status_message = "No serial ports found".to_string();
+                    self.status_message = "No compatible serial ports found".to_string();
                 } else {
-                    self.status_message = format!("Found {} ports", self.available_ports.len());
+                    self.status_message = format!("Found {} compatible ports", self.available_ports.len());
                 }
             }
             Err(e) => {
@@ -1800,5 +1824,38 @@ mod tests {
         // After reset, should not be recovering
         comm.reset_recovery_state();
         assert!(!comm.is_recovering());
+    }
+
+    #[test]
+    fn test_is_grbl_port_filtering() {
+        let comm = GrblCommunication::new();
+
+        // Test valid GRBL ports
+        assert!(comm.is_grbl_port("/dev/ttyACM0"));
+        assert!(comm.is_grbl_port("/dev/ttyACM1"));
+        assert!(comm.is_grbl_port("/dev/ttyUSB0"));
+        assert!(comm.is_grbl_port("/dev/ttyUSB5"));
+        assert!(comm.is_grbl_port("COM1"));
+        assert!(comm.is_grbl_port("COM9"));
+        assert!(comm.is_grbl_port("/dev/tty.usbserial0"));
+        assert!(comm.is_grbl_port("/dev/tty.usbserial3"));
+
+        // Test invalid ports (no digit after prefix)
+        assert!(!comm.is_grbl_port("/dev/ttyACM"));
+        assert!(!comm.is_grbl_port("/dev/ttyUSB"));
+        assert!(!comm.is_grbl_port("COM"));
+        assert!(!comm.is_grbl_port("/dev/tty.usbserial"));
+
+        // Test ports with non-digit characters
+        assert!(!comm.is_grbl_port("/dev/ttyACMa"));
+        assert!(!comm.is_grbl_port("/dev/ttyUSBx"));
+        assert!(!comm.is_grbl_port("COMa"));
+        assert!(!comm.is_grbl_port("/dev/tty.usbserialx"));
+
+        // Test completely different port names
+        assert!(!comm.is_grbl_port("/dev/ttyS0"));
+        assert!(!comm.is_grbl_port("/dev/tty0"));
+        assert!(!comm.is_grbl_port("ttyACM0"));
+        assert!(!comm.is_grbl_port("USB0"));
     }
 }
