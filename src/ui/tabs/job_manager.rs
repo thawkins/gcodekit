@@ -70,10 +70,10 @@ pub fn show_job_manager_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
                             ui.label("File Path:");
                             ui.horizontal(|ui| {
                                 ui.text_edit_singleline(&mut app.ui.new_job_file_path);
-                                if ui.button("Browse").clicked()
-                                    && let Some(path) = rfd::FileDialog::new().pick_file()
-                                {
-                                    app.ui.new_job_file_path = path.display().to_string();
+                                if ui.button("Browse").clicked() {
+                                    if let Some(path) = rfd::FileDialog::new().pick_file() {
+                                        app.ui.new_job_file_path = path.display().to_string();
+                                    }
                                 }
                             });
                         }

@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, unused_variables, unused_imports, unused_comparisons)]
 
 pub mod app;
 pub mod cam;

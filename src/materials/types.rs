@@ -91,20 +91,20 @@ mod tests {
     #[test]
     fn test_material_type_serialization() {
         let material_type = MaterialType::Metal;
-        let serialized = serde_json::to_string(&material_type).unwrap();
+        let serialized = serde_json::to_string(&material_type).expect("serialization failed");
         assert_eq!(serialized, "\"Metal\"");
 
-        let deserialized: MaterialType = serde_json::from_str(&serialized).unwrap();
+        let deserialized: MaterialType = serde_json::from_str(&serialized).expect("deserialization failed");
         assert_eq!(deserialized, MaterialType::Metal);
     }
 
     #[test]
     fn test_material_subtype_serialization() {
         let subtype = MaterialSubtype::ABS;
-        let serialized = serde_json::to_string(&subtype).unwrap();
+        let serialized = serde_json::to_string(&subtype).expect("serialization failed");
         assert_eq!(serialized, "\"ABS\"");
 
-        let deserialized: MaterialSubtype = serde_json::from_str(&serialized).unwrap();
+        let deserialized: MaterialSubtype = serde_json::from_str(&serialized).expect("deserialization failed");
         assert_eq!(deserialized, MaterialSubtype::ABS);
     }
 
@@ -121,8 +121,8 @@ mod tests {
         ];
 
         for material_type in types {
-            let serialized = serde_json::to_string(&material_type).unwrap();
-            let deserialized: MaterialType = serde_json::from_str(&serialized).unwrap();
+            let serialized = serde_json::to_string(&material_type).expect("serialization failed");
+            let deserialized: MaterialType = serde_json::from_str(&serialized).expect("deserialization failed");
             assert_eq!(deserialized, material_type);
         }
     }
@@ -165,8 +165,8 @@ mod tests {
         ];
 
         for subtype in subtypes {
-            let serialized = serde_json::to_string(&subtype).unwrap();
-            let deserialized: MaterialSubtype = serde_json::from_str(&serialized).unwrap();
+            let serialized = serde_json::to_string(&subtype).expect("serialization failed");
+            let deserialized: MaterialSubtype = serde_json::from_str(&serialized).expect("deserialization failed");
             assert_eq!(deserialized, subtype);
         }
     }

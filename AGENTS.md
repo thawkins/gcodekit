@@ -1,8 +1,8 @@
 # Agent Guidelines for gcodekit
 
 ## Technology Stack
-- **Language**: Rust version 2024 or greater. 
-- **UI Framework**: egui 0.33 or greater.
+- **Language**: Rust edition 2021 or greater
+- **UI Framework**: egui 0.33 or greater
 
 ## Build Commands
 - `cargo build` - Build debug binary
@@ -14,6 +14,9 @@
 - `cargo test <test_function_name>` - Run specific test function
 - `cargo test -- --nocapture` - Run tests with output visible
 - `cargo test --lib` - Test library only (skip integration tests)
+- **Test Timeout**: All test runs should have a 10-minute timeout to prevent hanging
+  - Use `timeout 600 cargo test` on Unix/Linux
+  - Use `cargo test --test-threads=1` for sequential execution if needed
 
 ## Lint & Format Commands
 - `cargo clippy` - Run linter with clippy

@@ -102,7 +102,7 @@ pub fn generate_scanline_toolpath(
                     sorted_line.sort_by(|a, b| {
                         let a_proj = a.x * cos_angle + a.y * sin_angle;
                         let b_proj = b.x * cos_angle + b.y * sin_angle;
-                        a_proj.partial_cmp(&b_proj).unwrap()
+                        a_proj.partial_cmp(&b_proj).unwrap_or(std::cmp::Ordering::Equal)
                     });
 
                     // Move to start

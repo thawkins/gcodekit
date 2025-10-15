@@ -550,22 +550,22 @@ impl GrblCommunication {
         self.send_grbl_command("?");
     }
 
-    pub fn parse_grbl_status(&mut self, response: &str) -> Option<GrblStatus> {
+    pub fn parse_grbl_status(&mut self, response: &str) -> Result<GrblStatus, String> {
         // GRBL status response format: <State|MPos:X,Y,Z|WPos:X,Y,Z|F:feed|S:speed>
         if !response.starts_with('<') || !response.ends_with('>') {
-            return None;
+            return Err("Invalid status format".to_string());
         }
 
         let content = &response[1..response.len() - 1];
         let parts: Vec<&str> = content.split('|').collect();
 
         if parts.is_empty() {
-            return None;
+            return Err("Empty status content".to_string());
         }
 
         let machine_state = MachineState::from(parts[0]);
         if machine_state == MachineState::Unknown {
-            return None;
+            return Err(format!("Unknown machine state: {}", parts[0]));
         }
 
         let mut status = GrblStatus {
@@ -580,13 +580,15 @@ impl GrblCommunication {
 
                 match key {
                     "MPos" => {
-                        if let Some(pos) = self.parse_position(value) {
-                            status.machine_position = pos;
+                        match self.parse_position(value) {
+                            Some(pos) => status.machine_position = pos,
+                            None => return Err(format!("Failed to parse MPos: {}", value)),
                         }
                     }
                     "WPos" => {
-                        if let Some(pos) = self.parse_position(value) {
-                            status.work_position = pos;
+                        match self.parse_position(value) {
+                            Some(pos) => status.work_position = pos,
+                            None => return Err(format!("Failed to parse WPos: {}", value)),
                         }
                     }
                     "F" => {
@@ -637,51 +639,51 @@ impl GrblCommunication {
             self.feed_hold_sent = false;
         }
 
-        Some(status)
+        Ok(status)
     }
 
     fn parse_position(&self, pos_str: &str) -> Option<Position> {
         let coords: Vec<&str> = pos_str.split(',').collect();
-        if coords.len() >= 3
-            && let (Ok(x), Ok(y), Ok(z)) = (
+        if coords.len() >= 3 {
+            if let (Ok(x), Ok(y), Ok(z)) = (
                 coords[0].parse::<f32>(),
                 coords[1].parse::<f32>(),
                 coords[2].parse::<f32>(),
-            )
-        {
-            let mut pos = Position {
-                x,
-                y,
-                z,
-                a: None,
-                b: None,
-                c: None,
-                d: None,
-            };
+            ) {
+                let mut pos = Position {
+                    x,
+                    y,
+                    z,
+                    a: None,
+                    b: None,
+                    c: None,
+                    d: None,
+                };
 
-            // Parse additional axes if available
-            if coords.len() >= 4
-                && let Ok(a) = coords[3].parse::<f32>()
-            {
-                pos.a = Some(a);
-            }
-            if coords.len() >= 5
-                && let Ok(b) = coords[4].parse::<f32>()
-            {
-                pos.b = Some(b);
-            }
-            if coords.len() >= 6
-                && let Ok(c) = coords[5].parse::<f32>()
-            {
-                pos.c = Some(c);
-            }
-            if coords.len() >= 7
-                && let Ok(d) = coords[6].parse::<f32>()
-            {
-                pos.d = Some(d);
-            }
+                // Parse additional axes if available
+                if coords.len() >= 4 {
+                    if let Ok(a) = coords[3].parse::<f32>() {
+                        pos.a = Some(a);
+                    }
+                }
+                if coords.len() >= 5 {
+                    if let Ok(b) = coords[4].parse::<f32>() {
+                        pos.b = Some(b);
+                    }
+                }
+                if coords.len() >= 6 {
+                    if let Ok(c) = coords[5].parse::<f32>() {
+                        pos.c = Some(c);
+                    }
+                }
+                if coords.len() >= 7 {
+                    if let Ok(d) = coords[6].parse::<f32>() {
+                        pos.d = Some(d);
+                    }
+                }
 
-            return Some(pos);
+                return Some(pos);
+            }
         }
         None
     }
@@ -705,11 +707,12 @@ impl GrblCommunication {
             GrblResponse::Settings(trimmed.to_string())
         } else if trimmed.starts_with('<') && trimmed.ends_with('>') {
             // Status response
-            if let Some(status) = self.parse_grbl_status(trimmed) {
-                self.current_status = status.clone();
-                GrblResponse::Status(status)
-            } else {
-                GrblResponse::Other(trimmed.to_string())
+            match self.parse_grbl_status(trimmed) {
+                Ok(status) => {
+                    self.current_status = status.clone();
+                    GrblResponse::Status(status)
+                }
+                Err(_) => GrblResponse::Other(trimmed.to_string()),
             }
         } else {
             GrblResponse::Other(trimmed.to_string())
@@ -1221,11 +1224,12 @@ impl CncController for GrblCommunication {
             .error_patterns
             .iter()
             .find(|p| p.error_type.contains("timeout"))
-            && timeout_pattern.frequency > 3
         {
-            optimizations.push(
-                "Frequent timeouts detected - consider increasing command timeout".to_string(),
-            );
+            if timeout_pattern.frequency > 3 {
+                optimizations.push(
+                    "Frequent timeouts detected - consider increasing command timeout".to_string(),
+                );
+            }
         }
 
         optimizations
@@ -1358,7 +1362,7 @@ mod tests {
         // Test complete status response
         let status_str =
             "<Idle|MPos:10.000,20.000,30.000|WPos:5.000,15.000,25.000|F:1000.0|S:12000.0>";
-        let status = comm.parse_grbl_status(status_str).unwrap();
+        let status = comm.parse_grbl_status(status_str).expect("failed to parse status string");
 
         assert_eq!(status.machine_state, MachineState::Idle);
         assert_eq!(status.machine_position.x, 10.0);
@@ -1377,7 +1381,7 @@ mod tests {
 
         // Test minimal status response
         let status_str = "<Run|MPos:1.000,2.000,3.000>";
-        let status = comm.parse_grbl_status(status_str).unwrap();
+        let status = comm.parse_grbl_status(status_str).expect("failed to parse status string");
 
         assert_eq!(status.machine_state, MachineState::Run);
         assert_eq!(status.machine_position.x, 1.0);
@@ -1458,7 +1462,7 @@ mod tests {
         let mut comm = GrblCommunication::new();
 
         // Test complex status response with all fields
-        let status = comm.parse_grbl_status("<Run|MPos:10.500,20.750,5.250|WPos:0.000,0.000,0.000|FS:1500,200|WCO:0.000,0.000,0.000>").unwrap();
+        let status = comm.parse_grbl_status("<Run|MPos:10.500,20.750,5.250|WPos:0.000,0.000,0.000|FS:1500,200|WCO:0.000,0.000,0.000>").expect("failed to parse example status");
 
         assert_eq!(status.machine_state, MachineState::Run);
         assert_eq!(status.machine_position.x, 10.5);
@@ -1476,10 +1480,10 @@ mod tests {
         let mut comm = GrblCommunication::new();
 
         // Test invalid status responses
-        assert!(comm.parse_grbl_status("").is_none());
-        assert!(comm.parse_grbl_status("not a status").is_none());
-        assert!(comm.parse_grbl_status("<>").is_none());
-        assert!(comm.parse_grbl_status("<InvalidState>").is_none());
+        assert!(comm.parse_grbl_status("").is_err());
+        assert!(comm.parse_grbl_status("not a status").is_err());
+        assert!(comm.parse_grbl_status("<>").is_err());
+        assert!(comm.parse_grbl_status("<InvalidState>").is_err());
     }
 
     #[test]
@@ -1670,13 +1674,13 @@ mod tests {
         // Test recovery for connection error
         let result = comm.attempt_recovery("connection lost");
         assert!(result.is_ok());
-        let action = result.unwrap();
+        let action = result.expect("attempt_recovery failed");
         assert_eq!(action, crate::communication::RecoveryAction::Reconnect);
 
         let state = comm.get_recovery_state();
         assert_eq!(state.reconnect_attempts, 1);
         assert!(state.last_reconnect_attempt.is_some());
-        assert_eq!(state.last_error.as_ref().unwrap(), "connection lost");
+        assert_eq!(state.last_error.as_ref().expect("expected last_error set"), "connection lost");
         assert_eq!(state.recovery_actions_taken.len(), 1);
         assert_eq!(
             state.recovery_actions_taken[0],
@@ -1692,12 +1696,12 @@ mod tests {
         // Test recovery for command error
         let result = comm.attempt_recovery("Command syntax error");
         assert!(result.is_ok());
-        let action = result.unwrap();
+        let action = result.expect("attempt_recovery failed");
         assert_eq!(action, crate::communication::RecoveryAction::RetryCommand);
 
         let state = comm.get_recovery_state();
         assert_eq!(state.command_retry_count, 1);
-        assert_eq!(state.last_error.as_ref().unwrap(), "Command syntax error");
+        assert_eq!(state.last_error.as_ref().expect("expected last_error set"), "Command syntax error");
         assert_eq!(state.recovery_actions_taken.len(), 1);
         assert_eq!(
             state.recovery_actions_taken[0],
@@ -1712,13 +1716,13 @@ mod tests {
 
         // Exhaust reconnect attempts
         for _ in 0..3 {
-            let _ = comm.attempt_recovery("connection lost");
+            assert!(comm.attempt_recovery("connection lost").is_ok());
         }
 
         // Next attempt should abort job
         let result = comm.attempt_recovery("connection lost");
         assert!(result.is_ok());
-        let action = result.unwrap();
+        let action = result.expect("attempt_recovery failed");
         assert_eq!(action, crate::communication::RecoveryAction::AbortJob);
 
         let state = comm.get_recovery_state();
@@ -1732,13 +1736,13 @@ mod tests {
 
         // Exhaust command retries
         for _ in 0..3 {
-            let _ = comm.attempt_recovery("Command syntax error");
+            assert!(comm.attempt_recovery("Command syntax error").is_ok());
         }
 
         // Next attempt should skip command
         let result = comm.attempt_recovery("Command syntax error");
         assert!(result.is_ok());
-        let action = result.unwrap();
+        let action = result.expect("attempt_recovery failed");
         assert_eq!(action, crate::communication::RecoveryAction::SkipCommand);
 
         let state = comm.get_recovery_state();
@@ -1753,7 +1757,7 @@ mod tests {
         // Test recovery for critical error
         let result = comm.attempt_recovery("alarm: hard limit triggered");
         assert!(result.is_ok());
-        let action = result.unwrap();
+        let action = result.expect("attempt_recovery failed");
         assert_eq!(
             action,
             crate::communication::RecoveryAction::ResetController
@@ -1761,7 +1765,7 @@ mod tests {
 
         let state = comm.get_recovery_state();
         assert_eq!(
-            state.last_error.as_ref().unwrap(),
+            state.last_error.as_ref().expect("expected last_error set"),
             "alarm: hard limit triggered"
         );
         assert_eq!(state.recovery_actions_taken.len(), 1);
@@ -1790,8 +1794,8 @@ mod tests {
         comm.connection_state = ConnectionState::Error;
 
         // Perform some recovery actions
-        let _ = comm.attempt_recovery("connection lost");
-        let _ = comm.attempt_recovery("command timeout");
+        assert!(comm.attempt_recovery("connection lost").is_ok());
+        assert!(comm.attempt_recovery("command timeout").is_ok());
 
         let state = comm.get_recovery_state();
         assert_eq!(state.reconnect_attempts, 2);
@@ -1818,7 +1822,7 @@ mod tests {
 
         // After recovery attempt, should be recovering
         comm.connection_state = ConnectionState::Error;
-        let _ = comm.attempt_recovery("connection lost");
+        assert!(comm.attempt_recovery("connection lost").is_ok());
         assert!(comm.is_recovering());
 
         // After reset, should not be recovering

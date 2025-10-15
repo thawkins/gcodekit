@@ -238,6 +238,15 @@ The advanced 3D machining and extended controller support phase adds sophisticat
 
 CamBam-Inspired Features:
 37. **Advanced G-code Editor**: Built-in G-code editor with syntax highlighting, error checking, and manual modifications
+
+    - Implementation: custom egui text widget (src/gcodeedit/editor.rs) providing buffer, cursor, selection, folding and virtualized line rendering.
+    - Vocabulary: GRBL G/M code vocabulary for versions 1.0, 1.1 and 1.2 (src/gcodeedit/vocabulary.rs) used for highlighting, completion and validation.
+    - Validation Rules: configurable RuleSet (src/gcodeedit/rules.rs) allowing enable/disable of rules, per-rule severity, and GRBL-version-specific checks.
+    - Parser/Tokenizer: incremental tokenizer + lightweight parser service for real-time syntax and semantic validation (debounced background task).
+    - Editor Features: line numbers, gutter diagnostics, find/replace, code folding, auto-completion for G/M codes and parameters, keyboard shortcuts, undo/redo.
+    - Integration: editor <-> visualizer line mapping for back-plot stepping and line highlighting; APIs for completions and diagnostics.
+    - Performance: incremental parsing and token caching to keep validation and highlighting responsive (<100ms) for files 1000+ lines.
+    - Tests & Docs: unit tests for tokenizer, rules, and editor buffer; documentation and DOCBLOCKs per project standards.
 38. **Back Plotting**: Visual simulation of G-code execution to verify toolpaths before machining
 39. **Post-Processor System**: Configurable post-processors for various CNC controllers (GRBL ✓, Smoothieware ✓, Mach3, EMC2, LinuxCNC, etc.)
 40. **Speeds and Feeds Calculator**: Built-in calculator for optimizing cutting parameters based on material and tool

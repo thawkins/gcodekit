@@ -237,7 +237,7 @@ fn test_export_to_obj_empty() {
     assert!(result.is_ok());
     let obj_data = result.unwrap();
     // Empty OBJ should be minimal
-    assert!(obj_data.len() >= 0);
+    assert!(obj_data.len() > 0);
 }
 
 #[test]

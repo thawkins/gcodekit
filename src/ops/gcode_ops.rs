@@ -299,12 +299,12 @@ impl GcodeKitApp {
                     Ok(_) => {
                         sent_count += 1;
                         // Update job progress
-                        if let Some(job_id) = &self.job.current_job_id
-                            && let Some(job) = self.job.job_queue.get_job_mut(job_id)
-                        {
-                            let current_line = start_line + i;
-                            job.last_completed_line = Some(current_line);
-                            job.update_progress((current_line as f32) / (lines.len() as f32));
+                        if let Some(job_id) = &self.job.current_job_id {
+                            if let Some(job) = self.job.job_queue.get_job_mut(job_id) {
+                                let current_line = start_line + i;
+                                job.last_completed_line = Some(current_line);
+                                job.update_progress((current_line as f32) / (lines.len() as f32));
+                            }
                         }
                     }
                     Err(e) => {

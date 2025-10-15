@@ -1,0 +1,7 @@
+# Cargo configuration for gcodekit
+
+# Test configuration
+[test]
+# Maximum time for tests to run (in seconds)
+# Set to 600 seconds (10 minutes) to prevent hanging tests
+timeout = 600

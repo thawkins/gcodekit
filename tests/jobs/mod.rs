@@ -1,3 +1,6 @@
+mod scheduling;
+mod analytics;
+
 mod tests {
     use gcodekit::jobs::*;
     use gcodekit::jobs::manager;

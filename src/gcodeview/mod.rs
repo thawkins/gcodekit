@@ -8,11 +8,12 @@ use eframe::egui;
 
 pub fn show_visualizer_ui(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
     // Handle keyboard shortcuts
-    if ui.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::R))
-        && let Some(line_number) = app.gcode_editor.selected_line
-        && app.communication.is_connected()
-    {
-        app.send_gcode_from_line(line_number);
+    if ui.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::R)) {
+        if let Some(line_number) = app.gcode_editor.selected_line {
+            if app.communication.is_connected() {
+                app.send_gcode_from_line(line_number);
+            }
+        }
     }
 
     ui.vertical(|ui| {
@@ -33,10 +34,10 @@ pub fn show_visualizer_ui(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                     run_button_enabled,
                     egui::Button::new("▶️ Run from Selected Line"),
                 )
-                .clicked()
-                && let Some(line_number) = app.gcode_editor.selected_line
-            {
-                app.send_gcode_from_line(line_number);
+                .clicked() {
+                if let Some(line_number) = app.gcode_editor.selected_line {
+                    app.send_gcode_from_line(line_number);
+                }
             }
             ui.separator();
 
@@ -182,10 +183,9 @@ pub fn show_visualizer_ui(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                 );
 
                 // Left-click to select segment
-                if response.clicked_by(egui::PointerButton::Primary)
-                    && let Some(click_pos) = response.interact_pointer_pos()
-                {
-                    // Find closest segment to click position
+                if response.clicked_by(egui::PointerButton::Primary) {
+                    if let Some(click_pos) = response.interact_pointer_pos() {
+                        // Find closest segment to click position
                     let mut closest_segment = None;
                     let mut min_distance = f32::INFINITY;
 

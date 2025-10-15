@@ -3,7 +3,7 @@ use crate::GcodeKitApp;
 /// Renders the feeds and speeds calculator tab UI.
 /// Provides a calculator for determining optimal spindle speeds and feed rates
 /// based on material, tool parameters, and cutting conditions.
-pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
+pub fn show_feeds_speeds_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     ui.heading("Feeds and Speeds Calculator");
 
     ui.separator();
@@ -13,21 +13,19 @@ pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     ui.separator();
 
     // Units selection
-    static mut UNITS_METRIC: bool = false;
     ui.horizontal(|ui| {
         ui.label("Units:");
         ui.radio_value(
-            &mut unsafe { UNITS_METRIC },
+            &mut app.ui.feeds_speeds.units_metric,
             false,
             "Imperial (inches, SFM, IPM)",
         );
-        ui.radio_value(&mut unsafe { UNITS_METRIC }, true, "Metric (mm, SMM, MMPM)");
+        ui.radio_value(&mut app.ui.feeds_speeds.units_metric, true, "Metric (mm, SMM, MMPM)");
     });
 
     ui.separator();
 
     // Material selection
-    static mut MATERIAL: usize = 0;
     let materials = [
         "Aluminum",
         "Steel",
@@ -43,61 +41,57 @@ pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ui.label("Material:");
         egui::ComboBox::from_id_salt("feeds_speeds_material")
-            .selected_text(materials[unsafe { MATERIAL }])
+            .selected_text(materials[app.ui.feeds_speeds.material])
             .show_ui(ui, |ui| {
                 for (i, mat) in materials.iter().enumerate() {
-                    ui.selectable_value(&mut unsafe { MATERIAL }, i, *mat);
+                    ui.selectable_value(&mut app.ui.feeds_speeds.material, i, *mat);
                 }
             });
     });
 
     // Tool parameters
-    static mut TOOL_DIAMETER: f32 = 0.25;
-    static mut NUM_FLUTES: u32 = 2;
-    let diameter_label = if unsafe { UNITS_METRIC } {
+    let diameter_label = if app.ui.feeds_speeds.units_metric {
         "Tool Diameter (mm):"
     } else {
         "Tool Diameter (inches):"
     };
-    let diameter_range = if unsafe { UNITS_METRIC } {
+    let diameter_range = if app.ui.feeds_speeds.units_metric {
         1.0..=50.0
     } else {
         0.0625..=2.0
     };
-    let diameter_speed = if unsafe { UNITS_METRIC } { 0.1 } else { 0.01 };
+    let diameter_speed = if app.ui.feeds_speeds.units_metric { 0.1 } else { 0.01 };
     ui.horizontal(|ui| {
         ui.label(diameter_label);
         ui.add(
-            egui::DragValue::new(&mut unsafe { TOOL_DIAMETER })
+            egui::DragValue::new(&mut app.ui.feeds_speeds.tool_diameter)
                 .speed(diameter_speed)
                 .range(diameter_range),
         );
     });
     ui.horizontal(|ui| {
         ui.label("Number of Flutes:");
-        ui.add(egui::DragValue::new(&mut unsafe { NUM_FLUTES }).range(1..=6));
+        ui.add(egui::DragValue::new(&mut app.ui.feeds_speeds.num_flutes).range(1..=6));
     });
 
     // Operation type
-    static mut OPERATION: usize = 0;
     let operations = ["Roughing", "Finishing"];
     ui.horizontal(|ui| {
         ui.label("Operation:");
         egui::ComboBox::from_id_salt("feeds_speeds_operation")
-            .selected_text(operations[unsafe { OPERATION }])
+            .selected_text(operations[app.ui.feeds_speeds.operation])
             .show_ui(ui, |ui| {
                 for (i, op) in operations.iter().enumerate() {
-                    ui.selectable_value(&mut unsafe { OPERATION }, i, *op);
+                    ui.selectable_value(&mut app.ui.feeds_speeds.operation, i, *op);
                 }
             });
     });
 
     // Tool wear compensation
-    static mut TOOL_WEAR_PERCENT: f32 = 0.0;
     ui.horizontal(|ui| {
         ui.label("Tool Wear (%):");
         ui.add(
-            egui::DragValue::new(&mut unsafe { TOOL_WEAR_PERCENT })
+            egui::DragValue::new(&mut app.ui.feeds_speeds.tool_wear_percent)
                 .speed(1.0)
                 .range(0.0..=50.0),
         );
@@ -107,37 +101,29 @@ pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     ui.separator();
 
     // Calculate button
-    static mut CALCULATED_RPM: f32 = 0.0;
-    static mut CALCULATED_FEED: f32 = 0.0;
-    static mut HAS_RESULTS: bool = false;
-
     if ui.button("Calculate").clicked() {
         // Perform calculation
-        let surface_speed = get_surface_speed(unsafe { MATERIAL }, unsafe { UNITS_METRIC });
-        unsafe { CALCULATED_RPM = calculate_rpm(surface_speed, TOOL_DIAMETER, UNITS_METRIC) };
-        let chip_load = get_chip_load(unsafe { MATERIAL }, unsafe { OPERATION }, unsafe {
-            UNITS_METRIC
-        });
-        let base_feed_rate = unsafe { CALCULATED_RPM } * unsafe { NUM_FLUTES } as f32 * chip_load;
+        let surface_speed = get_surface_speed(app.ui.feeds_speeds.material, app.ui.feeds_speeds.units_metric);
+        app.ui.feeds_speeds.calculated_rpm = calculate_rpm(surface_speed, app.ui.feeds_speeds.tool_diameter, app.ui.feeds_speeds.units_metric);
+        let chip_load = get_chip_load(app.ui.feeds_speeds.material, app.ui.feeds_speeds.operation, app.ui.feeds_speeds.units_metric);
+        let base_feed_rate = app.ui.feeds_speeds.calculated_rpm * app.ui.feeds_speeds.num_flutes as f32 * chip_load;
         // Apply tool wear compensation
-        let wear_factor = 1.0 - (unsafe { TOOL_WEAR_PERCENT } / 100.0);
-        unsafe { CALCULATED_FEED = base_feed_rate * wear_factor };
-        unsafe { HAS_RESULTS = true };
+        let wear_factor = 1.0 - (app.ui.feeds_speeds.tool_wear_percent / 100.0);
+        app.ui.feeds_speeds.calculated_feed = base_feed_rate * wear_factor;
+        app.ui.feeds_speeds.has_results = true;
     }
 
-    if unsafe { HAS_RESULTS } {
+    if app.ui.feeds_speeds.has_results {
         ui.separator();
-        ui.label(format!("Recommended Spindle Speed: {:.0} RPM", unsafe {
-            CALCULATED_RPM
-        }));
-        let feed_unit = if unsafe { UNITS_METRIC } {
+        ui.label(format!("Recommended Spindle Speed: {:.0} RPM", app.ui.feeds_speeds.calculated_rpm));
+        let feed_unit = if app.ui.feeds_speeds.units_metric {
             "MMPM"
         } else {
             "IPM"
         };
         ui.label(format!(
             "Recommended Feed Rate: {:.2} {}",
-            unsafe { CALCULATED_FEED },
+            app.ui.feeds_speeds.calculated_feed,
             feed_unit
         ));
         ui.label("Note: These are starting recommendations. Adjust based on your machine capabilities and test cuts.");
@@ -146,14 +132,14 @@ pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.label("Export Results:");
             if ui.button("Copy to Clipboard").clicked() {
-                let material_name = materials[unsafe { MATERIAL }];
-                let operation_name = operations[unsafe { OPERATION }];
-                let units_name = if unsafe { UNITS_METRIC } {
+                let material_name = materials[app.ui.feeds_speeds.material];
+                let operation_name = operations[app.ui.feeds_speeds.operation];
+                let units_name = if app.ui.feeds_speeds.units_metric {
                     "Metric"
                 } else {
                     "Imperial"
                 };
-                let diameter_unit = if unsafe { UNITS_METRIC } {
+                let diameter_unit = if app.ui.feeds_speeds.units_metric {
                     "mm"
                 } else {
                     "inches"
@@ -171,13 +157,13 @@ pub fn show_feeds_speeds_tab(_app: &mut GcodeKitApp, ui: &mut egui::Ui) {
                      Recommended Feed Rate: {:.2} {}\n",
                     units_name,
                     material_name,
-                    unsafe { TOOL_DIAMETER },
+                    app.ui.feeds_speeds.tool_diameter,
                     diameter_unit,
-                    unsafe { NUM_FLUTES },
+                    app.ui.feeds_speeds.num_flutes,
                     operation_name,
-                    unsafe { TOOL_WEAR_PERCENT },
-                    unsafe { CALCULATED_RPM },
-                    unsafe { CALCULATED_FEED },
+                    app.ui.feeds_speeds.tool_wear_percent,
+                    app.ui.feeds_speeds.calculated_rpm,
+                    app.ui.feeds_speeds.calculated_feed,
                     feed_unit
                 );
 

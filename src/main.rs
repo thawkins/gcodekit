@@ -1,4 +1,6 @@
 //! # gcodekit
+#![allow(dead_code, unused_variables, unused_imports, unused_comparisons)]
+
 //!
 //! A comprehensive GUI application for CNC machine control, G-code generation,
 //! and CAM operations. Built with Rust and egui.
@@ -11,8 +13,6 @@
 //! - Material management
 //! - Job queuing and management
 //! - Real-time machine monitoring
-
-#![allow(dead_code)]
 
 use chrono::Utc;
 use eframe::egui;
@@ -247,16 +247,17 @@ impl GcodeKitApp {
                         );
                         self.log_console(&error_msg);
                         // Try recovery again
-                        if let Err(recovery_err) =
-                            self.machine.communication.attempt_recovery(&error_msg)
-                        {
-                            info!(
-                                "[{}] [RECOVERY] Recovery failed permanently: {}",
-                                timestamp, recovery_err
-                            );
-                            self.log_console(&format!("Recovery failed: {}", recovery_err));
-                            self.machine.status_message =
-                                "Recovery failed - manual intervention required".to_string();
+                        match self.machine.communication.attempt_recovery(&error_msg) {
+                            Ok(_) => {},
+                            Err(recovery_err) => {
+                                info!(
+                                    "[{}] [RECOVERY] Recovery failed permanently: {}",
+                                    timestamp, recovery_err
+                                );
+                                self.log_console(&format!("Recovery failed: {}", recovery_err));
+                                self.machine.status_message =
+                                    "Recovery failed - manual intervention required".to_string();
+                            }
                         }
                     }
                 }
@@ -266,22 +267,23 @@ impl GcodeKitApp {
 
     /// Handles incoming communication responses from the CNC controller.
     fn handle_communication_responses(&mut self) {
-        if *self.machine.communication.get_connection_state() == ConnectionState::Connected
-            && let Some(message) = self.machine.communication.read_response()
-        {
-            debug!("Device response: {}", message.trim());
-            if let Some(pos) = self.machine.communication.handle_response(&message) {
-                // Position updated
-                self.machine.current_position = pos.clone();
-                self.log_console(&format!("Position: {}", pos.format()));
-            } else {
-                // Other response, just log if not "ok"
-                if message.trim() != "ok" {
-                    self.log_console(&format!("Recv: {}", message));
+        if *self.machine.communication.get_connection_state() == ConnectionState::Connected {
+            if let Some(message) = self.machine.communication.read_response() {
+                debug!("Device response: {}", message.trim());
+                if let Some(pos) = self.machine.communication.handle_response(&message) {
+                    // Position updated
+                    self.machine.current_position = pos.clone();
+                    self.log_console(&format!("Position: {}", pos.format()));
+                } else {
+                    // Other response, just log if not "ok"
+                    if message.trim() != "ok" {
+                        self.log_console(&format!("Recv: {}", message));
+                    }
                 }
             }
         }
     }
+
 }
 
 #[cfg(test)]
@@ -479,7 +481,7 @@ mod tests {
         app.job.current_job_id = None;
 
         // Verify job is interrupted
-        let job = app.job.job_queue.get_job(&job_id).unwrap();
+        let job = app.job.job_queue.get_job(&job_id).expect("expected job in queue");
         assert_eq!(job.status, jobs::JobStatus::Paused);
         assert_eq!(job.last_completed_line, Some(2));
         assert!(job.can_resume_job());
@@ -489,7 +491,7 @@ mod tests {
         assert_eq!(app.job.current_job_id, Some(job_id.clone()));
 
         // Verify job is running again
-        let job = app.job.job_queue.get_job(&job_id).unwrap();
+        let job = app.job.job_queue.get_job(&job_id).expect("expected job in queue");
         assert_eq!(job.status, jobs::JobStatus::Running);
         assert_eq!(job.last_completed_line, Some(2)); // Should still have the resume point
     }
@@ -643,7 +645,7 @@ mod tests {
         // Check it was added
         let material = app.material_database.get_material("Test Wood");
         assert!(material.is_some());
-        let material = material.unwrap();
+        let material = material.expect("expected material");
         assert_eq!(material.name, "Test Wood");
         assert_eq!(material.material_type, materials::MaterialType::Wood);
         assert_eq!(material.density, 600.0);
@@ -668,7 +670,7 @@ mod tests {
         app.ui.selected_material = Some("Test Material".to_string());
 
         let job = jobs::Job::new(app.ui.new_job_name.clone(), app.ui.new_job_type.clone())
-            .with_material(app.ui.selected_material.clone().unwrap());
+            .with_material(app.ui.selected_material.clone().expect("expected selected material"));
 
         app.job.job_queue.add_job(job);
 

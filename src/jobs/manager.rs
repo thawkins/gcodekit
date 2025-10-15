@@ -422,7 +422,7 @@ mod tests {
         manager.create_job_from_generated_gcode("Test Job", JobType::GcodeFile, "G1 X10", None);
 
         let job_id = manager.job_queue.jobs[0].id.clone();
-        manager.start_job(&job_id).unwrap();
+        assert!(manager.start_job(&job_id).is_ok());
 
         let result = manager.pause_job(&job_id);
         assert!(result.is_ok());
@@ -435,7 +435,7 @@ mod tests {
         manager.create_job_from_generated_gcode("Test Job", JobType::GcodeFile, "G1 X10", None);
 
         let job_id = manager.job_queue.jobs[0].id.clone();
-        manager.start_job(&job_id).unwrap();
+        assert!(manager.start_job(&job_id).is_ok());
 
         let result = manager.cancel_job(&job_id);
         assert!(result.is_ok());
@@ -448,7 +448,7 @@ mod tests {
         manager.create_job_from_generated_gcode("Test Job", JobType::GcodeFile, "G1 X10", None);
 
         let job_id = manager.job_queue.jobs[0].id.clone();
-        manager.start_job(&job_id).unwrap();
+        assert!(manager.start_job(&job_id).is_ok());
 
         let result = manager.complete_job(&job_id);
         assert!(result.is_ok());
@@ -461,7 +461,7 @@ mod tests {
         manager.create_job_from_generated_gcode("Test Job", JobType::GcodeFile, "G1 X10", None);
 
         let job_id = manager.job_queue.jobs[0].id.clone();
-        manager.start_job(&job_id).unwrap();
+        assert!(manager.start_job(&job_id).is_ok());
 
         let result = manager.fail_job(&job_id, "Test error".to_string());
         assert!(result.is_ok());
@@ -478,7 +478,7 @@ mod tests {
         manager.create_job_from_generated_gcode("Test Job", JobType::GcodeFile, "G1 X10", None);
 
         let job_id = manager.job_queue.jobs[0].id.clone();
-        manager.start_job(&job_id).unwrap();
+        assert!(manager.start_job(&job_id).is_ok());
 
         let result = manager.update_job_progress(&job_id, 0.75);
         assert!(result.is_ok());
@@ -491,11 +491,11 @@ mod tests {
         manager.create_job_from_generated_gcode("Test Job", JobType::GcodeFile, "G1 X10", None);
 
         let job_id = manager.job_queue.jobs[0].id.clone();
-        manager.start_job(&job_id).unwrap();
+        assert!(manager.start_job(&job_id).is_ok());
 
         let current_job = manager.get_current_job();
         assert!(current_job.is_some());
-        assert_eq!(current_job.unwrap().name, "Test Job");
+        assert_eq!(current_job.expect("expected current job").name, "Test Job");
     }
 
     #[test]
@@ -504,11 +504,11 @@ mod tests {
         manager.create_job_from_generated_gcode("Test Job", JobType::GcodeFile, "G1 X10", None);
 
         let job_id = manager.job_queue.jobs[0].id.clone();
-        manager.start_job(&job_id).unwrap();
+        assert!(manager.start_job(&job_id).is_ok());
 
         let current_job_id = manager.get_current_job_id();
         assert!(current_job_id.is_some());
-        assert_eq!(current_job_id.unwrap(), job_id);
+        assert_eq!(current_job_id.expect("expected current job id"), job_id);
     }
 
     #[test]
@@ -533,15 +533,15 @@ mod tests {
         );
 
         let job_id = manager.job_queue.jobs[0].id.clone();
-        manager.start_job(&job_id).unwrap();
+        assert!(manager.start_job(&job_id).is_ok());
 
         // Simulate pausing and setting resume line
-        manager.pause_job(&job_id).unwrap();
+        assert!(manager.pause_job(&job_id).is_ok());
         manager.job_queue.jobs[0].last_completed_line = Some(1);
 
         let result = manager.resume_job(&job_id);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 1); // Should return resume line
+        assert_eq!(result.expect("expected Ok result"), 1); // Should return resume line
         assert_eq!(manager.job_queue.jobs[0].status, JobStatus::Running);
     }
 
@@ -560,7 +560,7 @@ mod tests {
         manager.create_job_from_generated_gcode("Test Job", JobType::GcodeFile, "G1 X10", None);
 
         let job_id = manager.job_queue.jobs[0].id.clone();
-        manager.start_job(&job_id).unwrap();
+        assert!(manager.start_job(&job_id).is_ok());
 
         let result = manager.resume_job(&job_id);
         assert!(result.is_err());
@@ -587,7 +587,7 @@ mod tests {
 
         // Start one job
         let job_id = manager.job_queue.jobs[0].id.clone();
-        manager.start_job(&job_id).unwrap();
+        assert!(manager.start_job(&job_id).is_ok());
 
         // Save to temporary file
         let temp_path = std::env::temp_dir().join("test_manager_save.json");
@@ -596,7 +596,7 @@ mod tests {
 
         // Verify file exists and has content
         assert!(temp_path.exists());
-        let content = std::fs::read_to_string(&temp_path).unwrap();
+        let content = std::fs::read_to_string(&temp_path).expect("failed to read temp file");
         assert!(content.contains("Test Job 1"));
         assert!(content.contains("Test Job 2"));
 
@@ -618,10 +618,10 @@ mod tests {
 
         // Save test queue
         let temp_path = std::env::temp_dir().join("test_manager_load.json");
-        test_queue.save_to_file(&temp_path).unwrap();
+        assert!(test_queue.save_to_file(&temp_path).is_ok());
 
         // Load using manager method
-        let loaded_queue = manager.load_jobs_from_file(&temp_path).unwrap();
+        let loaded_queue = manager.load_jobs_from_file(&temp_path).expect("failed to load jobs from file");
 
         // Verify loaded queue
         assert_eq!(loaded_queue.jobs.len(), 2);
@@ -685,16 +685,16 @@ mod tests {
 
         // Start the second job
         let running_job_id = manager.job_queue.jobs[1].id.clone();
-        manager.start_job(&running_job_id).unwrap();
-        manager.update_job_progress(&running_job_id, 0.5).unwrap();
+        assert!(manager.start_job(&running_job_id).is_ok());
+        assert!(manager.update_job_progress(&running_job_id, 0.5).is_ok());
 
         // Save jobs
         let temp_path = std::env::temp_dir().join("test_integration_save_load.json");
-        manager.save_jobs_to_file(&temp_path).unwrap();
+        assert!(manager.save_jobs_to_file(&temp_path).is_ok());
 
         // Load jobs into new manager
         let new_manager = JobManager::new();
-        let loaded_queue = new_manager.load_jobs_from_file(&temp_path).unwrap();
+        let loaded_queue = new_manager.load_jobs_from_file(&temp_path).expect("failed to load jobs from file");
         let mut new_manager = JobManager::new();
         new_manager.replace_job_queue(loaded_queue);
 

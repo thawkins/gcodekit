@@ -65,18 +65,39 @@ impl WebPendant {
                         let _ = command_tx_clone.send(msg.clone());
 
                         // Broadcast status updates to all connected clients
-                        let mut receivers = status_receivers_clone.lock().unwrap();
-                        receivers.retain(|_, sender| sender.send(msg.clone()).is_ok());
+                        match status_receivers_clone.lock() {
+                            Ok(mut receivers) => {
+                                receivers.retain(|_, sender| sender.send(msg.clone()).is_ok());
+                            }
+                            Err(poisoned) => {
+                                let mut receivers = poisoned.into_inner();
+                                receivers.retain(|_, sender| sender.send(msg.clone()).is_ok());
+                            }
+                        }
                     }
                     WebPendantMessage::StatusUpdate { .. } => {
                         // Broadcast status updates to all connected clients
-                        let mut receivers = status_receivers_clone.lock().unwrap();
-                        receivers.retain(|_, sender| sender.send(msg.clone()).is_ok());
+                        match status_receivers_clone.lock() {
+                            Ok(mut receivers) => {
+                                receivers.retain(|_, sender| sender.send(msg.clone()).is_ok());
+                            }
+                            Err(poisoned) => {
+                                let mut receivers = poisoned.into_inner();
+                                receivers.retain(|_, sender| sender.send(msg.clone()).is_ok());
+                            }
+                        }
                     }
                     WebPendantMessage::Response { .. } => {
                         // Broadcast responses to all connected clients
-                        let mut receivers = status_receivers_clone.lock().unwrap();
-                        receivers.retain(|_, sender| sender.send(msg.clone()).is_ok());
+                        match status_receivers_clone.lock() {
+                            Ok(mut receivers) => {
+                                receivers.retain(|_, sender| sender.send(msg.clone()).is_ok());
+                            }
+                            Err(poisoned) => {
+                                let mut receivers = poisoned.into_inner();
+                                receivers.retain(|_, sender| sender.send(msg.clone()).is_ok());
+                            }
+                        }
                     }
                 }
             }
@@ -146,8 +167,10 @@ impl WebPendant {
 
         // Add this client to the receivers
         {
-            let mut receivers = status_receivers.lock().unwrap();
-            receivers.insert(client_id.clone(), client_tx);
+            match status_receivers.lock() {
+            Ok(mut receivers) => { receivers.insert(client_id.clone(), client_tx); },
+            Err(poisoned) => { let mut receivers = poisoned.into_inner(); receivers.insert(client_id.clone(), client_tx); },
+        }
         }
 
         // Send initial status
@@ -169,10 +192,10 @@ impl WebPendant {
             while let Some(result) = ws_receiver.next().await {
                 match result {
                     Ok(msg) => {
-                        if let Ok(text) = msg.to_str()
-                            && let Ok(command) = serde_json::from_str::<WebPendantMessage>(text)
-                        {
-                            let _ = command_sender.send(command);
+                        if let Ok(text) = msg.to_str() {
+                            if let Ok(command) = serde_json::from_str::<WebPendantMessage>(text) {
+                                let _ = command_sender.send(command);
+                            }
                         }
                     }
                     Err(_) => break,
@@ -180,16 +203,18 @@ impl WebPendant {
             }
 
             // Remove client when connection closes
-            let mut receivers = status_receivers_clone.lock().unwrap();
-            receivers.remove(&client_id_clone);
+            match status_receivers_clone.lock() {
+            Ok(mut receivers) => { receivers.remove(&client_id_clone); },
+            Err(poisoned) => { let mut receivers = poisoned.into_inner(); receivers.remove(&client_id_clone); },
+        }
         });
 
         // Forward status updates to client
         while let Some(msg) = client_rx.recv().await {
-            if let Ok(json) = serde_json::to_string(&msg)
-                && ws_sender.send(Message::text(json)).await.is_err()
-            {
-                break;
+            if let Ok(json) = serde_json::to_string(&msg) {
+                if ws_sender.send(Message::text(json)).await.is_err() {
+                    break;
+                }
             }
         }
     }

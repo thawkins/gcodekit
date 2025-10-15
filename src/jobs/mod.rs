@@ -269,15 +269,12 @@ impl Job {
 
     /// Calculate efficiency metrics
     pub fn efficiency(&self) -> f32 {
-        if self.actual_duration.is_none() || self.machine_time.is_none() {
-            return 0.0;
-        }
-
-        let total_duration = self.actual_duration.unwrap();
-        let machine_time = self.machine_time.unwrap();
-
-        if total_duration.as_secs_f32() > 0.0 {
-            machine_time.as_secs_f32() / total_duration.as_secs_f32()
+        if let (Some(total_duration), Some(machine_time)) = (self.actual_duration, self.machine_time) {
+            if total_duration.as_secs_f32() > 0.0 {
+                machine_time.as_secs_f32() / total_duration.as_secs_f32()
+            } else {
+                0.0
+            }
         } else {
             0.0
         }
@@ -441,10 +438,10 @@ impl ScheduledJob {
         }
 
         // Check if we've reached max runs
-        if let Some(max) = self.max_runs
-            && self.run_count >= max
-        {
-            return false;
+        if let Some(max) = self.max_runs {
+            if self.run_count >= max {
+                return false;
+            }
         }
 
         // Check if it's time to run
@@ -846,10 +843,10 @@ impl JobQueue {
     pub fn remove_job(&mut self, job_id: &str) -> Option<Job> {
         if let Some(job) = self.get_job(job_id) {
             // Don't remove active jobs
-            if !self.active_jobs.contains(&job.id)
-                && let Some(pos) = self.jobs.iter().position(|j| j.id == job_id)
-            {
-                return self.jobs.remove(pos);
+            if !self.active_jobs.contains(&job.id) {
+                if let Some(pos) = self.jobs.iter().position(|j| j.id == job_id) {
+                    return self.jobs.remove(pos);
+                }
             }
         }
         None
@@ -1067,7 +1064,7 @@ mod tests {
         queue.add_job(job2);
 
         // Should get high priority job first
-        let next = queue.get_next_pending_job().unwrap();
+        let next = queue.get_next_pending_job().expect("expected next pending job");
         assert_eq!(next.name, "Job 2");
         assert_eq!(next.priority, 10);
     }
@@ -1102,17 +1099,17 @@ mod tests {
         }
 
         // Verify job is interrupted
-        let job = job_manager.job_queue.get_job(&job_id).unwrap();
+        let job = job_manager.job_queue.get_job(&job_id).expect("expected job in queue");
         assert_eq!(job.status, JobStatus::Paused);
         assert_eq!(job.last_completed_line, Some(2));
         assert!(job.can_resume_job());
 
         // Test resume functionality
-        let resume_line = job_manager.resume_job(&job_id).unwrap();
+        let resume_line = job_manager.resume_job(&job_id).expect("expected resume line");
         assert_eq!(resume_line, 2);
 
         // Verify job is running again
-        let job = job_manager.job_queue.get_job(&job_id).unwrap();
+        let job = job_manager.job_queue.get_job(&job_id).expect("expected job in queue");
         assert_eq!(job.status, JobStatus::Running);
         assert_eq!(job.last_completed_line, Some(2)); // Should still have the resume point
     }
@@ -1137,7 +1134,7 @@ mod tests {
 
         // Start one job
         let job_id = queue.jobs[0].id.clone();
-        queue.start_job(&job_id).unwrap();
+        queue.start_job(&job_id).expect("failed to start job");
 
         // Save to temporary file
         let temp_path = std::env::temp_dir().join("test_job_queue.json");

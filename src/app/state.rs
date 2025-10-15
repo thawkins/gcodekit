@@ -10,6 +10,36 @@ use crate::materials::MaterialDatabase;
 use crate::materials::MaterialType;
 use crate::types::{MachineMode, MachinePosition, PathSegment, Tab};
 
+// Feeds and Speeds Calculator State
+#[derive(Debug, Clone)]
+pub struct FeedsSpeedsState {
+    pub units_metric: bool,
+    pub material: usize,
+    pub tool_diameter: f32,
+    pub num_flutes: u32,
+    pub operation: usize,
+    pub tool_wear_percent: f32,
+    pub calculated_rpm: f32,
+    pub calculated_feed: f32,
+    pub has_results: bool,
+}
+
+impl Default for FeedsSpeedsState {
+    fn default() -> Self {
+        Self {
+            units_metric: false,
+            material: 0,
+            tool_diameter: 0.25,
+            num_flutes: 2,
+            operation: 0,
+            tool_wear_percent: 0.0,
+            calculated_rpm: 0.0,
+            calculated_feed: 0.0,
+            has_results: false,
+        }
+    }
+}
+
 // UI State - Ephemeral state for UI rendering and interaction
 #[derive(Debug, Clone)]
 pub struct UiState {
@@ -36,6 +66,7 @@ pub struct UiState {
     pub show_right_panel: bool,
     pub left_panel_width: f32,
     pub right_panel_width: f32,
+    pub feeds_speeds: FeedsSpeedsState,
 }
 
 impl Default for UiState {
@@ -64,6 +95,7 @@ impl Default for UiState {
             show_right_panel: true,
             left_panel_width: 200.0,
             right_panel_width: 250.0,
+            feeds_speeds: FeedsSpeedsState::default(),
         }
     }
 }
