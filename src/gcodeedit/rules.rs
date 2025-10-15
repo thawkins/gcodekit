@@ -18,7 +18,7 @@
 //! use gcodekit::gcodeedit::rules::RuleSet;
 //! use gcodekit::gcodeedit::tokenizer::parse_content_sync;
 //!
-//! let mut ruleset = RuleSet::default();
+//! let mut ruleset = RuleSet::new_default();
 //!
 //! // Initial validation
 //! let content = "G0 X10\nG999 Y20\nG1 X30";
@@ -72,7 +72,7 @@ pub struct RuleSet {
 
 impl RuleSet {
     /// Default ruleset
-    pub fn default() -> Self {
+    pub fn new_default() -> Self {
         Self {
             rules: vec![
                 Rule {
@@ -132,8 +132,8 @@ impl RuleSet {
             if tok.starts_with('G') || tok.starts_with('M') {
                 // Normalize code: G38.2 etc. Accept dot codes as-is
                 let code = tok;
-                if self.rule_enabled("unknown_code") {
-                    if !vocabulary::code_supported(&code, &self.grbl_version) {
+                if self.rule_enabled("unknown_code")
+                    && !vocabulary::code_supported(&code, &self.grbl_version) {
                         diags.push(Diagnostic {
                             line: line_no,
                             severity: Severity::Error,
@@ -143,7 +143,6 @@ impl RuleSet {
                             ),
                         });
                     }
-                }
             }
         }
 
@@ -174,8 +173,8 @@ impl RuleSet {
             .find(|t| t.kind == crate::gcodeedit::tokenizer::TokenKind::Command)
         {
             let code = first.text.to_uppercase();
-            if self.rule_enabled("unknown_code") {
-                if !vocabulary::code_supported(&code, &self.grbl_version) {
+            if self.rule_enabled("unknown_code")
+                && !vocabulary::code_supported(&code, &self.grbl_version) {
                     diags.push(Diagnostic {
                         line: syntax.line,
                         severity: Severity::Error,
@@ -185,7 +184,6 @@ impl RuleSet {
                         ),
                     });
                 }
-            }
         }
 
         diags
@@ -293,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_incremental_validation_basic() {
-        let mut ruleset = RuleSet::default();
+        let mut ruleset = RuleSet::new_default();
 
         // Initial content
         let content1 = "G0 X10\nG999 Y20\nG1 X30";
@@ -315,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_incremental_validation_cache_efficiency() {
-        let mut ruleset = RuleSet::default();
+        let mut ruleset = RuleSet::new_default();
 
         // Use content with some invalid codes to ensure cache entries
         let content = "G0 X10\nG999 Y20\nG2 X30 I5 J5";
@@ -336,7 +334,7 @@ mod tests {
 
     #[test]
     fn test_validate_incremental_changed_lines() {
-        let mut ruleset = RuleSet::default();
+        let mut ruleset = RuleSet::new_default();
 
         // Initial full validation
         let content1 = "G0 X10\nG1 Y20\nG2 X30 I5 J5";
@@ -356,7 +354,7 @@ mod tests {
 
     #[test]
     fn test_clear_cache() {
-        let mut ruleset = RuleSet::default();
+        let mut ruleset = RuleSet::new_default();
 
         let content = "G0 X10\nG999 Y20";
         let parsed = parse_content_sync(content);
@@ -372,7 +370,7 @@ mod tests {
 
     #[test]
     fn test_get_diagnostics_without_revalidation() {
-        let mut ruleset = RuleSet::default();
+        let mut ruleset = RuleSet::new_default();
 
         let content = "G0 X10\nG999 Y20";
         let parsed = parse_content_sync(content);
@@ -390,7 +388,7 @@ mod tests {
 
     #[test]
     fn test_version_tracking() {
-        let mut ruleset = RuleSet::default();
+        let mut ruleset = RuleSet::new_default();
 
         let content = "G0 X10";
         let parsed = parse_content_sync(content);
@@ -406,7 +404,7 @@ mod tests {
 
     #[test]
     fn test_rule_enable_disable_affects_validation() {
-        let mut ruleset = RuleSet::default();
+        let mut ruleset = RuleSet::new_default();
 
         let content = "G999 X10";
         let parsed = parse_content_sync(content);
@@ -426,7 +424,7 @@ mod tests {
 
     #[test]
     fn test_empty_line_diagnostics() {
-        let mut ruleset = RuleSet::default();
+        let mut ruleset = RuleSet::new_default();
 
         let content = "\n\nG0 X10\n";
         let parsed = parse_content_sync(content);

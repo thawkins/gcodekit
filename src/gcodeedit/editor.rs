@@ -70,6 +70,12 @@ pub struct TextBufferCore {
     pub folds: Vec<(usize, usize)>,
 }
 
+impl Default for TextBufferCore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TextBufferCore {
     /// Create a new empty buffer
     pub fn new() -> Self {

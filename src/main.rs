@@ -287,6 +287,29 @@ impl GcodeKitApp {
 
 }
 
+impl eframe::App for GcodeKitApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Handle keyboard shortcuts
+        self.handle_keyboard_shortcuts(ctx);
+
+        // Initialize ports on first run
+        if self.machine.available_ports.is_empty()
+            && *self.machine.communication.get_connection_state() == ConnectionState::Disconnected
+        {
+            self.machine.communication.refresh_ports();
+            self.machine.available_ports = self.machine.communication.get_available_ports().clone();
+        }
+
+        // Handle recovery operations
+        self.handle_recovery_operations();
+
+        // Read responses
+        self.handle_communication_responses();
+
+        ui::panels::render_panels(self, ctx);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -681,28 +704,5 @@ mod tests {
         assert_eq!(jobs[0].name, "Test Job");
         assert_eq!(jobs[0].job_type, jobs::JobType::GcodeFile);
         assert_eq!(jobs[0].material, app.ui.selected_material);
-    }
-}
-
-impl eframe::App for GcodeKitApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Handle keyboard shortcuts
-        self.handle_keyboard_shortcuts(ctx);
-
-        // Initialize ports on first run
-        if self.machine.available_ports.is_empty()
-            && *self.machine.communication.get_connection_state() == ConnectionState::Disconnected
-        {
-            self.machine.communication.refresh_ports();
-            self.machine.available_ports = self.machine.communication.get_available_ports().clone();
-        }
-
-        // Handle recovery operations
-        self.handle_recovery_operations();
-
-        // Read responses
-        self.handle_communication_responses();
-
-        ui::panels::render_panels(self, ctx);
     }
 }

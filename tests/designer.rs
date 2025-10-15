@@ -1,4 +1,3 @@
-use egui;
 use gcodekit::cam::types::{CAMOperation, CAMParameters};
 use gcodekit::designer::Command;
 use gcodekit::designer::{AddShapeCommand, DeleteShapeCommand};
@@ -227,7 +226,7 @@ fn test_export_to_stl_empty() {
     assert!(result.is_ok());
     let stl_data = result.unwrap();
     // Empty STL should still be valid but minimal
-    assert!(stl_data.len() > 0);
+    assert!(!stl_data.is_empty());
 }
 
 #[test]
@@ -237,7 +236,7 @@ fn test_export_to_obj_empty() {
     assert!(result.is_ok());
     let obj_data = result.unwrap();
     // Empty OBJ should be minimal
-    assert!(obj_data.len() > 0);
+    assert!(!obj_data.is_empty());
 }
 
 #[test]

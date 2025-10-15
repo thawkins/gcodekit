@@ -411,7 +411,7 @@ mod tests {
 
         // Calculate expected batches (10 commands per batch)
         let batch_size = 10;
-        let expected_batches = (total_commands + batch_size - 1) / batch_size; // Ceiling division
+        let expected_batches = total_commands.div_ceil(batch_size);
 
         // Verify batching calculation
         assert_eq!(
@@ -518,7 +518,7 @@ mod tests {
 
         // Calculate expected batches (10 commands per batch)
         let batch_size = 10;
-        let expected_batches = (total_commands + batch_size - 1) / batch_size; // Ceiling division
+        let expected_batches = total_commands.div_ceil(batch_size);
 
         // Verify batching calculation for larger file
         assert_eq!(

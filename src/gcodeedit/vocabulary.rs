@@ -196,5 +196,5 @@ pub static M_CODES: &[CodeInfo] = &[
 pub fn code_supported(code: &str, version: &str) -> bool {
     let all: Vec<&CodeInfo> = G_CODES.iter().chain(M_CODES.iter()).collect();
     all.iter()
-        .any(|c| c.code.eq_ignore_ascii_case(code) && c.supported_in.iter().any(|v| *v == version))
+        .any(|c| c.code.eq_ignore_ascii_case(code) && c.supported_in.contains(&version))
 }

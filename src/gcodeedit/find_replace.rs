@@ -185,12 +185,12 @@ impl FindReplace {
     fn is_whole_word(&self, line: &str, start: usize, length: usize) -> bool {
         let before_is_boundary = start == 0 || {
             let prev_char = line.chars().nth(start.saturating_sub(1));
-            prev_char.map_or(true, |c| !c.is_alphanumeric() && c != '_')
+            prev_char.is_none() || !prev_char.unwrap().is_alphanumeric() && prev_char.unwrap() != '_'
         };
 
         let after_is_boundary = start + length >= line.len() || {
             let next_char = line.chars().nth(start + length);
-            next_char.map_or(true, |c| !c.is_alphanumeric() && c != '_')
+            next_char.is_none() || !next_char.unwrap().is_alphanumeric() && next_char.unwrap() != '_'
         };
 
         before_is_boundary && after_is_boundary

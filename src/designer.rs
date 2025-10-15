@@ -3694,7 +3694,7 @@ mod tests {
         assert!(result.is_ok());
         let stl_data = result.expect("export_to_stl failed");
         // Empty STL should still be valid but minimal
-        assert!(stl_data.len() > 0);
+        assert!(!stl_data.is_empty());
     }
 
     #[test]
@@ -3703,7 +3703,7 @@ mod tests {
         let result = designer.export_to_obj();
         // If no shapes, OBJ may be empty but should return Ok with at least header lines
         match result {
-            Ok(s) => assert!(s.len() >= 0),
+            Ok(_s) => { /* success - string length is always >= 0 */ },
             Err(_) => panic!("export_to_obj failed when it should return Ok"),
         }
     }

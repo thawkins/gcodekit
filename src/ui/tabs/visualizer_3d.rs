@@ -23,11 +23,10 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         
         // Step-through controls
         ui.label("Step-through:");
-        if ui.button("⏮️ First").clicked() {
-            if !app.gcode_editor.parsed_paths.is_empty() {
+        if ui.button("⏮️ First").clicked()
+            && !app.gcode_editor.parsed_paths.is_empty() {
                 app.gcode.selected_line = Some(app.gcode_editor.parsed_paths[0].line_number);
             }
-        }
         
         if ui.button("◀️ Prev").clicked() {
             if let Some(current) = app.gcode.selected_line {
@@ -56,15 +55,14 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
             }
         }
         
-        if ui.button("⏭️ Last").clicked() {
-            if !app.gcode_editor.parsed_paths.is_empty() {
+        if ui.button("⏭️ Last").clicked()
+            && !app.gcode_editor.parsed_paths.is_empty() {
                 app.gcode.selected_line = Some(app.gcode_editor.parsed_paths.last().unwrap().line_number);
             }
-        }
         
         ui.separator();
-        if ui.button("🔄 Refresh View").clicked() {}
-        if ui.button("📏 Fit to View").clicked() {}
+        ui.button("🔄 Refresh View").clicked();
+        ui.button("📏 Fit to View").clicked();
         ui.separator();
         let run_button_enabled = app.gcode.selected_line.is_some()
             && *app.machine.communication.get_connection_state()

@@ -1032,7 +1032,7 @@ mod tests {
         assert_eq!(job.name, "Test Job");
         assert_eq!(job.status, JobStatus::Pending);
         assert_eq!(job.priority, 5);
-        assert!(job.id.len() > 0);
+        assert!(!job.id.is_empty());
     }
 
     #[test]

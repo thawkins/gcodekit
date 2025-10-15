@@ -177,21 +177,11 @@ pub struct JobState {
 }
 
 // G-code State
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GcodeState {
     pub gcode_content: String,
     pub gcode_filename: String,
     pub selected_line: Option<usize>,
-}
-
-impl Default for GcodeState {
-    fn default() -> Self {
-        Self {
-            gcode_content: String::new(),
-            gcode_filename: String::new(),
-            selected_line: None,
-        }
-    }
 }
 
 // Machine State

@@ -77,7 +77,7 @@ impl Default for GcodeEditorState {
             search_results: Vec::new(),
             current_search_index: 0,
             selected_line: None,
-            rules: crate::gcodeedit::rules::RuleSet::default(),
+            rules: crate::gcodeedit::rules::RuleSet::new_default(),
             diagnostics: Vec::new(),
             content_version: 0,
             autocomplete: crate::gcodeedit::autocomplete::AutoCompleter::new("1.1"),
@@ -235,11 +235,10 @@ impl GcodeEditorState {
         for line in lines.iter().rev().take(20) {
             let trimmed = line.trim();
             if let Some(first) = trimmed.split_whitespace().next() {
-                if first.starts_with('G') || first.starts_with('M') {
-                    if !commands.contains(&first.to_string()) {
+                if (first.starts_with('G') || first.starts_with('M'))
+                    && !commands.contains(&first.to_string()) {
                         commands.push(first.to_string());
                     }
-                }
             }
         }
 
@@ -329,7 +328,7 @@ impl GcodeEditorState {
 
     pub fn save_gcode_file(&mut self) -> Result<(), String> {
         if let Some(path) = &self.current_file_path {
-            match std::fs::write(path, &self.buffer.get_content()) {
+            match std::fs::write(path, self.buffer.get_content()) {
                 Ok(_) => Ok(()),
                 Err(e) => Err(format!("Error saving file: {}", e)),
             }
@@ -348,7 +347,7 @@ impl GcodeEditorState {
             .set_file_name(&self.gcode_filename)
             .save_file()
         {
-            match std::fs::write(&path, &self.buffer.get_content()) {
+            match std::fs::write(&path, self.buffer.get_content()) {
                 Ok(_) => {
                     self.current_file_path = Some(path.clone());
                     self.gcode_filename = path
@@ -731,7 +730,7 @@ impl GcodeEditorState {
         if lines.is_empty() {
             return false;
         }
-        let cur = self.selected_line.unwrap_or_else(|| usize::MAX);
+        let cur = self.selected_line.unwrap_or(usize::MAX);
         for l in &lines {
             if *l > cur {
                 self.selected_line = Some(*l);
@@ -1457,11 +1456,7 @@ impl GcodeEditorState {
                                             0.0,
                                             TextFormat {
                                                 font_id: egui::FontId::monospace(12.0),
-                                                color: if is_dark {
-                                                    egui::Color32::BLACK
-                                                } else {
-                                                    egui::Color32::BLACK
-                                                },
+                                                color: egui::Color32::BLACK,
                                                 background: if is_dark {
                                                     egui::Color32::from_rgb(180, 180, 0)  // Darker yellow
                                                 } else {
@@ -1505,11 +1500,7 @@ impl GcodeEditorState {
                                             0.0,
                                             TextFormat {
                                                 font_id: egui::FontId::monospace(12.0),
-                                                color: if is_dark {
-                                                    egui::Color32::BLACK
-                                                } else {
-                                                    egui::Color32::BLACK
-                                                },
+                                                color: egui::Color32::BLACK,
                                                 background: if is_dark {
                                                     egui::Color32::from_rgb(160, 160, 0)  // Darker yellow
                                                 } else {
