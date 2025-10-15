@@ -58,6 +58,7 @@ impl RuleSet {
 
     /// Validate a single line and return diagnostics
     pub fn validate_line(&self, line: &str, line_no: usize) -> Vec<Diagnostic> {
+        // Default single-line validation preserved for compatibility
         let mut diags = Vec::new();
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('%') || trimmed.starts_with('(') || trimmed.starts_with(';') {
@@ -77,6 +78,29 @@ impl RuleSet {
                     if !vocabulary::code_supported(&code, &self.grbl_version) {
                         diags.push(Diagnostic { line: line_no, severity: Severity::Error, message: format!("Code '{}' not supported in GRBL {}", code, self.grbl_version) });
                     }
+                }
+            }
+        }
+
+        diags
+    }
+
+    /// Validate using tokenized line syntax; callers can pass parsed tokens for better checks
+    pub fn validate_tokenized_line(&self, syntax: &crate::gcodeedit::tokenizer::LineSyntax) -> Vec<Diagnostic> {
+        let mut diags = Vec::new();
+        if syntax.tokens.is_empty() {
+            if self.rule_enabled("empty_line") {
+                diags.push(Diagnostic { line: syntax.line, severity: Severity::Info, message: "Empty or comment line".to_string() });
+            }
+            return diags;
+        }
+
+        // Check first token if it's a command token
+        if let Some(first) = syntax.tokens.iter().find(|t| t.kind == crate::gcodeedit::tokenizer::TokenKind::Command) {
+            let code = first.text.to_uppercase();
+            if self.rule_enabled("unknown_code") {
+                if !vocabulary::code_supported(&code, &self.grbl_version) {
+                    diags.push(Diagnostic { line: syntax.line, severity: Severity::Error, message: format!("Code '{}' not supported in GRBL {}", code, self.grbl_version) });
                 }
             }
         }
