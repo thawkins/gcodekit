@@ -23,6 +23,9 @@ A professional desktop GUI application for controlling GRBL and Smoothieware-bas
 - **Test Reorganization**: Tests moved to tests/ folder with hierarchy mirroring src/
 - **Build Fixes**: Compilation errors resolved and debug binary built
 - **Repository Updates**: Changes committed
+- **Port Filtering**: Serial ports filtered to show only GRBL-compatible devices (/dev/ttyACM*, /dev/ttyUSB*, COM*, /dev/tty.usbserial*)
+- **Issue Templates**: GitHub issue templates added for BUG, FEATURE, and CHANGE requests
+- **Code Quality**: Clippy warnings fixed for improved code maintainability
 
 ## Project Structure
 
@@ -277,6 +280,9 @@ tests/
 - ✅ **Test Organization**: Tests reorganized into tests/ folder with hierarchy mirroring src/
 - ✅ **Build Stability**: Compilation errors fixed and debug binary successfully built
 - ✅ **Version Control**: Changes committed to repository
+- ✅ **Port Filtering**: Serial ports filtered to show only GRBL-compatible devices for easier device identification
+- ✅ **Issue Templates**: GitHub issue templates for structured bug reports, feature requests, and change requests
+- ✅ **Code Quality**: Clippy warnings resolved for maintainable, idiomatic Rust code
 - ✅ Vector import (SVG/DXF) with automatic conversion
 - ✅ Boolean operations for shape manipulation
 - ✅ Probing routines and auto-leveling
@@ -285,10 +291,11 @@ tests/
 - ✅ Modular architecture with stable UI
 
 ### Test Coverage
-- 186 passing tests, 4 failed, covering core functionality
+- 106 passing tests covering core functionality and new features
 - Comprehensive error handling and edge case coverage
 - Job scheduling and dependency management testing
 - UI stability and interaction testing
+- Port filtering logic with 16 test cases for device compatibility
 
 ## Dependencies
 
