@@ -16,7 +16,6 @@ use chrono::Utc;
 use eframe::egui;
 use std::time::Duration;
 use tracing::{debug, info};
-use tracing_subscriber;
 
 mod app;
 pub mod cam;

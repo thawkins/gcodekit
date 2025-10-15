@@ -269,7 +269,7 @@ impl GcodeEditorState {
 
         // Number of segments (adjust based on arc length and desired precision)
         let arc_length = radius * delta_angle.abs();
-        let num_segments = (arc_length / 1.0).max(4.0).min(100.0) as usize; // At least 4 segments, max 100
+        let num_segments = (arc_length / 1.0).clamp(4.0, 100.0) as usize; // At least 4 segments, max 100
 
         let angle_step = delta_angle / num_segments as f32;
 

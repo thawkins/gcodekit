@@ -132,13 +132,13 @@ fn load_binary_stl(data: &[u8]) -> Result<Mesh, Box<dyn std::error::Error>> {
             y: 0.0,
             z: 0.0,
         }; 3];
-        for j in 0..3 {
-            vertices[j] = Point3D {
+        for vertex in &mut vertices {
+            *vertex = Point3D {
                 x: f32::from_le_bytes(data[offset..offset + 4].try_into()?),
                 y: f32::from_le_bytes(data[offset + 4..offset + 8].try_into()?),
                 z: f32::from_le_bytes(data[offset + 8..offset + 12].try_into()?),
             };
-            bounds.expand(&vertices[j]);
+            bounds.expand(vertex);
             offset += 12;
         }
 

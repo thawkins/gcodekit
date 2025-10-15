@@ -544,8 +544,7 @@ impl GrblCommunication {
             return None;
         }
 
-        let mut status = GrblStatus::default();
-        status.machine_state = machine_state;
+        let mut status = GrblStatus { machine_state, ..Default::default() };
 
         for part in &parts[1..] {
             if let Some(colon_pos) = part.find(':') {
@@ -665,10 +664,10 @@ impl GrblCommunication {
 
         if trimmed == "ok" {
             GrblResponse::Ok
-        } else if trimmed.starts_with("error:") {
-            GrblResponse::Error(trimmed[6..].to_string())
-        } else if trimmed.starts_with("ALARM:") {
-            GrblResponse::Alarm(trimmed[6..].to_string())
+        } else if let Some(stripped) = trimmed.strip_prefix("error:") {
+            GrblResponse::Error(stripped.to_string())
+        } else if let Some(stripped) = trimmed.strip_prefix("ALARM:") {
+            GrblResponse::Alarm(stripped.to_string())
         } else if trimmed.starts_with('[') && trimmed.ends_with(']') {
             // Feedback message
             GrblResponse::Feedback(trimmed[1..trimmed.len() - 1].to_string())

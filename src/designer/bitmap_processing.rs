@@ -107,8 +107,8 @@ impl BitmapProcessor {
 
         let total_pixels = img.width() * img.height();
         let mut sum = 0.0;
-        for i in 0..256 {
-            sum += i as f32 * histogram[i] as f32;
+        for (i, &count) in histogram.iter().enumerate() {
+            sum += i as f32 * count as f32;
         }
 
         let mut sum_b = 0.0;
@@ -116,8 +116,8 @@ impl BitmapProcessor {
         let mut max_variance = 0.0;
         let mut threshold = 0u8;
 
-        for t in 0..256 {
-            w_b += histogram[t] as f32;
+        for (t, &count) in histogram.iter().enumerate() {
+            w_b += count as f32;
             if w_b == 0.0 {
                 continue;
             }
@@ -127,7 +127,7 @@ impl BitmapProcessor {
                 break;
             }
 
-            sum_b += t as f32 * histogram[t] as f32;
+            sum_b += t as f32 * count as f32;
 
             let m_b = sum_b / w_b;
             let m_f = (sum - sum_b) / w_f;
@@ -413,7 +413,7 @@ impl BitmapProcessor {
         }
 
         let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
-        let t = t.max(0.0).min(1.0);
+        let t = t.clamp(0.0, 1.0);
 
         let closest_x = x1 + t * dx;
         let closest_y = y1 + t * dy;

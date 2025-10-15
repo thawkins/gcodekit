@@ -5,6 +5,7 @@
 
 use crate::types::{MoveType, PathSegment};
 use std::collections::HashMap;
+use std::str::FromStr;
 
 /// Represents a parsed G-code command with its parameters
 #[derive(Debug, Clone, PartialEq)]
@@ -70,15 +71,19 @@ pub enum ControllerType {
     Smoothieware,
 }
 
-impl ControllerType {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for ControllerType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "grbl" => Some(Self::Grbl),
-            "smoothieware" => Some(Self::Smoothieware),
-            _ => None,
+            "grbl" => Ok(Self::Grbl),
+            "smoothieware" => Ok(Self::Smoothieware),
+            _ => Err(()),
         }
     }
+}
 
+impl ControllerType {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Grbl => "GRBL",
@@ -161,16 +166,14 @@ impl PostProcessor for GrblPostProcessor {
                     || command.has_parameter("A")
                     || command.has_parameter("B")
                     || command.has_parameter("C")
-                {
-                    // GRBL G28 homes all axes or specified axes
-                    processed = processed;
-                }
+                 {
+                     // GRBL G28 homes all axes or specified axes
+                 }
             }
             // Ensure feed rates are within GRBL limits (if known)
             "G1" | "G2" | "G3" => {
                 if let Some(_f) = command.get_parameter("F") {
                     // GRBL has no hard feed rate limit, but we could add validation here
-                    processed = processed;
                 }
             }
             _ => {}
@@ -212,14 +215,9 @@ impl PostProcessor for SmoothiewarePostProcessor {
         let mut processed = command.clone();
 
         // Smoothieware-specific modifications
-        match command.command.as_str() {
+        if command.command.as_str() == "G28" {
             // Smoothieware uses different homing commands
-            "G28" => {
-                // Convert to Smoothieware homing format if needed
-                processed = processed;
-            }
-            // Smoothieware supports additional parameters
-            _ => {}
+            // Convert to Smoothieware homing format if needed
         }
 
         vec![processed]

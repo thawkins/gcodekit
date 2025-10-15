@@ -23,7 +23,6 @@ use rhai::AST;
 use std::collections::VecDeque;
 use std::fs;
 use stl_io::{Normal, Triangle, Vertex};
-use tobj;
 
 use crate::cam::{CAMOperation, CAMParameters};
 
@@ -1246,7 +1245,7 @@ impl DesignerState {
                 }
 
                 let t = ((point.x - x1) * dx + (point.y - y1) * dy) / (length * length);
-                let t = t.max(0.0).min(1.0);
+                let t = t.clamp(0.0, 1.0);
 
                 let closest_x = x1 + t * dx;
                 let closest_y = y1 + t * dy;
@@ -1351,7 +1350,7 @@ impl DesignerState {
                         continue;
                     }
                     let t = ((point.x - x1) * dx + (point.y - y1) * dy) / (length * length);
-                    let t = t.max(0.0).min(1.0);
+                    let t = t.clamp(0.0, 1.0);
                     let closest_x = x1 + t * dx;
                     let closest_y = y1 + t * dy;
                     let distance =
@@ -3024,7 +3023,7 @@ impl DesignerState {
         }
 
         let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
-        let t = t.max(0.0).min(1.0);
+        let t = t.clamp(0.0, 1.0);
 
         let closest_x = x1 + t * dx;
         let closest_y = y1 + t * dy;
@@ -3293,7 +3292,7 @@ impl DesignerState {
             } => {
                 *x = px + (*x - px) * sx;
                 *y = py + (*y - py) * sy;
-                *font_size = (*font_size * (sx + sy) / 2.0);
+                *font_size = *font_size * (sx + sy) / 2.0;
             }
             Shape::Drill { x, y, .. } => {
                 *x = px + (*x - px) * sx;

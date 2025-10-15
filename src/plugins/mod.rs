@@ -127,8 +127,8 @@ impl PluginManager {
         }
     }
 
-    pub fn get_plugin(&self, plugin_id: &str) -> Option<&Box<dyn Plugin>> {
-        self.plugins.get(plugin_id)
+    pub fn get_plugin(&self, plugin_id: &str) -> Option<&dyn Plugin> {
+        self.plugins.get(plugin_id).map(|b| b.as_ref())
     }
 
     pub fn get_plugin_state(&self, plugin_id: &str) -> PluginState {
@@ -138,8 +138,8 @@ impl PluginManager {
             .unwrap_or(PluginState::Unloaded)
     }
 
-    pub fn list_plugins(&self) -> Vec<&Box<dyn Plugin>> {
-        self.plugins.values().collect()
+    pub fn list_plugins(&self) -> Vec<&dyn Plugin> {
+        self.plugins.values().map(|b| b.as_ref()).collect()
     }
 
     pub fn list_plugin_states(&self) -> &HashMap<String, PluginState> {
