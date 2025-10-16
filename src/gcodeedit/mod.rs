@@ -1309,10 +1309,10 @@ impl GcodeEditorState {
                 });
 
                 // Editor column
-                let _response = ui.add(
+                let _response = ui.add_sized(
+                    ui.available_size(),
                     egui::TextEdit::multiline(&mut self.buffer.get_content())
                         .font(egui::TextStyle::Monospace)
-                        .desired_rows(20)
                         .layouter(&mut |ui: &egui::Ui, string: &dyn TextBuffer, _wrap_width| {
                             let mut job = LayoutJob::default();
                             let search_query_lower = self.search_query.to_lowercase();
