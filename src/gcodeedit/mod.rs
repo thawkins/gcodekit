@@ -62,6 +62,8 @@ pub struct GcodeEditorState {
     pub parsed_paths: Vec<PathSegment>,
     pub sending_from_line: Option<usize>,
     pub sending_progress: f32, // 0.0 to 1.0, progress of current send operation
+    // Cached galley row height for gutter alignment
+    pub(crate) cached_row_height: Option<f32>,
 }
 
 impl Default for GcodeEditorState {
@@ -96,6 +98,7 @@ impl Default for GcodeEditorState {
             parsed_paths: Vec::new(),
             sending_from_line: None,
             sending_progress: 0.0,
+            cached_row_height: None,
         }
     }
 }
@@ -1207,18 +1210,15 @@ impl GcodeEditorState {
             };
 
             ui.horizontal(|ui| {
+                // Use cached row height from the galley if available, otherwise estimate
+                let font_id = egui::TextStyle::Monospace.resolve(ui.style());
+                let row_height = self.cached_row_height.unwrap_or(font_id.size * 1.45);
+                
                 // Gutter column with clickable markers and fold indicators
                 ui.vertical(|g| {
                     // Remove all spacing to let text height control layout
                     g.spacing_mut().item_spacing.y = 0.0;
                     g.spacing_mut().button_padding = egui::vec2(4.0, 0.0);
-                    
-                    // Calculate row height to match TextEdit's line spacing
-                    //  TextEdit uses the font's row_height which includes line_gap
-                    // For monospace fonts, this is typically 1.2x the font size
-                    // Note: We can't call fonts.row_height() here as it requires &mut
-                    let font_id = egui::TextStyle::Monospace.resolve(g.style());
-                    let row_height = font_id.size * 1.2;
                     
                     for &i in &visible_lines {
                         // Use allocate_ui to have full control over the row
@@ -1566,7 +1566,15 @@ impl GcodeEditorState {
 
                                 job.append("\n", 0.0, TextFormat::default());
                             }
-                            ui.fonts_mut(|fonts| fonts.layout_job(job))
+                            let galley = ui.fonts_mut(|fonts| fonts.layout_job(job));
+                            
+                            // Cache the row height for gutter alignment
+                            // Calculate from total galley height / number of rows
+                            if !galley.rows.is_empty() {
+                                self.cached_row_height = Some(galley.rect.height() / galley.rows.len() as f32);
+                            }
+                            
+                            galley
                         }),
                 );
             });
