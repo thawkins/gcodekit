@@ -97,10 +97,120 @@ gcodekit/
 
 ## 📋 Requirements
 
+### Runtime Requirements
 - **Rust**: 1.90 or higher
 - **Operating System**: Linux, Windows, or macOS
 - **Controller**: GRBL v1.1+ compatible CNC machine or laser engraver
 - **Connection**: USB serial port or compatible interface
+
+### Development Tools (Optional)
+
+This project is managed using AI-assisted development tools for enhanced productivity:
+
+#### GitHub Copilot CLI (with Claude Sonnet 4.5)
+The project uses GitHub Copilot CLI powered by Claude Sonnet 4.5 LLM for intelligent code assistance and project management.
+
+**Installation:**
+```bash
+# Install GitHub Copilot CLI
+npm install -g @githubnext/github-copilot-cli
+
+# Authenticate with GitHub
+github-copilot-cli auth
+
+# Configure to use Claude Sonnet 4.5 (if available)
+# Follow the CLI prompts to select your preferred model
+```
+
+**Usage:**
+```bash
+# Get help with git commands
+gh copilot suggest "how do I undo the last commit"
+
+# Explain shell commands
+gh copilot explain "find . -name '*.rs' -type f"
+
+# General assistance
+gh copilot "help me optimize this Rust code"
+```
+
+#### GitHub CLI (gh)
+Used for repository management, issue tracking, and CI/CD operations.
+
+**Installation:**
+
+**Linux (Debian/Ubuntu):**
+```bash
+# Add GitHub CLI repository
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+
+# Install
+sudo apt update
+sudo apt install gh
+
+# Authenticate
+gh auth login
+```
+
+**Linux (Fedora/RHEL/CentOS):**
+```bash
+# Install
+sudo dnf install gh
+
+# Authenticate
+gh auth login
+```
+
+**macOS:**
+```bash
+# Using Homebrew
+brew install gh
+
+# Authenticate
+gh auth login
+```
+
+**Windows:**
+```powershell
+# Using winget
+winget install --id GitHub.cli
+
+# Or using Chocolatey
+choco install gh
+
+# Authenticate
+gh auth login
+```
+
+**Common gh Commands:**
+```bash
+# Clone the repository
+gh repo clone thawkins/gcodekit
+
+# View issues
+gh issue list
+
+# Create a new issue
+gh issue create
+
+# View pull requests
+gh pr list
+
+# Create a pull request
+gh pr create
+
+# Run workflows
+gh workflow run
+
+# View repository details
+gh repo view
+```
+
+For more information:
+- [GitHub Copilot CLI Documentation](https://docs.github.com/en/copilot/github-copilot-in-the-cli)
+- [GitHub CLI Documentation](https://cli.github.com/manual/)
 
 ## 🚀 Quick Start
 
@@ -351,6 +461,12 @@ cargo fmt            # Code formatting
 - **GUI Framework**: egui 0.33 with eframe
 - **Async Runtime**: Tokio 1.0
 - **Logging**: tracing 0.1 with structured logging
+
+### Development & Management
+- **AI Assistant**: GitHub Copilot CLI with Claude Sonnet 4.5 LLM
+- **Repository Management**: GitHub CLI (gh)
+- **Version Control**: Git
+- **CI/CD**: GitHub Actions (planned)
 
 ### Key Dependencies
 - **egui/eframe** (0.33) - Immediate mode GUI framework
