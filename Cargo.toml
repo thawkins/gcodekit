@@ -1,7 +1,14 @@
 [package]
 name = "gcodekit"
-version = "0.1.0"
+version = "0.1.0-alpha"
 edition = "2021"
+authors = ["gcodekit contributors"]
+description = "Professional GRBL CNC & Laser Controller with advanced CAM capabilities"
+repository = "https://github.com/thawkins/gcodekit"
+license = "MIT"
+keywords = ["cnc", "grbl", "laser", "gcode", "cam"]
+categories = ["gui", "hardware-support", "visualization"]
+readme = "README.md"
 
 [lib]
 name = "gcodekit"

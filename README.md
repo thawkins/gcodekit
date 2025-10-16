@@ -4,6 +4,9 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-341%20passing-brightgreen.svg)](tests/)
 [![GRBL](https://img.shields.io/badge/GRBL-v1.1%2B-blue.svg)](https://github.com/grbl/grbl)
+[![Status](https://img.shields.io/badge/status-Alpha%20Development-yellow.svg)](https://github.com/thawkins/gcodekit)
+
+> ⚠️ **Alpha Development Version** - This software is under active development. While functional, it may contain bugs and incomplete features. Use with caution in production environments.
 
 A professional desktop GUI application for controlling GRBL-based CNC machines and laser engravers. Built with Rust and egui, gcodekit provides advanced CAM capabilities, comprehensive error recovery (99.9% uptime), and full multi-axis support in a modern, responsive interface.
 
@@ -196,7 +199,16 @@ cargo fmt            # Code formatting
 ## 🎯 Development Status
 
 **Current Version**: Phase 10 Complete  
-**Status**: Production Ready ✅
+**Status**: 🚧 Alpha - Development Version 🚧
+
+> **⚠️ Important Notice**: This is an alpha release under active development. While core features are functional and tested, the software may contain bugs, incomplete features, or breaking changes in future updates. Please backup your work and test thoroughly before using in production environments.
+
+### Production Readiness
+- ✅ Core functionality tested and working
+- ⚠️ Alpha stage - use with caution
+- 🔄 Active development and improvements ongoing
+- 📝 API may change in future releases
+- 🐛 Bug reports and testing feedback welcome
 
 ### Completed Features
 - ✅ GRBL v1.1+ protocol implementation

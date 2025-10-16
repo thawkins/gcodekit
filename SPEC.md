@@ -193,9 +193,12 @@ The advanced 3D machining phase adds sophisticated 3D capabilities:
 ## Development Status
 
 **Current Phase**: Phase 10 Complete - Advanced CAM Features and Controller Support
-**Implementation Status**: Professional-grade CAM operations with configurable UI, part nesting algorithms, and enhanced user experience
-**Test Coverage**: 106 passing tests covering all major components, controller integrations, UI configurability, and port filtering
+**Implementation Status**: Alpha Development Version - Core features functional with ongoing development
+**Version**: 0.1.0-alpha
+**Test Coverage**: 341 passing tests covering all major components, controller integrations, UI configurability, and port filtering
 **Architecture**: Modular, extensible design with stable UI framework, advanced CAM capabilities, and improved code quality
+
+⚠️ **Alpha Notice**: This software is under active development. While functional and tested, it may contain bugs and the API may change in future releases. Use with appropriate caution.
 
 **Completed Phases**:
 - Phase 1-8: Core GRBL communication, GUI framework, CAM functions, multi-axis support
