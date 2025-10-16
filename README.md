@@ -106,6 +106,32 @@ gcodekit/
 
 ### Installation
 
+#### Option 1: Install from Crates.io (Recommended)
+
+```bash
+# Install the latest release
+cargo install gcodekit
+
+# Run the application
+gcodekit
+```
+
+#### Option 2: Install from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/thawkins/gcodekit.git
+cd gcodekit
+
+# Build and install release version
+cargo install --path .
+
+# Run the application
+gcodekit
+```
+
+#### Option 3: Build Without Installing
+
 ```bash
 # Clone the repository
 git clone https://github.com/thawkins/gcodekit.git
@@ -117,6 +143,79 @@ cargo build --release
 # Run the application
 ./target/release/gcodekit
 ```
+
+### Linux Desktop Integration
+
+For Linux users, you can add gcodekit to your application menu:
+
+#### 1. Create Desktop Entry File
+
+Create `~/.local/share/applications/gcodekit.desktop` with the following contents:
+
+```desktop
+[Desktop Entry]
+Name=gcodekit
+GenericName=CNC & Laser Controller
+Comment=Professional GRBL CNC and Laser Controller
+Exec=/home/USERNAME/.cargo/bin/gcodekit
+Icon=applications-engineering
+Terminal=false
+Type=Application
+Categories=Development;Engineering;Electronics;
+Keywords=cnc;grbl;laser;gcode;cam;machining;
+StartupNotify=true
+StartupWMClass=gcodekit
+```
+
+**Important**: Replace `USERNAME` with your actual Linux username, or use `$HOME` in the Exec path.
+
+#### 2. Make Desktop File Executable
+
+```bash
+chmod +x ~/.local/share/applications/gcodekit.desktop
+```
+
+#### 3. Update Desktop Database
+
+```bash
+# Update the application menu
+update-desktop-database ~/.local/share/applications/
+```
+
+#### 4. Verify Installation
+
+The application should now appear in your application menu under "Development" or "Engineering" categories. You can search for "gcodekit" in your application launcher.
+
+#### Alternative: System-wide Installation
+
+For system-wide access (requires sudo):
+
+```bash
+# Create the desktop file in system location
+sudo nano /usr/share/applications/gcodekit.desktop
+```
+
+Use the same desktop file contents, but adjust the Exec path to where the binary is installed (typically `/usr/local/bin/gcodekit` or `~/.cargo/bin/gcodekit`).
+
+#### Using a Custom Icon (Optional)
+
+If you want to use a custom icon:
+
+1. Place your icon file (PNG or SVG) in `~/.local/share/icons/`:
+   ```bash
+   mkdir -p ~/.local/share/icons
+   cp /path/to/gcodekit-icon.png ~/.local/share/icons/gcodekit.png
+   ```
+
+2. Update the Icon line in the desktop file:
+   ```desktop
+   Icon=/home/USERNAME/.local/share/icons/gcodekit.png
+   ```
+
+3. Or use the icon name without path if it's in a standard location:
+   ```desktop
+   Icon=gcodekit
+   ```
 
 ## 🔨 Building
 
