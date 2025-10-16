@@ -1281,7 +1281,7 @@ impl GcodeEditorState {
                         };
                         
                         g.painter().text(
-                            rect.left_top() + egui::vec2(2.0, 0.0),
+                            rect.left_top() + egui::vec2(2.0, 2.0),
                             egui::Align2::LEFT_TOP,
                             text,
                             font_id.clone(),
