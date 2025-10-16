@@ -1209,62 +1209,102 @@ impl GcodeEditorState {
             ui.horizontal(|ui| {
                 // Gutter column with clickable markers and fold indicators
                 ui.vertical(|g| {
+                    // Remove all spacing to let text height control layout
+                    g.spacing_mut().item_spacing.y = 0.0;
+                    g.spacing_mut().button_padding = egui::vec2(4.0, 0.0);
+                    
+                    // Calculate row height to match TextEdit's line spacing
+                    //  TextEdit uses the font's row_height which includes line_gap
+                    // For monospace fonts, this is typically 1.2x the font size
+                    // Note: We can't call fonts.row_height() here as it requires &mut
+                    let font_id = egui::TextStyle::Monospace.resolve(g.style());
+                    let row_height = font_id.size * 1.2;
+                    
                     for &i in &visible_lines {
-                        g.horizontal(|ui| {
-                            // Fold indicator
-                            if let Some(region) = self.fold_manager.get_region_at(i) {
-                                let fold_icon = if region.is_folded { "▶️" } else { "🔽" };
-                                if ui.button(fold_icon).clicked() {
-                                    self.toggle_fold_at_line(i);
-                                }
+                        // Use allocate_ui to have full control over the row
+                        let (rect, response) = g.allocate_exact_size(
+                            egui::vec2(80.0, row_height),
+                            egui::Sense::click()
+                        );
+                        
+                        // Check if click is on fold icon area (first ~20 pixels)
+                        let has_fold = self.fold_manager.get_region_at(i).is_some();
+                        if response.clicked() {
+                            if has_fold && response.interact_pointer_pos().map_or(false, |pos| {
+                                pos.x - rect.left() < 20.0
+                            }) {
+                                self.toggle_fold_at_line(i);
                             } else {
-                                ui.label("  ");
-                            }
-
-                            // Diagnostic icon
-                            let icon = if self.diagnostics.iter().any(|d| {
-                                d.line == i && d.severity == crate::gcodeedit::rules::Severity::Error
-                            }) {
-                                "❗"
-                            } else if self.diagnostics.iter().any(|d| {
-                                d.line == i && d.severity == crate::gcodeedit::rules::Severity::Warn
-                            }) {
-                                "⚠️"
-                            } else if self.diagnostics.iter().any(|d| {
-                                d.line == i && d.severity == crate::gcodeedit::rules::Severity::Info
-                            }) {
-                                "ℹ️"
-                            } else {
-                                "  "
-                            };
-                            
-                            let btn = ui.selectable_label(
-                                self.selected_line == Some(i),
-                                format!("{} {:05}", icon, i + 1),
-                            );
-                            
-                            if btn.clicked() {
                                 self.selected_line = Some(i);
                             }
-                            
-                            // Attach hover UI to show diagnostics
-                            let diags: Vec<_> =
-                                self.diagnostics.iter().filter(|d| d.line == i).collect();
-                            if !diags.is_empty() {
-                                btn.on_hover_ui(|ui| {
-                                    ui.vertical(|ui| {
-                                        for d in diags.iter() {
-                                            let sev = match d.severity {
-                                                crate::gcodeedit::rules::Severity::Error => "Error",
-                                                crate::gcodeedit::rules::Severity::Warn => "Warn",
-                                                crate::gcodeedit::rules::Severity::Info => "Info",
-                                            };
-                                            ui.label(format!("[{}] {}", sev, d.message));
-                                        }
-                                    });
+                        }
+                        
+                        // Fold indicator
+                        let fold_icon = if let Some(region) = self.fold_manager.get_region_at(i) {
+                            if region.is_folded { "▶ " } else { "▼ " }
+                        } else {
+                            "  "
+                        };
+                        
+                        // Diagnostic icon
+                        let icon = if self.diagnostics.iter().any(|d| {
+                            d.line == i && d.severity == crate::gcodeedit::rules::Severity::Error
+                        }) {
+                            "❗"
+                        } else if self.diagnostics.iter().any(|d| {
+                            d.line == i && d.severity == crate::gcodeedit::rules::Severity::Warn
+                        }) {
+                            "⚠️"
+                        } else if self.diagnostics.iter().any(|d| {
+                            d.line == i && d.severity == crate::gcodeedit::rules::Severity::Info
+                        }) {
+                            "ℹ️"
+                        } else {
+                            " "
+                        };
+                        
+                        // Draw background for selected line
+                        if self.selected_line == Some(i) {
+                            g.painter().rect_filled(
+                                rect,
+                                0.0,
+                                g.visuals().selection.bg_fill
+                            );
+                        }
+                        
+                        // Draw the gutter text
+                        let text = format!("{}{} {:05}", fold_icon, icon, i + 1);
+                        let text_color = if self.selected_line == Some(i) {
+                            g.visuals().strong_text_color()
+                        } else {
+                            g.visuals().text_color()
+                        };
+                        
+                        g.painter().text(
+                            rect.left_top() + egui::vec2(2.0, 0.0),
+                            egui::Align2::LEFT_TOP,
+                            text,
+                            font_id.clone(),
+                            text_color
+                        );
+                        
+                        // Attach hover UI to show diagnostics
+                        let diags: Vec<_> =
+                            self.diagnostics.iter().filter(|d| d.line == i).collect();
+                        if !diags.is_empty() {
+                            response.on_hover_ui(|ui| {
+                                ui.vertical(|ui| {
+                                    for d in diags.iter() {
+                                        let sev = match d.severity {
+                                            crate::gcodeedit::rules::Severity::Error => "Error",
+                                            crate::gcodeedit::rules::Severity::Warn => "Warn",
+                                            crate::gcodeedit::rules::Severity::Info => "Info",
+                                        };
+                                        ui.label(format!("[{}] {}", sev, d.message));
+                                    }
                                 });
-                            }
-                        });
+                            });
+                        }
                     }
                 });
 
