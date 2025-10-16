@@ -270,7 +270,7 @@ anyhow::Result<T>          // anyhow crate
    - Error recovery with retry mechanisms
    - Health metrics and predictive monitoring
    - Job scheduling with dependencies
-   - Multi-controller support (GRBL, Smoothieware)
+   - GRBL controller support
 
 ---
 

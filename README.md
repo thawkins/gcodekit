@@ -1,6 +1,6 @@
 # gcodekit - Advanced CNC & Laser Controller
 
-A professional desktop GUI application for controlling GRBL and Smoothieware-based CNC machines and laser engravers. Built with Rust and egui, featuring advanced CAM capabilities, comprehensive error recovery, and multi-axis support.
+A professional desktop GUI application for controlling GRBL-based CNC machines and laser engravers. Built with Rust and egui, featuring advanced CAM capabilities, comprehensive error recovery, and multi-axis support.
 
 ## Features
 
@@ -10,7 +10,7 @@ A professional desktop GUI application for controlling GRBL and Smoothieware-bas
 - **Advanced Error Recovery System**: 99.9% uptime guarantee through automatic error recovery, job resumption, and comprehensive logging
 - **Job Management System**: Priority-based job queuing, progress tracking, pause/resume functionality, and automatic resumption after communication errors
 - **Multi-axis Support**: Full 6-axis machine support (XYZABC) with rotary axis handling and G-code parsing
-- **Enhanced Communication**: Support for GRBL and Smoothieware controllers with extensible architecture
+- **Enhanced Communication**: Support for GRBL controllers
 - **Vector Import**: SVG/DXF file import with automatic G-code conversion
 - **Boolean Operations**: Shape union operations for combining geometric elements
 - **Probing Routines**: Z-probing, auto-leveling, and workpiece measurement with G38.x commands
@@ -44,17 +44,14 @@ gcodekit/
 │   │   ├── nesting.rs
 │   │   ├── toolpaths.rs
 │   │   └── types.rs
-│   ├── communication/          # Multi-controller communication protocols
-│   │   ├── grbl.rs             # GRBL protocol implementation
-│   │   └── smoothieware.rs     # Smoothieware protocol implementation
+│   ├── communication/          # GRBL communication
+│   │   └── grbl.rs             # GRBL protocol implementation
 │   ├── designer/               # CAD/CAM design tools
 │   │   ├── bitmap_import.rs
 │   │   ├── bitmap_processing.rs
 │   │   ├── cam_operations.rs
 │   │   ├── image_engraving.rs
 │   │   ├── jigsaw.rs
-│   │   ├── parametric_design.rs
-│   │   ├── parametric_ui.rs
 │   │   ├── part_nesting.rs
 │   │   ├── shape_generation.rs
 │   │   ├── tabbed_box.rs
@@ -91,10 +88,6 @@ gcodekit/
 │   │   ├── job_ops.rs
 │   │   ├── mod.rs
 │   │   └── ui_ops.rs
-│   ├── plugins/                # Plugin system
-│   │   └── mod.rs
-│   ├── postprocessor/          # G-code postprocessing
-│   │   └── mod.rs
 │   ├── types/                  # Common types and enums
 │   │   ├── enums.rs
 │   │   ├── mod.rs
@@ -175,7 +168,7 @@ tests/
 ## Requirements
 
 - **Rust**: 1.75+ (2024 edition)
-- **Controller Firmware**: GRBL v1.1+ or Smoothieware compatible device
+- **Controller Firmware**: GRBL v1.1+ compatible device
 - **Serial Port Access**: For device communication
 
 ## Building
@@ -267,7 +260,7 @@ tests/
 **Current Phase**: Phase 10 Complete - Advanced CAM Features and Controller Support
 
 ### Completed Features
-- ✅ Multi-controller support (GRBL, Smoothieware)
+- ✅ GRBL controller support
 - ✅ Advanced error recovery with 99.9% uptime guarantee and predictive issue detection
 - ✅ Priority-based job management with automatic resumption after errors
 - ✅ 6-axis machine support (XYZABC) with rotary axis visualization
@@ -324,7 +317,6 @@ MIT License
 ## References
 
 - [GRBL Firmware](https://github.com/grbl/grbl)
-- [Smoothieware](https://github.com/Smoothieware/Smoothieware)
 - [Universal G-Code Sender](https://github.com/winder/Universal-G-Code-Sender)
 - [Candle (C++)](https://github.com/Denvi/Candle)
 - [CamBam](http://www.cambam.info/)

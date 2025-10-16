@@ -7,7 +7,7 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 ## Current Status Assessment
 
 **Implemented Features (Phase 10 Complete):**
-- ✅ GRBL/Smoothieware communication protocols
+- ✅ GRBL communication protocol
 - ✅ Basic G-code visualization with color-coded paths
 - ✅ Job queuing and management
 - ✅ Multi-axis support (6-axis XYZABC)
@@ -19,7 +19,6 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 **Missing UGS Features:**
 - Advanced G-code editor with syntax highlighting
 - Back plotting simulation
-- Post-processor system for multiple controllers
 - Speeds and feeds calculator
 - Advanced probing routines
 - Tool management system
@@ -27,7 +26,6 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 - Firmware management
 - Settings backup/restore
 - Web pendant interface
-- Plugin architecture
 
 ## Phase 11: Core UGS Features (Months 1-4)
 
@@ -72,26 +70,6 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 - 60 FPS simulation playback
 - Accurate tool path rendering
 - Memory efficient for large G-code files
-
-### 11.3 Post-Processor System
-**Priority: MEDIUM** | **Effort: 2 months**
-
-**Objectives:**
-- Configurable post-processors for different controllers
-- GRBL, Smoothieware, Marlin, LinuxCNC support
-- Custom post-processor creation
-- G-code optimization during post-processing
-
-**Deliverables:**
-- Post-processor manager interface
-- Built-in post-processors for major controllers
-- Custom post-processor editor
-- G-code optimization options
-
-**Success Metrics:**
-- Support for 5+ controller types
-- Custom post-processor validation
-- <50% G-code size reduction through optimization
 
 ## Phase 12: Advanced Machining Features (Months 4-7)
 
@@ -239,27 +217,7 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 - <100ms latency for commands
 - Mobile device compatibility
 
-### 14.2 Plugin Architecture
-**Priority: LOW** | **Effort: 2 months**
-
-**Objectives:**
-- Extensible plugin system
-- Third-party plugin support
-- Custom tool integrations
-- Workflow automation plugins
-
-**Deliverables:**
-- Plugin manager interface
-- Plugin API documentation
-- Sample plugins
-- Plugin marketplace (optional)
-
-**Success Metrics:**
-- Stable plugin API
-- 10+ community plugins
-- Secure plugin execution environment
-
-### 14.3 Advanced UI Features
+### 14.2 Advanced UI Features
 **Priority: LOW** | **Effort: 1 month**
 
 **Objectives:**
@@ -326,7 +284,6 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 ### Technical Prerequisites
 - **Rust 1.75+** with async/await support
 - **Web Framework** for pendant interface (Warp/Tokio)
-- **Plugin System** architecture (ABI-stable interfaces)
 - **Database** for settings and profiles (SQLite/Rusqlite)
 
 ### External Dependencies
@@ -338,16 +295,15 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 ### Human Resources
 - **Lead Developer**: 1 full-time (architecture, core systems)
 - **UI/UX Developer**: 1 full-time (web pendant, advanced UI)
-- **CAM Specialist**: 1 full-time (machining algorithms, post-processors)
+- **CAM Specialist**: 1 full-time (machining algorithms, toolpath generation)
 - **QA Engineer**: 0.5 FTE (testing, validation)
-- **DevOps Engineer**: 0.5 FTE (plugin system, deployment)
+- **DevOps Engineer**: 0.5 FTE (deployment, CI/CD)
 
 ## Risk Assessment
 
 ### High Risk Items
-1. **Plugin System Security**: Third-party plugin safety and sandboxing
-2. **Multi-Machine Coordination**: Synchronization and conflict resolution
-3. **Web Pendant Performance**: Real-time control over network latency
+1. **Multi-Machine Coordination**: Synchronization and conflict resolution
+2. **Web Pendant Performance**: Real-time control over network latency
 
 ### Medium Risk Items
 1. **Firmware Update Safety**: Preventing bricked controllers

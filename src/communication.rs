@@ -1,7 +1,6 @@
 //! CNC controller communication module.
 //!
-//! This module handles communication with various CNC controllers including
-//! GRBL and SmoothieWare. It provides unified
+//! This module handles communication with GRBL controllers. It provides unified
 //! interfaces for connecting, sending commands, and receiving responses.
 
 pub mod grbl;

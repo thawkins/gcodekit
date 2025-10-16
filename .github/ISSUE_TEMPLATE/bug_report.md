@@ -28,7 +28,7 @@ If applicable, add screenshots to help explain your problem.
 ## Environment
 - OS: [e.g. Windows 10, Ubuntu 20.04, macOS 11]
 - gcodekit Version: [e.g. v0.1.0]
-- CNC Controller: [e.g. GRBL v1.1, SmoothieWare]
+- CNC Controller: [e.g. GRBL v1.1]
 - Machine Type: [e.g. 3-axis router, laser cutter]
 
 ## Additional Context

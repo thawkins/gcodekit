@@ -320,8 +320,7 @@ The G-code editor is now a **professional-grade, production-ready** system with:
 - ✅ Accessibility support
 
 ### Future-Ready:
-- ✅ Extensible architecture
-- ✅ Plugin-ready design
+- ✅ Modular architecture
 - ✅ Configuration system
 - ✅ Performance metrics
 

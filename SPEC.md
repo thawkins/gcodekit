@@ -1,5 +1,5 @@
 
-gcodekit is a desktop GUI application that allows users to control laser engravers or CNC machines using GRBL and Smoothieware firmware. The application provides comprehensive machine control, advanced CAM (Computer-Aided Manufacturing) functions for G-code generation, robust error recovery capabilities ensuring 99.9% uptime, and extensible controller support. The application is multiplatform, working on Linux, Windows, and macOS.
+gcodekit is a desktop GUI application that allows users to control laser engravers or CNC machines using GRBL firmware. The application provides comprehensive machine control, advanced CAM (Computer-Aided Manufacturing) functions for G-code generation, and robust error recovery capabilities ensuring 99.9% uptime. The application is multiplatform, working on Linux, Windows, and macOS.
 
 The device should supply the following features:
 
@@ -25,7 +25,7 @@ The device should supply the following features:
  	e. Tabbed box widget (tabbed_box.rs): Generate cutting paths for boxes with interlocking tabs, with adjustable dimensions, tab size, and material thickness
  	f. Jigsaw widget (jigsaw.rs): Generate laser cutting paths for interlocking puzzle pieces with adjustable piece count, size, and complexity
 3. Status bar, shows the connection/disconnection status, device state (idle/alarmed), current position (X/Y/Z), and GRBL version when connected.
-  4. Communication module (communication/grbl.rs, communication/smoothieware.rs): Handles GRBL and Smoothieware protocol communication including serial port management, command sending, response parsing, version detection, and real-time status monitoring.
+  4. Communication module (communication/grbl.rs): Handles GRBL protocol communication including serial port management, command sending, response parsing, version detection, and real-time status monitoring.
   5. 3D Visualizer: Interactive G-code visualization with color-coded paths (rapid moves blue, feed moves green, arcs yellow), right-click jog to position, left-click path selection with highlighting, real-time machine position overlay, and 6-axis support (XYZABC parsing, 2D visualization).
   6. Job Manager: Comprehensive job queuing system with priority-based scheduling, progress tracking, pause/resume functionality, and automatic job resumption after communication errors.
 
@@ -45,7 +45,7 @@ Technology: Built with Rust language (2024 edition), using cargo build and cargo
 - image (0.24) for bitmap processing
 
 Architecture: Modular design with separate modules for:
-- communication: GRBL/Smoothieware protocol handling, serial communication, and error recovery
+- communication: GRBL protocol handling, serial communication, and error recovery
 - designer: CAD/CAM design tools and shape manipulation
 - jobs: Job management, queuing, and resumption capabilities
 - materials: Material database and properties
@@ -61,17 +61,17 @@ Development Tools:
 
 System Requirements:
 - Rust 1.75+ (2024 edition)
-- GRBL v1.1+ or Smoothieware compatible device
+- GRBL v1.1+ compatible device
 - Serial port access for device communication
 
 Additional Requirements:
 1. GRBL Version Support: Prioritize GRBL v1.1 and v1.2 features including real-time overrides and jogging
-2. Device Compatibility: Support GRBL and Smoothieware controllers with extensible architecture for additional controllers
+2. Device Compatibility: Support GRBL controllers
 3. Menu Structure: Follow Universal G-Code Sender (UGS) menu structure with File, Machine, View, Tools, and Help menus
 4. Machine Types: Support both laser engraver and CNC machine commands with automatic mode detection
 5. G-code Compatibility: Implement only G-code features supported by GRBL firmware
 6. CAM Functions: Include basic Computer-Aided Manufacturing capabilities for generating G-code from shapes and images
-7. Version Detection: Capture and display GRBL/Smoothieware firmware version on the status bar during connection
+7. Version Detection: Capture and display GRBL firmware version on the status bar during connection
 8. Code Style: Follow Rust formatting (4 spaces, max 100 width), snake_case naming, structured error handling with anyhow
 9. Logging: Use tracing for structured logging, avoid println! in production code
 10. Modular Architecture: Separate communication logic from UI components for maintainability
@@ -87,7 +87,7 @@ Additional Requirements:
   15. **Advanced Error Recovery System**: 99.9% uptime guarantee through automatic error recovery, job resumption, and comprehensive logging ✓
   16. **Job Management System**: Priority-based job queuing, progress tracking, pause/resume functionality, and automatic resumption after communication errors ✓
   17. **Multi-axis Support**: Full 6-axis machine support (XYZABC) with rotary axis handling and G-code parsing ✓
-  18. **Enhanced Communication**: Support for GRBL and Smoothieware controllers with extensible architecture ✓
+  18. **Enhanced Communication**: Support for GRBL controllers ✓
   19. **Vector Import**: SVG/DXF file import with automatic G-code conversion ✓
   20. **Boolean Operations**: Shape union operations for combining geometric elements ✓
   21. **Probing Routines**: Z-probing, auto-leveling, and workpiece measurement with G38.x commands ✓
@@ -172,19 +172,14 @@ The advanced CAM features and controller support phase extends gcodekit's capabi
 - **Comprehensive Testing**: 41 passing tests covering core functionality and new features
 - **Release Build**: Successful optimized release build ensuring production readiness
 
-## Phase 11: Advanced 3D Machining and Extended Controller Support
+## Phase 11: Advanced 3D Machining
 
-The advanced 3D machining and extended controller support phase adds sophisticated 3D capabilities and additional controller protocols:
+The advanced 3D machining phase adds sophisticated 3D capabilities:
 
 ### Advanced 3D Surface Machining:
 - **Waterline Machining**: Horizontal slicing for 3D surface machining
 - **Scanline Machining**: Vertical slicing with morphing capabilities
 - **3D Profiling**: Complex surface machining strategies
-
-### Extended Controller Support:
-- **Marlin Protocol**: Support for Marlin-based controllers
-- **RepRap Firmware**: Integration with RepRap controllers
-- **Additional Protocols**: Extensible architecture for future controllers
 
 ### STL Processing:
 - **File Import**: STL mesh import with automatic repair
@@ -211,7 +206,7 @@ The advanced 3D machining and extended controller support phase adds sophisticat
 - User Experience: Port filtering implemented for easier GRBL device identification
 - Development Tools: GitHub issue templates added for structured issue reporting
 
-**Next Development Focus**: Phase 11 - Advanced 3D Machining and Extended Controller Support
+**Next Development Focus**: Phase 11 - Advanced 3D Machining
 
   Future Enhancements (UGS Feature Parity):
 19. **Designer Editor**: Import SVG/DXF/C2D files ✓, draw shapes/text ✓, boolean operations (union ✓/intersect/subtract), undo/redo ✓, shape manipulation (move/scale/rotate/mirror), grid multiplication, clipart library, bitmap tracing
@@ -221,7 +216,7 @@ The advanced 3D machining and extended controller support phase adds sophisticat
 23. **Probing Routines**: Z-probing ✓, auto-leveling ✓, workpiece measurement with G38.x commands ✓
 24. **Tool Management**: Tool length offsets (G43/G49) ✓, tool change support ✓, tool libraries with predefined cutter parameters ✓
 25. **Machine Calibration**: Step calibration, backlash compensation, homing sequence configuration
-26. **Additional Controller Support**: Smoothieware ✓ controller support
+
 27. **Gamepad/Joystick Support**: SDL-based gamepad/joystick control with customizable button mapping
 28. **Web Pendant Interface**: Remote control via web-based pendant interface
 29. **Firmware Management**: GRBL firmware updating and flashing capabilities
@@ -229,7 +224,7 @@ The advanced 3D machining and extended controller support phase adds sophisticat
 31. **File Management**: Multiple file queuing, sequential processing, file preprocessing
 32. **Safety Features**: Emergency stop, soft limits, safety door handling
 33. **Material Database**: Predefined material settings and cutting parameters
-34. **Plugin System**: Extensible architecture for custom plugins and extensions
+
 35. **Pendant Support**: External pendant/joystick hardware support
 36. **Custom Button Panels**: User-defined control buttons and macros
 37. **Keybinding Customization**: Configurable keyboard shortcuts for all actions ✓
@@ -248,10 +243,10 @@ CamBam-Inspired Features:
     - Performance: incremental parsing and token caching to keep validation and highlighting responsive (<100ms) for files 1000+ lines.
     - Tests & Docs: unit tests for tokenizer, rules, and editor buffer; documentation and DOCBLOCKs per project standards.
 38. **Back Plotting**: Visual simulation of G-code execution to verify toolpaths before machining
-39. **Post-Processor System**: Configurable post-processors for various CNC controllers (GRBL ✓, Smoothieware ✓, Mach3, EMC2, LinuxCNC, etc.)
+
 40. **Speeds and Feeds Calculator**: Built-in calculator for optimizing cutting parameters based on material and tool
 41. **Bitmap Processing**: Import bitmaps for heightmap generation, edge detection, and vectorization
-42. **Script Objects**: Parametric drawing using scripts for dynamic geometry creation
+
 43. **Region Fill**: Automatic filling of enclosed areas for machining
 44. **Part Nesting**: Automatic part nesting for efficient material usage ✓
 45. **3D Profiling**: Waterline and scanline machining for 3D surfaces, back-face machining
@@ -275,7 +270,7 @@ References and competative tools:
 2. The firmware for the GRBL controller which interprets the gcode used on the devices: https://github.com/grbl/grbl
 3. A similar app to Candle written in Java = Universal Gcode Sender: https://github.com/winder/Universal-G-Code-Sender
 4. Cambam a tool written in C# for managing CNC devices: http://www.cambam.info/doc/1.0/
-5. Smoothieware firmware for advanced CNC control: https://github.com/Smoothieware/Smoothieware
+
 6. LightBurn Laser Engraver control - https://docs.lightburnsoftware.com/legacy/pdf/document.pdf
 7. LaserGRBL Laser Engraver Control - https://lasergrbl.com/usage/
 8. TinkerCad simple design modelling - https://skills4am.eu/documents/tinkercad_usermanual.pdf
