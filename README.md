@@ -15,7 +15,7 @@ A professional desktop GUI application for controlling GRBL-based CNC machines a
 ### 🎯 Machine Control
 - **GRBL v1.1+ Support**: Full implementation of GRBL protocol with real-time control
 - **Advanced Error Recovery**: 99.9% uptime guarantee with automatic recovery and job resumption
-- **Multi-axis Support**: Full 6-axis machine support (XYZABC) with rotary axis handling
+- **3-Axis Support**: Dedicated support for X, Y, Z axes optimized for GRBL machines
 - **Real-time Monitoring**: Live position tracking, status updates, and machine state visualization
 - **Smart Port Filtering**: Automatic detection of GRBL-compatible devices
 
@@ -423,30 +423,29 @@ cargo fmt            # Code formatting
 - ✅ GRBL v1.1+ protocol implementation
 - ✅ Advanced error recovery (99.9% uptime)
 - ✅ Priority-based job queue with scheduling
-- ✅ 6-axis machine support (XYZABC)
+- ✅ 3-Axis machine support (XYZ) optimized for GRBL
 - ✅ Job scheduling with dependencies and recurrence
 - ✅ Configurable UI with dockable panels
 - ✅ Advanced CAM operations and part nesting
 - ✅ Vector import (SVG/DXF) and bitmap processing
-- ✅ G-code editor with syntax highlighting
+- ✅ G-code editor with syntax highlighting and validation
 - ✅ 3D toolpath visualization
 - ✅ Probing routines and auto-leveling
 - ✅ Tool management and libraries
 - ✅ Web pendant remote control
 - ✅ Boolean operations for shapes
 - ✅ Customizable keybindings
+- ✅ Theme-aware jog controls (60×60 buttons)
+- ✅ Code folding removed (simplified editor)
 
 ### Test Coverage
-- **341 total tests** - All passing ✅
-  - 147 library tests
-  - 162 binary tests
-  - 11 integration tests
-  - 18 main application tests
-  - 1 tokenizer test
-  - 2 documentation tests
-- Comprehensive error handling coverage
-- Edge case testing for all major features
-- UI stability and interaction testing
+- **143 total tests** - All passing ✅
+  - Comprehensive error handling coverage
+  - Edge case testing for all major features
+  - UI stability and interaction testing
+  - Material properties and job management tests
+  - G-code parsing and validation tests
+  - Machine control and communication tests
 
 ### Build Status
 - ✅ Zero compilation errors

@@ -8,7 +8,7 @@ mod tests {
     fn test_gcode_app_initialization() {
         let app = GcodeKitApp::default();
 
-        assert_eq!(app.ui.selected_tab, crate::types::Tab::Designer);
+        assert_eq!(app.ui.selected_tab, crate::types::Tab::GcodeEditor);
         assert!(app.gcode.gcode_content.is_empty());
         assert!(app.gcode.gcode_filename.is_empty());
         assert_eq!(app.machine.jog_step_size, 1.0);

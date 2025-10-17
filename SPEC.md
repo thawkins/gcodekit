@@ -26,7 +26,7 @@ The device should supply the following features:
  	f. Jigsaw widget (jigsaw.rs): Generate laser cutting paths for interlocking puzzle pieces with adjustable piece count, size, and complexity
 3. Status bar, shows the connection/disconnection status, device state (idle/alarmed), current position (X/Y/Z), and GRBL version when connected.
   4. Communication module (communication/grbl.rs): Handles GRBL protocol communication including serial port management, command sending, response parsing, version detection, and real-time status monitoring.
-  5. 3D Visualizer: Interactive G-code visualization with color-coded paths (rapid moves blue, feed moves green, arcs yellow), right-click jog to position, left-click path selection with highlighting, real-time machine position overlay, and 6-axis support (XYZABC parsing, 2D visualization).
+  5. 3D Visualizer: Interactive G-code visualization with color-coded paths (rapid moves blue, feed moves green, arcs yellow), right-click jog to position, left-click path selection with highlighting, real-time machine position overlay with 3-axis support (XYZ).
   6. Job Manager: Comprehensive job queuing system with priority-based scheduling, progress tracking, pause/resume functionality, and automatic job resumption after communication errors.
 
 Technology: Built with Rust language (2024 edition), using cargo build and cargo test for compilation and testing, with egui v0.33 for the GUI interface. Core dependencies include:
@@ -77,16 +77,16 @@ Additional Requirements:
 10. Modular Architecture: Separate communication logic from UI components for maintainability
 11. Testing: Implement comprehensive unit tests for all components using `cargo test`. Tests should cover core functionality, edge cases, and error conditions. Unit tests must pass as part of the build process and CI/CD pipeline.
 12. Error Recovery: Implement 99.9% uptime guarantee through automatic error recovery, job resumption, and comprehensive logging
-13. Multi-axis Support: Full support for 6-axis machines (XYZABC) with rotary axis handling
+13. 3-Axis Support: Optimized for GRBL machines with dedicated X/Y/Z axis control
 14. Job Management: Advanced job queuing with priority scheduling, progress tracking, and automatic resumption after errors
 
  Current Features:
-  12. **Advanced Visualizer**: Right-click jog to location ✓, color-coded paths for G0/G1/G2/G3 moves ✓, 6-axis support (XYZABC parsing ✓), real-time machine position overlay ✓, outline gcode functionality (planned)
+  12. **Advanced Visualizer**: Right-click jog to location ✓, color-coded paths for G0/G1/G2/G3 moves ✓, 3-axis support (XYZ) ✓, real-time machine position overlay ✓, outline gcode functionality (planned)
   13. **Designer Tab Foundation**: Basic shape drawing (Rectangle ✓, Circle ✓, Line ✓) with interactive canvas, shape selection, and G-code export ✓
   14. **Modular Architecture**: Clean separation of concerns with dedicated modules for communication, designer, jobs, materials, and widgets ✓
   15. **Advanced Error Recovery System**: 99.9% uptime guarantee through automatic error recovery, job resumption, and comprehensive logging ✓
   16. **Job Management System**: Priority-based job queuing, progress tracking, pause/resume functionality, and automatic resumption after communication errors ✓
-  17. **Multi-axis Support**: Full 6-axis machine support (XYZABC) with rotary axis handling and G-code parsing ✓
+  17. **3-Axis Support**: Optimized for GRBL machines with X/Y/Z axis control and G-code parsing ✓
   18. **Enhanced Communication**: Support for GRBL controllers ✓
   19. **Vector Import**: SVG/DXF file import with automatic G-code conversion ✓
   20. **Boolean Operations**: Shape union operations for combining geometric elements ✓
@@ -121,11 +121,11 @@ The advanced error recovery system provides comprehensive fault tolerance and au
 - **Pause/Resume Functionality**: Manual and automatic job pausing with resumption capabilities
 - **Error Recovery Integration**: Jobs automatically resume from interruption points after communication recovery
 
-### Multi-axis Support:
-- **6-axis Machine Support**: Full XYZABC axis support with rotary axis handling
-- **G-code Parsing**: Enhanced parser for multi-axis G-code commands
-- **Position Tracking**: Real-time position monitoring for all supported axes
-- **Jog Controls**: Extended jog controls for all axes with configurable step sizes
+### 3-Axis Support:
+- **XYZ Axis Support**: Optimized for GRBL machines with dedicated 3-axis control
+- **G-code Parsing**: Parser for X/Y/Z G-code commands (rotary commands ignored)
+- **Position Tracking**: Real-time position monitoring for X/Y/Z axes
+- **Jog Controls**: Theme-aware jog controls with 60×60 buttons and configurable step sizes
 
 ### Technical Implementation:
 - **Recovery Configuration**: Configurable retry attempts, delays, and auto-recovery settings
@@ -153,7 +153,7 @@ The advanced job scheduling system provides enterprise-grade production manageme
 ### Advanced Features:
 - **Complex Scheduling**: Support for complex production workflows with job chains and dependencies
 - **Error Recovery Integration**: Scheduled jobs work seamlessly with the 99.9% uptime guarantee
-- **Multi-axis Compatibility**: Full support for 6-axis scheduled jobs (XYZABC)
+- **3-axis Compatibility**: Full support for XYZ-axis scheduled jobs
 - **Performance Tracking**: Monitor execution times, success rates, and scheduling efficiency
 
 ## Phase 10: Advanced CAM Features and Controller Support ✅ COMPLETED
@@ -186,16 +186,16 @@ The advanced 3D machining phase adds sophisticated 3D capabilities:
 - **Mesh Processing**: Surface triangulation and optimization
 - **3D Visualization**: Real-time 3D rendering at 30+ FPS
 
-### Multi-axis Machining:
-- **5-Axis Strategies**: Advanced multi-axis machining operations
-- **Rotary Integration**: Full rotary axis support and simulation
+### 3-Axis Optimization:
+- **XYZ Strategies**: Optimized machining operations for GRBL machines
+- **Simplified Architecture**: Removed rotary axis complexity for cleaner codebase
 
 ## Development Status
 
 **Current Phase**: Phase 10 Complete - Advanced CAM Features and Controller Support
 **Implementation Status**: Alpha Development Version - Core features functional with ongoing development
 **Version**: 0.1.0-alpha
-**Test Coverage**: 341 passing tests covering all major components, controller integrations, UI configurability, and port filtering
+**Test Coverage**: 143 passing tests covering all major components, machine control, UI functionality, and communication
 **Architecture**: Modular, extensible design with stable UI framework, advanced CAM capabilities, and improved code quality
 
 ⚠️ **Alpha Notice**: This software is under active development. While functional and tested, it may contain bugs and the API may change in future releases. Use with appropriate caution.

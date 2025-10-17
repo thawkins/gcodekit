@@ -28,10 +28,6 @@ pub struct EditorConfig {
     pub enable_syntax_highlighting: bool,
     /// Show line numbers
     pub show_line_numbers: bool,
-    /// Show fold markers
-    pub show_fold_markers: bool,
-    /// Enable auto-fold detection
-    pub auto_detect_folds: bool,
     /// Tab size
     pub tab_size: usize,
     /// Use spaces instead of tabs
@@ -79,8 +75,6 @@ impl Default for EditorConfig {
             line_height: 14.0,
             enable_syntax_highlighting: true,
             show_line_numbers: true,
-            show_fold_markers: true,
-            auto_detect_folds: true,
             tab_size: 4,
             use_spaces: true,
             auto_save_interval: 300, // 5 minutes
@@ -163,11 +157,6 @@ impl EditorConfig {
         // Apply virtualization settings
         editor.enable_virtualization = self.enable_virtualization;
         editor.virtualized_config.line_height = self.line_height;
-
-        // Auto-detect folds if enabled
-        if self.auto_detect_folds {
-            editor.detect_folds();
-        }
     }
 }
 

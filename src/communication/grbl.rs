@@ -1030,10 +1030,6 @@ impl CncController for GrblCommunication {
                     x: pos.x,
                     y: pos.y,
                     z: pos.z,
-                    a: pos.a,
-                    b: pos.b,
-                    c: pos.c,
-                    d: pos.d,
                 })
             }
             GrblResponse::Error(error_msg) => {
@@ -1530,13 +1526,6 @@ mod tests {
         // Test large jog distance
         comm.jog_axis('Z', 1000.0);
         assert_eq!(comm.status_message, "Jogging Z axis by 1000.000mm");
-
-        // Test different axes
-        comm.jog_axis('A', 45.0);
-        assert_eq!(comm.status_message, "Jogging A axis by 45.000mm");
-
-        comm.jog_axis('B', -30.0);
-        assert_eq!(comm.status_message, "Jogging B axis by -30.000mm");
     }
 
     #[test]

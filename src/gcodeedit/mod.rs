@@ -49,7 +49,6 @@ pub struct GcodeEditorState {
     // Virtualization and performance
     pub virtualized_state: crate::gcodeedit::virtualized_view::VirtualizedState,
     pub virtualized_config: crate::gcodeedit::virtualized_view::VirtualizedConfig,
-    pub fold_manager: crate::gcodeedit::virtualized_view::FoldManager,
     pub performance_metrics: crate::gcodeedit::virtualized_view::PerformanceMetrics,
     pub enable_virtualization: bool,
     // Find and Replace
@@ -62,8 +61,9 @@ pub struct GcodeEditorState {
     pub parsed_paths: Vec<PathSegment>,
     pub sending_from_line: Option<usize>,
     pub sending_progress: f32, // 0.0 to 1.0, progress of current send operation
-    // Cached galley row height for gutter alignment
-    pub(crate) cached_row_height: Option<f32>,
+    // Track last validation time to debounce
+    last_validation_time: std::time::Instant,
+    needs_validation: bool,
 }
 
 impl Default for GcodeEditorState {
@@ -88,7 +88,6 @@ impl Default for GcodeEditorState {
             autocomplete_selected: 0,
             virtualized_state: crate::gcodeedit::virtualized_view::VirtualizedState::default(),
             virtualized_config: crate::gcodeedit::virtualized_view::VirtualizedConfig::default(),
-            fold_manager: crate::gcodeedit::virtualized_view::FoldManager::new(),
             performance_metrics: crate::gcodeedit::virtualized_view::PerformanceMetrics::default(),
             enable_virtualization: true, // Enable by default for performance
             find_replace: crate::gcodeedit::find_replace::FindReplace::new(),
@@ -98,7 +97,8 @@ impl Default for GcodeEditorState {
             parsed_paths: Vec::new(),
             sending_from_line: None,
             sending_progress: 0.0,
-            cached_row_height: None,
+            last_validation_time: std::time::Instant::now(),
+            needs_validation: false,
         }
     }
 }
@@ -248,32 +248,6 @@ impl GcodeEditorState {
         commands
     }
 
-    /// Detect and update fold regions
-    pub fn detect_folds(&mut self) {
-        let lines: Vec<String> = self.content().lines().map(|s| s.to_string()).collect();
-        self.fold_manager.detect_folds(&lines);
-    }
-
-    /// Toggle fold at a specific line
-    pub fn toggle_fold_at_line(&mut self, line: usize) {
-        self.fold_manager.toggle_fold_at(line);
-    }
-
-    /// Expand all folds
-    pub fn expand_all_folds(&mut self) {
-        for region in &mut self.fold_manager.regions {
-            region.is_folded = false;
-        }
-    }
-
-    /// Collapse all folds
-    pub fn collapse_all_folds(&mut self) {
-        for region in &mut self.fold_manager.regions {
-            region.is_folded = true;
-        }
-    }
-
-    /// Scroll to a specific line (for virtualized rendering)
     pub fn scroll_to_line(&mut self, line: usize) {
         self.virtualized_state
             .scroll_to_line(line, &self.virtualized_config);
@@ -318,8 +292,6 @@ impl GcodeEditorState {
                         .to_string();
                     // Trigger validation after loading
                     self.on_buffer_change();
-                    // Detect fold regions
-                    self.detect_folds();
                     Ok(())
                 }
                 Err(e) => Err(format!("Error loading file: {}", e)),
@@ -331,8 +303,16 @@ impl GcodeEditorState {
 
     pub fn save_gcode_file(&mut self) -> Result<(), String> {
         if let Some(path) = &self.current_file_path {
-            match std::fs::write(path, self.buffer.get_content()) {
-                Ok(_) => Ok(()),
+            // Sync buffer before saving
+            self.buffer.set_content(&self.gcode_content);
+            
+            let content = self.buffer.get_content();
+            match std::fs::write(path, &content) {
+                Ok(_) => {
+                    // Sync gcode_content with buffer after successful save
+                    self.gcode_content = content;
+                    Ok(())
+                }
                 Err(e) => Err(format!("Error saving file: {}", e)),
             }
         } else {
@@ -341,7 +321,7 @@ impl GcodeEditorState {
     }
 
     pub fn save_gcode_file_as(&mut self) -> Result<(), String> {
-        if self.buffer.get_content().is_empty() {
+        if self.gcode_content.is_empty() {
             return Err("No G-code to save".to_string());
         }
 
@@ -350,14 +330,21 @@ impl GcodeEditorState {
             .set_file_name(&self.gcode_filename)
             .save_file()
         {
-            match std::fs::write(&path, self.buffer.get_content()) {
+            // Sync buffer before saving
+            self.buffer.set_content(&self.gcode_content);
+            
+            let content = self.buffer.get_content();
+            match std::fs::write(&path, &content) {
                 Ok(_) => {
+                    // Update the current file path and filename
                     self.current_file_path = Some(path.clone());
                     self.gcode_filename = path
                         .file_name()
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
+                    // Sync gcode_content with buffer after successful save
+                    self.gcode_content = content;
                     Ok(())
                 }
                 Err(e) => Err(format!("Error saving file: {}", e)),
@@ -606,10 +593,6 @@ impl GcodeEditorState {
                         'X' => pos.x = value,
                         'Y' => pos.y = value,
                         'Z' => pos.z = value,
-                        'A' => pos.a = Some(value),
-                        'B' => pos.b = Some(value),
-                        'C' => pos.c = Some(value),
-                        'D' => pos.d = Some(value),
                         _ => {}
                     }
                 }
@@ -658,11 +641,7 @@ impl GcodeEditorState {
             // Check if position changed
             let position_changed = new_pos.x != current_pos.x
                 || new_pos.y != current_pos.y
-                || new_pos.z != current_pos.z
-                || new_pos.a != current_pos.a
-                || new_pos.b != current_pos.b
-                || new_pos.c != current_pos.c
-                || new_pos.d != current_pos.d;
+                || new_pos.z != current_pos.z;
 
             if position_changed {
                 parsed_paths.push(PathSegment {
@@ -809,11 +788,10 @@ impl GcodeEditorState {
     }
 
     pub fn show_ui(&mut self, ui: &mut egui::Ui, _parsed_paths: &[PathSegment]) -> Option<usize> {
-        if self.buffer.get_content().is_empty() {
-            ui.centered_and_justified(|ui| {
-                ui.label("No G-code file loaded. Use 'Load File' in the left panel.");
-            });
-            return None;
+        // Ensure editor always has at least one empty line for typing (only on first init)
+        if self.gcode_content.is_empty() && self.buffer.get_content().is_empty() {
+            // Initialize with empty string, not newline - let the editor handle this
+            self.gcode_content = String::new();
         }
 
         // Keyboard shortcuts for Find/Replace
@@ -871,23 +849,6 @@ impl GcodeEditorState {
             }
         }
 
-        // Fold/Unfold (Ctrl+])
-        if ui.input(|i| i.key_pressed(egui::Key::CloseBracket) && i.modifiers.ctrl) {
-            if let Some(line_num) = self.selected_line {
-                self.toggle_fold_at_line(line_num);
-            }
-        }
-
-        // Expand all folds (Ctrl+Shift+])
-        if ui.input(|i| i.key_pressed(egui::Key::CloseBracket) && i.modifiers.ctrl && i.modifiers.shift) {
-            self.expand_all_folds();
-        }
-
-        // Collapse all folds (Ctrl+Shift+[)
-        if ui.input(|i| i.key_pressed(egui::Key::OpenBracket) && i.modifiers.ctrl && i.modifiers.shift) {
-            self.collapse_all_folds();
-        }
-
         // Go to line (Ctrl+L)
         // TODO: Add goto line dialog
 
@@ -934,12 +895,6 @@ impl GcodeEditorState {
                         ui.label("Ctrl+F - Open find dialog");
                         ui.label("Ctrl+H - Open find/replace dialog");
                         ui.label("Esc - Close find/replace");
-                        ui.add_space(10.0);
-
-                        ui.heading("Code Folding");
-                        ui.label("Ctrl+] - Toggle fold at selected line");
-                        ui.label("Ctrl+Shift+] - Expand all folds");
-                        ui.label("Ctrl+Shift+[ - Collapse all folds");
                         ui.add_space(10.0);
 
                         ui.heading("Auto-completion");
@@ -1172,17 +1127,6 @@ impl GcodeEditorState {
                 ));
             }
             
-            // Fold controls
-            if ui.button("📁 Detect Folds").clicked() {
-                self.detect_folds();
-            }
-            if ui.button("➕ Expand All").clicked() {
-                self.expand_all_folds();
-            }
-            if ui.button("➖ Collapse All").clicked() {
-                self.collapse_all_folds();
-            }
-            
             // Performance metrics
             if !self.performance_metrics.summary().is_empty() {
                 ui.label(format!("⏱️ {}", self.performance_metrics.summary()));
@@ -1194,27 +1138,24 @@ impl GcodeEditorState {
         egui::ScrollArea::vertical()
             .id_salt("gcode_editor_scroll")
             .show(ui, |ui| {
-            // For now, render all non-folded lines
-            // TODO: Implement true virtualization with scroll tracking
+            // Render all lines
             
-            // Calculate visible lines (accounting for folds)
+            // For virtualization, calculate visible range
             let visible_lines: Vec<usize> = if use_virtualization && total_lines > 1000 {
                 // Use virtualized range
                 let range = self.virtualized_state.visible_range();
-                range.filter(|&line| !self.fold_manager.is_line_folded(line)).collect()
+                range.collect()
             } else {
-                // Render all lines (accounting for folds)
-                (0..total_lines)
-                    .filter(|&line| !self.fold_manager.is_line_folded(line))
-                    .collect()
+                // Render all lines
+                (0..total_lines).collect()
             };
 
             ui.horizontal(|ui| {
-                // Use cached row height from the galley if available, otherwise estimate
+                // Get the actual row height from egui's font system to match TextEdit's line height
                 let font_id = egui::TextStyle::Monospace.resolve(ui.style());
-                let row_height = self.cached_row_height.unwrap_or(font_id.size * 1.45);
+                let row_height = ui.text_style_height(&egui::TextStyle::Monospace);
                 
-                // Gutter column with clickable markers and fold indicators
+                // Gutter column with clickable markers
                 ui.vertical(|g| {
                     // Remove all spacing to let text height control layout
                     g.spacing_mut().item_spacing.y = 0.0;
@@ -1227,24 +1168,10 @@ impl GcodeEditorState {
                             egui::Sense::click()
                         );
                         
-                        // Check if click is on fold icon area (first ~20 pixels)
-                        let has_fold = self.fold_manager.get_region_at(i).is_some();
+                        // Click to select line
                         if response.clicked() {
-                            if has_fold && response.interact_pointer_pos().map_or(false, |pos| {
-                                pos.x - rect.left() < 20.0
-                            }) {
-                                self.toggle_fold_at_line(i);
-                            } else {
-                                self.selected_line = Some(i);
-                            }
+                            self.selected_line = Some(i);
                         }
-                        
-                        // Fold indicator
-                        let fold_icon = if let Some(region) = self.fold_manager.get_region_at(i) {
-                            if region.is_folded { "▶ " } else { "▼ " }
-                        } else {
-                            "  "
-                        };
                         
                         // Diagnostic icon
                         let icon = if self.diagnostics.iter().any(|d| {
@@ -1273,7 +1200,7 @@ impl GcodeEditorState {
                         }
                         
                         // Draw the gutter text
-                        let text = format!("{}{} {:05}", fold_icon, icon, i + 1);
+                        let text = format!("{} {:05}", icon, i + 1);
                         let text_color = if self.selected_line == Some(i) {
                             g.visuals().strong_text_color()
                         } else {
@@ -1309,274 +1236,33 @@ impl GcodeEditorState {
                 });
 
                 // Editor column
-                let _response = ui.add_sized(
+                // Use gcode_content for editing (it's a persistent String field)
+                // NOTE: Removed custom layouter to fix cursor jumping issue
+                // Syntax highlighting temporarily disabled until we can implement it without cursor issues
+                let response = ui.add_sized(
                     ui.available_size(),
-                    egui::TextEdit::multiline(&mut self.buffer.get_content())
+                    egui::TextEdit::multiline(&mut self.gcode_content)
                         .font(egui::TextStyle::Monospace)
-                        .layouter(&mut |ui: &egui::Ui, string: &dyn TextBuffer, _wrap_width| {
-                            let mut job = LayoutJob::default();
-                            let search_query_lower = self.search_query.to_lowercase();
-                            let has_search =
-                                !self.search_query.is_empty() && !self.search_results.is_empty();
-
-                            // Get theme-aware colors
-                            let is_dark = ui.visuals().dark_mode;
-                            let text_color = ui.visuals().text_color();
-                            let bg_color = ui.visuals().extreme_bg_color;
-                            
-                            // Syntax highlighting colors that work in both themes
-                            let g_code_color = if is_dark {
-                                egui::Color32::from_rgb(100, 150, 255)  // Light blue for dark
-                            } else {
-                                egui::Color32::from_rgb(0, 0, 200)      // Dark blue for light
-                            };
-                            
-                            let m_code_color = if is_dark {
-                                egui::Color32::from_rgb(100, 255, 150)  // Light green for dark
-                            } else {
-                                egui::Color32::from_rgb(0, 150, 0)      // Dark green for light
-                            };
-                            
-                            let param_color = if is_dark {
-                                egui::Color32::from_rgb(255, 120, 120)  // Light red for dark
-                            } else {
-                                egui::Color32::from_rgb(200, 0, 0)      // Dark red for light
-                            };
-                            
-                            let comment_color = if is_dark {
-                                egui::Color32::from_rgb(120, 120, 120)  // Light gray for dark
-                            } else {
-                                egui::Color32::from_rgb(100, 100, 100)  // Dark gray for light
-                            };
-                            
-                            let keyword_color = if is_dark {
-                                egui::Color32::from_rgb(255, 200, 100)  // Orange for dark
-                            } else {
-                                egui::Color32::from_rgb(200, 120, 0)    // Dark orange for light
-                            };
-
-                            // Helper function for syntax highlighting
-                            let append_with_syntax_highlight =
-                                |job: &mut LayoutJob, text: &str, line_bg: egui::Color32| {
-                                    let words: Vec<&str> = text.split_whitespace().collect();
-                                    for (j, word) in words.iter().enumerate() {
-                                        let color = if word.starts_with('G')
-                                            && word.len() > 1
-                                            && word[1..].chars().all(|c| c.is_ascii_digit())
-                                        {
-                                            g_code_color
-                                        } else if word.starts_with('M')
-                                            && word.len() > 1
-                                            && word[1..].chars().all(|c| c.is_ascii_digit())
-                                        {
-                                            m_code_color
-                                        } else if word.starts_with('X')
-                                            || word.starts_with('Y')
-                                            || word.starts_with('Z')
-                                            || word.starts_with('A')
-                                            || word.starts_with('B')
-                                            || word.starts_with('C')
-                                            || word.starts_with('U')
-                                            || word.starts_with('V')
-                                            || word.starts_with('W')
-                                            || word.starts_with('I')
-                                            || word.starts_with('J')
-                                            || word.starts_with('K')
-                                            || word.starts_with('R')
-                                            || word.starts_with('F')
-                                            || word.starts_with('S')
-                                            || word.starts_with('T')
-                                            || word.starts_with('H')
-                                            || word.starts_with('D')
-                                            || word.starts_with('P')
-                                            || word.starts_with('Q')
-                                            || word.starts_with('L')
-                                            || word.starts_with('N')
-                                            || word.starts_with('O')
-                                        {
-                                            if word.len() > 1 {
-                                                let value_part = &word[1..];
-                                                if value_part.parse::<f32>().is_err()
-                                                    && !value_part.contains('.')
-                                                    && !value_part.starts_with('-')
-                                                {
-                                                    keyword_color
-                                                } else {
-                                                    param_color
-                                                }
-                                            } else {
-                                                param_color
-                                            }
-                                        } else if word.starts_with(';') {
-                                            comment_color
-                                        } else if word
-                                            .chars()
-                                            .next()
-                                            .is_some_and(|c| c.is_ascii_alphabetic())
-                                        {
-                                            keyword_color
-                                        } else {
-                                            text_color
-                                        };
-                                        job.append(
-                                            word,
-                                            0.0,
-                                            TextFormat {
-                                                font_id: egui::FontId::monospace(12.0),
-                                                color,
-                                                background: line_bg,
-                                                ..Default::default()
-                                            },
-                                        );
-                                        if j < words.len() - 1 {
-                                            job.append(" ", 0.0, TextFormat {
-                                                background: line_bg,
-                                                ..Default::default()
-                                            });
-                                        }
-                                    }
-                                };
-
-                            for (i, line) in string.as_str().lines().enumerate() {
-                                // Determine line background color based on diagnostics
-                                let mut line_bg = bg_color;
-                                for d in &self.diagnostics {
-                                    if d.line == i {
-                                        line_bg = match d.severity {
-                                            crate::gcodeedit::rules::Severity::Error => {
-                                                if is_dark {
-                                                    egui::Color32::from_rgb(80, 30, 30)   // Dark red bg
-                                                } else {
-                                                    egui::Color32::from_rgb(255, 200, 200) // Light red bg
-                                                }
-                                            }
-                                            crate::gcodeedit::rules::Severity::Warn => {
-                                                if is_dark {
-                                                    egui::Color32::from_rgb(80, 60, 20)    // Dark yellow bg
-                                                } else {
-                                                    egui::Color32::from_rgb(255, 230, 180)  // Light yellow bg
-                                                }
-                                            }
-                                            crate::gcodeedit::rules::Severity::Info => {
-                                                if is_dark {
-                                                    egui::Color32::from_rgb(20, 40, 60)    // Dark blue bg
-                                                } else {
-                                                    egui::Color32::from_rgb(230, 240, 255) // Light blue bg
-                                                }
-                                            }
-                                        };
-                                        break;
-                                    }
-                                }
-
-                                // Check if this line is the current search result
-                                let is_current_search_line = has_search
-                                    && !self.search_results.is_empty()
-                                    && i == self.search_results[self.current_search_index];
-
-                                if is_current_search_line {
-                                    let line_lower = line.to_lowercase();
-                                    let mut pos = 0;
-                                    while let Some(match_start) =
-                                        line_lower[pos..].find(&search_query_lower)
-                                    {
-                                        let match_start = pos + match_start;
-                                        let match_end = match_start + search_query_lower.len();
-
-                                        if match_start > pos {
-                                            append_with_syntax_highlight(
-                                                &mut job,
-                                                &line[pos..match_start],
-                                                line_bg,
-                                            );
-                                        }
-
-                                        job.append(
-                                            &line[match_start..match_end],
-                                            0.0,
-                                            TextFormat {
-                                                font_id: egui::FontId::monospace(12.0),
-                                                color: egui::Color32::BLACK,
-                                                background: if is_dark {
-                                                    egui::Color32::from_rgb(180, 180, 0)  // Darker yellow
-                                                } else {
-                                                    egui::Color32::YELLOW                  // Bright yellow
-                                                },
-                                                ..Default::default()
-                                            },
-                                        );
-
-                                        pos = match_end;
-                                    }
-
-                                    if pos < line.len() {
-                                        append_with_syntax_highlight(
-                                            &mut job,
-                                            &line[pos..],
-                                            line_bg,
-                                        );
-                                    }
-                                } else if has_search
-                                    && line.to_lowercase().contains(&search_query_lower)
-                                {
-                                    let line_lower = line.to_lowercase();
-                                    let mut pos = 0;
-                                    while let Some(match_start) =
-                                        line_lower[pos..].find(&search_query_lower)
-                                    {
-                                        let match_start = pos + match_start;
-                                        let match_end = match_start + search_query_lower.len();
-
-                                        if match_start > pos {
-                                            append_with_syntax_highlight(
-                                                &mut job,
-                                                &line[pos..match_start],
-                                                line_bg,
-                                            );
-                                        }
-
-                                        job.append(
-                                            &line[match_start..match_end],
-                                            0.0,
-                                            TextFormat {
-                                                font_id: egui::FontId::monospace(12.0),
-                                                color: egui::Color32::BLACK,
-                                                background: if is_dark {
-                                                    egui::Color32::from_rgb(160, 160, 0)  // Darker yellow
-                                                } else {
-                                                    egui::Color32::from_rgb(255, 255, 200) // Light yellow
-                                                },
-                                                ..Default::default()
-                                            },
-                                        );
-
-                                        pos = match_end;
-                                    }
-
-                                    if pos < line.len() {
-                                        append_with_syntax_highlight(
-                                            &mut job,
-                                            &line[pos..],
-                                            line_bg,
-                                        );
-                                    }
-                                } else {
-                                    append_with_syntax_highlight(&mut job, line, line_bg);
-                                }
-
-                                job.append("\n", 0.0, TextFormat::default());
-                            }
-                            let galley = ui.fonts_mut(|fonts| fonts.layout_job(job));
-                            
-                            // Cache the row height for gutter alignment
-                            // Calculate from total galley height / number of rows
-                            if !galley.rows.is_empty() {
-                                self.cached_row_height = Some(galley.rect.height() / galley.rows.len() as f32);
-                            }
-                            
-                            galley
-                        }),
+                        .code_editor()
                 );
+                
+                // If the text was changed, mark for validation but don't sync to buffer yet
+                if response.changed() {
+                    // DON'T sync to buffer on every keystroke - it causes cursor jumping!
+                    // The buffer will be synced when needed (save, undo, etc.)
+                    
+                    // Mark that we need validation
+                    self.needs_validation = true;
+                }
+                
+                // Perform debounced validation (only every 500ms)
+                if self.needs_validation && self.last_validation_time.elapsed().as_millis() > 500 {
+                    // Now sync to buffer before validation
+                    self.buffer.set_content(&self.gcode_content);
+                    self.on_buffer_change();
+                    self.last_validation_time = std::time::Instant::now();
+                    self.needs_validation = false;
+                }
             });
 
             // Diagnostics pane below editor
@@ -1753,7 +1439,7 @@ mod tests {
     #[test]
     fn test_parse_gcode_multiple_axes() {
         let editor = GcodeEditorState {
-            gcode_content: "G0 X10 Y20 Z30 A45 B90".to_string(),
+            gcode_content: "G0 X10 Y20 Z30".to_string(),
             ..Default::default()
         };
         let paths = editor.parse_gcode();
@@ -1763,8 +1449,6 @@ mod tests {
         assert_eq!(segment.end.x, 10.0);
         assert_eq!(segment.end.y, 20.0);
         assert_eq!(segment.end.z, 30.0);
-        assert_eq!(segment.end.a, Some(45.0));
-        assert_eq!(segment.end.b, Some(90.0));
     }
 
     #[test]

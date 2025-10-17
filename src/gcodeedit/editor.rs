@@ -1,4 +1,4 @@
-//! G-code editor core: buffer, cursor, selection, undo/redo and folding
+//! G-code editor core: buffer, cursor, selection, and undo/redo
 //!
 //! Provides a lightweight in-memory text buffer tailored for G-code editing and
 //! integrates with the higher-level GcodeEditorState for rendering and validation.
@@ -66,8 +66,6 @@ pub struct TextBufferCore {
     pub selection: Option<Selection>,
     undo_stack: Vec<EditOp>,
     redo_stack: Vec<EditOp>,
-    /// Folded line ranges (start inclusive, end exclusive)
-    pub folds: Vec<(usize, usize)>,
 }
 
 impl Default for TextBufferCore {
@@ -85,7 +83,6 @@ impl TextBufferCore {
             selection: None,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
-            folds: Vec::new(),
         }
     }
 
@@ -99,7 +96,6 @@ impl TextBufferCore {
         self.selection = None;
         self.undo_stack.clear();
         self.redo_stack.clear();
-        self.folds.clear();
     }
 
     /// Return a String with current content
@@ -236,34 +232,6 @@ impl TextBufferCore {
         } else {
             false
         }
-    }
-
-    /// Toggle fold for a line range (start inclusive, end exclusive)
-    pub fn toggle_fold(&mut self, start: usize, end: usize) {
-        if let Some(idx) = self
-            .folds
-            .iter()
-            .position(|(a, b)| *a == start && *b == end)
-        {
-            self.folds.remove(idx);
-        } else {
-            self.folds.push((start, end));
-        }
-    }
-
-    /// Check if a given line is folded
-    pub fn is_line_folded(&self, line: usize) -> bool {
-        self.folds.iter().any(|(s, e)| *s < line && line < *e)
-    }
-
-    /// Get fold region starting at a line
-    pub fn get_fold_at(&self, line: usize) -> Option<(usize, usize)> {
-        self.folds.iter().find(|(s, _)| *s == line).copied()
-    }
-
-    /// Check if a line is a fold header (start of a fold region)
-    pub fn is_fold_header(&self, line: usize) -> bool {
-        self.folds.iter().any(|(s, _)| *s == line)
     }
 
     /// Get number of lines

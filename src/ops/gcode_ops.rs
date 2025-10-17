@@ -8,10 +8,8 @@ impl GcodeKitApp {
         self.gcode_editor.gcode_content = content;
         self.gcode_editor.gcode_filename = self.gcode.gcode_filename.clone();
         self.gcode_editor.on_buffer_change();
-        self.gcode_editor.detect_folds();
         self.gcode_editor.selected_line = Some(0);
         self.gcode_editor.virtualized_state = Default::default();
-        self.gcode_editor.expand_all_folds();
         // Parse gcode and store in editor
         self.gcode_editor.parsed_paths = crate::gcode::parse_gcode(&self.gcode.gcode_content);
     }

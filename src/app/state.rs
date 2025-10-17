@@ -199,6 +199,7 @@ pub struct MachineState {
     pub available_ports: Vec<String>,
     pub connection_state: ConnectionState,
     pub selected_port: String,
+    pub manual_command: String,
 }
 
 impl Default for MachineState {
@@ -217,6 +218,7 @@ impl Default for MachineState {
             available_ports: Vec::new(),
             connection_state: ConnectionState::Disconnected,
             selected_port: String::new(),
+            manual_command: String::new(),
         }
     }
 }

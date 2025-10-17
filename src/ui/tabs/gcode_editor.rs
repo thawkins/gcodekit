@@ -10,12 +10,10 @@ pub fn show_gcode_editor_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         app.gcode_editor.gcode_content = app.gcode.gcode_content.clone();
         app.gcode_editor.gcode_filename = app.gcode.gcode_filename.clone();
         app.gcode_editor.on_buffer_change();
-        app.gcode_editor.detect_folds();
         
         // Reset to top of file
         app.gcode_editor.selected_line = Some(0);
         app.gcode_editor.virtualized_state = Default::default();
-        app.gcode_editor.expand_all_folds();  // Start with all folds expanded
     }
 
     // Show sending progress if active

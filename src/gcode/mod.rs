@@ -73,11 +73,7 @@ pub fn parse_gcode(gcode_content: &str) -> Vec<PathSegment> {
             // Check if position changed
             let position_changed = new_pos.x != current_pos.x
                 || new_pos.y != current_pos.y
-                || new_pos.z != current_pos.z
-                || new_pos.a != current_pos.a
-                || new_pos.b != current_pos.b
-                || new_pos.c != current_pos.c
-                || new_pos.d != current_pos.d;
+                || new_pos.z != current_pos.z;
 
             if position_changed {
                 parsed_paths.push(PathSegment {

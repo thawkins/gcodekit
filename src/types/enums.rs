@@ -1,7 +1,7 @@
 #[derive(Clone, Default, PartialEq, Debug)]
 pub enum Tab {
-    #[default]
     Designer,
+    #[default]
     GcodeEditor,
     Visualizer3D,
     DeviceConsole,

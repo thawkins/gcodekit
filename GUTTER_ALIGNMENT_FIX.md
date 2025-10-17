@@ -4,12 +4,10 @@
 The gutter (line numbers and diagnostic icons) was not properly aligned with the text editor lines. The gutter rows drifted progressively out of alignment as you scrolled down.
 
 ## Root Cause
-- The original implementation used UI widgets (buttons, labels) which have different spacing than TextEdit's internal line rendering
-- TextEdit uses a Galley with specific row heights calculated from font metrics (font height + line gap)
-- UI widgets use `item_spacing.y` which doesn't match the TextEdit's internal line spacing
-- Initial fix attempt used a 1.2x font size multiplier, but this caused drift over many lines
+The original implementation used UI widgets (buttons, labels) which have different spacing than TextEdit's internal line rendering. TextEdit uses a Galley with specific row heights calculated from font metrics (font height + line gap), while UI widgets use `item_spacing.y` which doesn't match the TextEdit's internal line spacing. An initial fix attempt used a 1.2x font size multiplier, but this caused drift over many lines.
 
-## Final Solution
+## Solution
+
 Extract the EXACT row height from TextEdit's galley after layout:
 
 1. **Cache Galley Row Height**: 
@@ -24,11 +22,10 @@ Extract the EXACT row height from TextEdit's galley after layout:
    - Uses the SAME row height that TextEdit uses
 
 3. **Preserved Features**:
-   - ✅ Fold toggle (click on fold icons in first ~20px)
-   - ✅ Line selection (click anywhere else on the row)
+   - ✅ Line selection (click on gutter row)
    - ✅ Diagnostic hover (shows error/warning/info messages)
    - ✅ Visual selection highlight
-   - ✅ Fold icons changed to ▶/▼ for better alignment
+   - ✅ Perfect line number alignment
 
 ## Testing
 1. Build and run the application:
@@ -42,7 +39,6 @@ Extract the EXACT row height from TextEdit's galley after layout:
 3. Verify alignment:
    - Line numbers should align perfectly with text lines from top to bottom
    - No drift should occur when scrolling down
-   - Fold indicators should be at the correct vertical position
    - Diagnostic icons should align with their corresponding lines
 
 ## Technical Details
@@ -54,7 +50,9 @@ Extract the EXACT row height from TextEdit's galley after layout:
   - Set `item_spacing.y = 0.0` to eliminate UI spacing
   - Use `allocate_exact_size()` with exact `row_height` from galley
   - Direct text painting with `painter.text()`
-  - Fold click detection using pointer position
 
 ## Why This Works
 By using the galley's actual row height instead of an estimated multiplier, we ensure the gutter uses the EXACT same spacing as the TextEdit widget. This eliminates any drift caused by rounding errors or incorrect estimates.
+
+## Note on Code Folding
+Code folding features were removed from the editor (2025-10-17) as GRBL does not support code blocks, making folding unnecessary for G-code files. This simplification removed complexity and potential sources of alignment issues.
