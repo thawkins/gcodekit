@@ -1148,11 +1148,6 @@ impl GcodeEditorState {
                     self.virtualized_state.last_visible_line
                 ));
             }
-            
-            // Performance metrics
-            if !self.performance_metrics.summary().is_empty() {
-                ui.label(format!("⏱️ {}", self.performance_metrics.summary()));
-            }
         });
 
         ui.separator();
