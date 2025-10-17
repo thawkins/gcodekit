@@ -739,8 +739,10 @@ impl GcodeEditorState {
                 return true;
             }
         }
-        // wrap
-        self.selected_line = Some(*lines.last().unwrap());
+        // wrap: safe because we already checked is_empty()
+        if let Some(last_line) = lines.last() {
+            self.selected_line = Some(*last_line);
+        }
         true
     }
 
@@ -785,6 +787,34 @@ impl GcodeEditorState {
             sent_count,
             start_line + 1
         ))
+    }
+
+    /// Generate syntax highlighting for G-code content using tokenizer
+    fn syntax_highlight(&self) -> LayoutJob {
+        let mut job = LayoutJob::default();
+        
+        for line in self.last_parsed.iter() {
+            for token in &line.tokens {
+                let color = match token.kind {
+                    tokenizer::TokenKind::Command => egui::Color32::from_rgb(100, 150, 255),     // Blue for G/M commands
+                    tokenizer::TokenKind::Parameter => egui::Color32::from_rgb(100, 200, 100),   // Green for parameters
+                    tokenizer::TokenKind::Comment => egui::Color32::from_rgb(150, 150, 150),     // Gray for comments
+                    tokenizer::TokenKind::Unknown => egui::Color32::WHITE,
+                };
+                
+                job.append(
+                    &token.text,
+                    0.0,
+                    TextFormat {
+                        color,
+                        ..Default::default()
+                    },
+                );
+            }
+            job.append("\n", 0.0, TextFormat::default());
+        }
+        
+        job
     }
 
     pub fn show_ui(&mut self, ui: &mut egui::Ui, _parsed_paths: &[PathSegment]) -> Option<usize> {
@@ -1065,14 +1095,6 @@ impl GcodeEditorState {
                 ));
             }
 
-            // Diagnostic navigation shortcuts
-            if ui.button("⏭️ Next Diag").clicked() {
-                self.next_diagnostic();
-            }
-            if ui.button("⏮️ Prev Diag").clicked() {
-                self.prev_diagnostic();
-            }
-
             // Keyboard shortcuts
             if ui.input(|i| i.key_pressed(egui::Key::F8)) {
                 self.next_diagnostic();
@@ -1173,23 +1195,6 @@ impl GcodeEditorState {
                             self.selected_line = Some(i);
                         }
                         
-                        // Diagnostic icon
-                        let icon = if self.diagnostics.iter().any(|d| {
-                            d.line == i && d.severity == crate::gcodeedit::rules::Severity::Error
-                        }) {
-                            "❗"
-                        } else if self.diagnostics.iter().any(|d| {
-                            d.line == i && d.severity == crate::gcodeedit::rules::Severity::Warn
-                        }) {
-                            "⚠️"
-                        } else if self.diagnostics.iter().any(|d| {
-                            d.line == i && d.severity == crate::gcodeedit::rules::Severity::Info
-                        }) {
-                            "ℹ️"
-                        } else {
-                            " "
-                        };
-                        
                         // Draw background for selected line
                         if self.selected_line == Some(i) {
                             g.painter().rect_filled(
@@ -1199,8 +1204,8 @@ impl GcodeEditorState {
                             );
                         }
                         
-                        // Draw the gutter text
-                        let text = format!("{} {:05}", icon, i + 1);
+                        // Draw the line number
+                        let text = format!("{:05}", i + 1);
                         let text_color = if self.selected_line == Some(i) {
                             g.visuals().strong_text_color()
                         } else {
@@ -1237,8 +1242,9 @@ impl GcodeEditorState {
 
                 // Editor column
                 // Use gcode_content for editing (it's a persistent String field)
-                // NOTE: Removed custom layouter to fix cursor jumping issue
-                // Syntax highlighting temporarily disabled until we can implement it without cursor issues
+                // NOTE: Syntax highlighting disabled - custom layouters cause cursor jumping issues
+                // The syntax_highlight() function is available but requires a proper implementation
+                // that doesn't interfere with text editing cursor position
                 let response = ui.add_sized(
                     ui.available_size(),
                     egui::TextEdit::multiline(&mut self.gcode_content)

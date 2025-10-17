@@ -9,14 +9,16 @@ pub fn show_left_panel(app: &mut GcodeKitApp, ctx: &egui::Context) {
             .resizable(true)
             .default_width(200.0)
             .show(ctx, |ui| {
-                ui.heading("Machine Control");
-                ui.separator();
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.heading("Machine Control");
+                    ui.separator();
 
-                crate::widgets::show_connection_widget(ui, app.machine.communication.as_mut());
-                ui.separator();
-                crate::widgets::show_jog_widget(ui, app);
-                ui.separator();
-                crate::widgets::show_overrides_widget(ui, app);
+                    crate::widgets::show_connection_widget(ui, app.machine.communication.as_mut());
+                    ui.separator();
+                    crate::widgets::show_jog_widget(ui, app);
+                    ui.separator();
+                    crate::widgets::show_overrides_widget(ui, app);
+                });
             });
         app.ui.left_panel_width = response.response.rect.width();
     }

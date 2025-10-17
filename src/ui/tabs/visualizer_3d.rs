@@ -57,7 +57,9 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         
         if ui.button("⏭️ Last").clicked()
             && !app.gcode_editor.parsed_paths.is_empty() {
-                app.gcode.selected_line = Some(app.gcode_editor.parsed_paths.last().unwrap().line_number);
+                if let Some(last_path) = app.gcode_editor.parsed_paths.last() {
+                    app.gcode.selected_line = Some(last_path.line_number);
+                }
             }
         
         ui.separator();

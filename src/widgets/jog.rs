@@ -45,193 +45,108 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         ui.separator();
 
         // Main grid of jog controls with theme-aware styling
-        let button_size = 60.0;
+        let button_size = 80.0;
         
-        // Row 1: Directional controls (3 columns × 3 rows)
+        // Row 1: Blank, Y+, Blank, Z+
         ui.horizontal(|ui| {
-            // Column 1: Y+ and Y- controls
-            ui.vertical(|ui| {
-                // Y+
-                if ui.add_sized(
-                    [button_size, button_size],
-                    egui::Button::new("▲\nY+").fill(button_bg)
-                ).on_hover_text("Y+").clicked() {
-                    app.machine.communication.jog_axis('Y', app.machine.jog_step_size);
-                }
-                
-                // Home button (center)
-                if ui.add_sized(
-                    [button_size, button_size],
-                    egui::Button::new("⌘\nHOME").fill(button_bg)
-                ).on_hover_text("Home all axes").clicked() {
-                    app.machine.communication.home_all_axes();
-                }
-                
-                // Y-
-                if ui.add_sized(
-                    [button_size, button_size],
-                    egui::Button::new("▼\nY-").fill(button_bg)
-                ).on_hover_text("Y-").clicked() {
-                    app.machine.communication.jog_axis('Y', -app.machine.jog_step_size);
-                }
-            });
-
-            // Column 2: Z+ and Z- controls
-            ui.vertical(|ui| {
-                // Z+
-                if ui.add_sized(
-                    [button_size, button_size],
-                    egui::Button::new("⬆\nZ+").fill(button_bg)
-                ).on_hover_text("Z+").clicked() {
-                    app.machine.communication.jog_axis('Z', app.machine.jog_step_size);
-                }
-                
-                // Empty space (was HOME, now moved to column 1)
-                ui.add_sized(
-                    [button_size, button_size],
-                    egui::Label::new("")
-                );
-                
-                // Z-
-                if ui.add_sized(
-                    [button_size, button_size],
-                    egui::Button::new("⬇\nZ-").fill(button_bg)
-                ).on_hover_text("Z-").clicked() {
-                    app.machine.communication.jog_axis('Z', -app.machine.jog_step_size);
-                }
-            });
-
-            // Column 3: X+ controls
-            ui.vertical(|ui| {
-                // Empty space
-                ui.add_sized(
-                    [button_size, button_size],
-                    egui::Label::new("")
-                );
-                
-                // X+
-                if ui.add_sized(
-                    [button_size, button_size],
-                    egui::Button::new("▶\nX+").fill(button_bg)
-                ).on_hover_text("X+").clicked() {
-                    app.machine.communication.jog_axis('X', app.machine.jog_step_size);
-                }
-                
-                // Empty space
-                ui.add_sized(
-                    [button_size, button_size],
-                    egui::Label::new("")
-                );
-            });
-
-            // Column 4: Emergency stop
-            ui.vertical(|ui| {
-                // Empty space
-                ui.add_sized(
-                    [button_size, button_size],
-                    egui::Label::new("")
-                );
-                
-                // Emergency stop - red circle with white text
-                if ui.add_sized(
-                    [button_size, button_size],
-                    egui::Button::new(
-                        egui::RichText::new("⛔\nSTOP").color(emergency_text)
-                    ).fill(emergency_bg)
-                ).on_hover_text("EMERGENCY STOP").clicked() {
-                    app.machine.communication.emergency_stop();
-                }
-                
-                // Empty space
-                ui.add_sized(
-                    [button_size, button_size],
-                    egui::Label::new("")
-                );
-            });
+            // Column 1: Blank
+            ui.add_sized(
+                [button_size, button_size],
+                egui::Label::new("")
+            );
+            
+            // Column 2: Y+
+            if ui.add_sized(
+                [button_size, button_size],
+                egui::Button::new("⬆\nY+").fill(button_bg)
+            ).on_hover_text("Y+").clicked() {
+                app.machine.communication.jog_axis('Y', app.machine.jog_step_size);
+            }
+            
+            // Column 3: Blank
+            ui.add_sized(
+                [button_size, button_size],
+                egui::Label::new("")
+            );
+            
+            // Column 4: Z+
+            if ui.add_sized(
+                [button_size, button_size],
+                egui::Button::new("⬆\nZ+").fill(button_bg)
+            ).on_hover_text("Z+").clicked() {
+                app.machine.communication.jog_axis('Z', app.machine.jog_step_size);
+            }
         });
 
         ui.add_space(10.0);
 
-        // Row 2: X- and axis control buttons
+        // Row 2: X-, Home, X+, Stop
         ui.horizontal(|ui| {
-            ui.set_width(ui.available_width());
-            
-            // X- button (first position)
+            // Column 1: X-
             if ui.add_sized(
                 [button_size, button_size],
-                egui::Button::new("◀\nX-").fill(button_bg)
+                egui::Button::new("⬅\nX-").fill(button_bg)
             ).on_hover_text("X-").clicked() {
                 app.machine.communication.jog_axis('X', -app.machine.jog_step_size);
             }
             
+            // Column 2: Home
             if ui.add_sized(
                 [button_size, button_size],
-                egui::Button::new("↔️").fill(button_bg)
-            ).on_hover_text("X Axis").clicked() {
-                // X axis info
+                egui::Button::new("⌘\nHOME").fill(button_bg)
+            ).on_hover_text("Home all axes").clicked() {
+                app.machine.communication.home_all_axes();
             }
             
+            // Column 3: X+
             if ui.add_sized(
                 [button_size, button_size],
-                egui::Button::new("↕️").fill(button_bg)
-            ).on_hover_text("Y Axis").clicked() {
-                // Y axis info
+                egui::Button::new("➡\nX+").fill(button_bg)
+            ).on_hover_text("X+").clicked() {
+                app.machine.communication.jog_axis('X', app.machine.jog_step_size);
             }
             
+            // Column 4: Stop
             if ui.add_sized(
                 [button_size, button_size],
-                egui::Button::new("⬆️").fill(button_bg)
-            ).on_hover_text("Z Axis").clicked() {
-                // Z axis info
-            }
-        });
-
-        ui.add_space(10.0);
-
-        // Row 3: G-code macro buttons (G54, G55, G56, G57)
-        ui.horizontal(|ui| {
-            ui.set_width(ui.available_width());
-            
-            if ui.add_sized(
-                [button_size, button_size],
-                egui::Button::new("📍1").fill(button_bg)
-            ).on_hover_text("G54 Workspace").clicked() {
-                let _ = app.machine.communication.send_gcode_line("G54");
-            }
-            
-            if ui.add_sized(
-                [button_size, button_size],
-                egui::Button::new("📍2").fill(button_bg)
-            ).on_hover_text("G55 Workspace").clicked() {
-                let _ = app.machine.communication.send_gcode_line("G55");
-            }
-            
-            if ui.add_sized(
-                [button_size, button_size],
-                egui::Button::new("📍3").fill(button_bg)
-            ).on_hover_text("G56 Workspace").clicked() {
-                let _ = app.machine.communication.send_gcode_line("G56");
-            }
-            
-            if ui.add_sized(
-                [button_size, button_size],
-                egui::Button::new("📍4").fill(button_bg)
-            ).on_hover_text("G57 Workspace").clicked() {
-                let _ = app.machine.communication.send_gcode_line("G57");
+                egui::Button::new(
+                    egui::RichText::new("⛔\nSTOP").color(emergency_text)
+                ).fill(emergency_bg)
+            ).on_hover_text("EMERGENCY STOP").clicked() {
+                app.machine.communication.emergency_stop();
             }
         });
 
         ui.add_space(10.0);
 
-        // Row 4: Placeholder buttons for future expansion
+        // Row 3: Blank, Y-, Blank, Z-
         ui.horizontal(|ui| {
-            ui.set_width(ui.available_width());
+            // Column 1: Blank
+            ui.add_sized(
+                [button_size, button_size],
+                egui::Label::new("")
+            );
             
-            for i in 0..4 {
-                ui.add_sized(
-                    [button_size, button_size],
-                    egui::Button::new(format!("{}️", if i == 0 { "➕" } else if i == 1 { "➖" } else if i == 2 { "⚙️" } else { "📋" })).fill(button_bg)
-                );
+            // Column 2: Y-
+            if ui.add_sized(
+                [button_size, button_size],
+                egui::Button::new("⬇\nY-").fill(button_bg)
+            ).on_hover_text("Y-").clicked() {
+                app.machine.communication.jog_axis('Y', -app.machine.jog_step_size);
+            }
+            
+            // Column 3: Blank
+            ui.add_sized(
+                [button_size, button_size],
+                egui::Label::new("")
+            );
+            
+            // Column 4: Z-
+            if ui.add_sized(
+                [button_size, button_size],
+                egui::Button::new("⬇\nZ-").fill(button_bg)
+            ).on_hover_text("Z-").clicked() {
+                app.machine.communication.jog_axis('Z', -app.machine.jog_step_size);
             }
         });
 
@@ -268,24 +183,25 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
                     .desired_width(ui.available_width() - 80.0)
             );
             
-            if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                if !app.machine.manual_command.trim().is_empty() {
-                    let cmd = app.machine.manual_command.clone();
-                    if let Err(e) = app.machine.communication.send_gcode_line(&cmd) {
-                        app.machine.status_message = format!("Command error: {}", e);
-                    }
-                    app.machine.manual_command.clear();
+            if response.lost_focus()
+                && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                && !app.machine.manual_command.trim().is_empty()
+            {
+                let cmd = app.machine.manual_command.clone();
+                if let Err(e) = app.machine.communication.send_gcode_line(&cmd) {
+                    app.machine.status_message = format!("Command error: {}", e);
                 }
+                app.machine.manual_command.clear();
             }
             
-            if ui.button("Send").clicked() {
-                if !app.machine.manual_command.trim().is_empty() {
-                    let cmd = app.machine.manual_command.clone();
-                    if let Err(e) = app.machine.communication.send_gcode_line(&cmd) {
-                        app.machine.status_message = format!("Command error: {}", e);
-                    }
-                    app.machine.manual_command.clear();
+            if ui.button("Send").clicked()
+                && !app.machine.manual_command.trim().is_empty()
+            {
+                let cmd = app.machine.manual_command.clone();
+                if let Err(e) = app.machine.communication.send_gcode_line(&cmd) {
+                    app.machine.status_message = format!("Command error: {}", e);
                 }
+                app.machine.manual_command.clear();
             }
         });
 

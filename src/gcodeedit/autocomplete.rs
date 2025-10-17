@@ -142,14 +142,20 @@ impl AutoCompleter {
         if current_word.starts_with('G') || current_word.starts_with('M') {
             CompletionType::Command
         } else if current_word.len() == 1
-            && current_word.chars().next().unwrap().is_ascii_alphabetic()
+            && current_word
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphabetic())
         {
             // Single letter: could be parameter name OR starting a value
             // Provide both parameter and value completions by returning Value
             // (value completion will fall back to parameters if no values match)
             CompletionType::Value
         } else if !current_word.is_empty()
-            && current_word.chars().next().unwrap().is_ascii_alphabetic()
+            && current_word
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphabetic())
         {
             CompletionType::Value
         } else {
@@ -260,7 +266,10 @@ impl AutoCompleter {
             return Vec::new();
         }
 
-        let param_letter = current_word.chars().next().unwrap().to_ascii_uppercase();
+        let param_letter = match current_word.chars().next() {
+            Some(c) => c.to_ascii_uppercase(),
+            None => return Vec::new(),
+        };
 
         // For now, provide generic numeric value suggestions
         // In future, could provide contextual values based on machine limits, etc.

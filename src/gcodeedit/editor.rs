@@ -194,7 +194,9 @@ impl TextBufferCore {
                         end.col = pos.col + lines[0].len();
                     } else {
                         end.line = pos.line + lines.len() - 1;
-                        end.col = lines.last().unwrap().len();
+                        if let Some(last_line) = lines.last() {
+                            end.col = last_line.len();
+                        }
                     }
                     self.delete_range(*pos, end);
                 }

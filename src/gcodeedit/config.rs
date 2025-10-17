@@ -234,7 +234,10 @@ mod tests {
         let config = EditorConfig::default();
         let state = config.get_rule_state("unknown_code");
         assert!(state.is_some());
-        assert!(state.unwrap().enabled);
+        assert!(
+            state.expect("rule state should be present").enabled,
+            "rule should be enabled by default"
+        );
     }
 
     #[test]
@@ -248,7 +251,7 @@ mod tests {
 
         let state = config.get_rule_state("test_rule");
         assert!(state.is_some());
-        let state = state.unwrap();
+        let state = state.expect("rule state should be present");
         assert!(!state.enabled);
         assert_eq!(state.severity, RuleSeverity::Warning);
     }
@@ -256,8 +259,10 @@ mod tests {
     #[test]
     fn test_serialization() {
         let config = EditorConfig::default();
-        let json = serde_json::to_string(&config).unwrap();
-        let deserialized: EditorConfig = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&config)
+            .expect("config serialization should succeed");
+        let deserialized: EditorConfig = serde_json::from_str(&json)
+            .expect("config deserialization should succeed");
 
         assert_eq!(config.grbl_version, deserialized.grbl_version);
         assert_eq!(config.validation_enabled, deserialized.validation_enabled);
