@@ -1242,6 +1242,10 @@ impl CncController for GrblCommunication {
         let _ = self.send_gcode_line("!");
     }
 
+    fn reset_machine(&mut self) {
+        self.reset_grbl();
+    }
+
     fn send_raw_command(&mut self, command: &str) {
         self.send_grbl_command(command);
     }

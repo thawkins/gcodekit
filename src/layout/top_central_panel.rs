@@ -67,11 +67,20 @@ pub fn show_top_central_panel(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
 
                 // Send controls
                 ui.horizontal(|ui| {
-                    if ui.button("📤 Send to Device").clicked() {
+                    let is_sending = app.gcode.is_sending;
+                    
+                    if ui.add_enabled(!is_sending, egui::Button::new("📤 Send to Device")).clicked() {
                         app.send_gcode(&app.gcode.gcode_content.clone());
                     }
-                    if ui.button("⏹️ Stop").clicked() {
-                        // TODO: Implement stop sending
+                    if ui.add_enabled(is_sending, egui::Button::new("⏹️ Stop")).clicked() {
+                        app.stop_sending_gcode();
+                    }
+                    
+                    if is_sending {
+                        ui.label(format!("Sending... ({}/{})", 
+                            app.gcode.current_line_sending,
+                            app.gcode.gcode_content.lines().count()
+                        ));
                     }
                 });
 

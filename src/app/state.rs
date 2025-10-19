@@ -182,6 +182,10 @@ pub struct GcodeState {
     pub gcode_content: String,
     pub gcode_filename: String,
     pub selected_line: Option<usize>,
+    /// Flag indicating if G-code is currently being sent to device
+    pub is_sending: bool,
+    /// Current line being sent (index in gcode_content)
+    pub current_line_sending: usize,
 }
 
 // Machine State

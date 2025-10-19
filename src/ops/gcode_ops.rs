@@ -180,6 +180,21 @@ impl GcodeKitApp {
         }
     }
 
+    /// Stops sending G-code to the device and resets sending state.
+    pub fn stop_sending_gcode(&mut self) {
+        self.log_console("stop_sending_gcode: Stopping G-code transmission");
+        
+        // Send emergency stop to device
+        self.machine.communication.emergency_stop();
+        
+        // Reset sending flags
+        self.gcode.is_sending = false;
+        self.gcode.current_line_sending = 0;
+        
+        self.machine.status_message = "G-code transmission stopped".to_string();
+        self.log_console("stop_sending_gcode: G-code transmission halted");
+    }
+
     fn send_gcode_to_device(&mut self) {
         self.log_console("send_gcode_to_device: Starting G-code send process");
 
@@ -210,6 +225,9 @@ impl GcodeKitApp {
             self.gcode.gcode_content.len()
         ));
 
+        // Mark as sending
+        self.gcode.is_sending = true;
+
         // Send each line to the device sequentially with delay, like gcode-send
         let content = self.gcode.gcode_content.clone(); // Clone to avoid borrowing issues
         let lines: Vec<&str> = content.lines().collect();
@@ -223,8 +241,15 @@ impl GcodeKitApp {
 
         // Reset progress
         self.gcode_editor.sending_progress = 0.0;
+        self.gcode.current_line_sending = 0;
 
         for (line_idx, line) in lines.iter().enumerate() {
+            // Check if we should stop sending
+            if !self.gcode.is_sending {
+                self.log_console("send_gcode_to_device: Transmission stopped by user");
+                break;
+            }
+
             let trimmed = line.trim();
             if !trimmed.is_empty() && !trimmed.starts_with(';') {
                 // Remove comments (after ; or ( )
@@ -248,6 +273,7 @@ impl GcodeKitApp {
                         .communication
                         .send_raw_command(&format!("{}\r\n", command));
                     sent_count += 1;
+                    self.gcode.current_line_sending = line_idx + 1;
                 }
             }
 
@@ -257,6 +283,9 @@ impl GcodeKitApp {
             // Small delay between commands
             std::thread::sleep(std::time::Duration::from_millis(50));
         }
+
+        // Mark as finished sending
+        self.gcode.is_sending = false;
 
         // Report final status
         if error_count == 0 {

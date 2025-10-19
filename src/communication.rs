@@ -242,6 +242,7 @@ pub trait CncController {
     fn jog_axis(&mut self, axis: char, distance: f32);
     fn home_all_axes(&mut self);
     fn emergency_stop(&mut self);
+    fn reset_machine(&mut self);
     fn send_spindle_override(&mut self, percentage: f32);
     fn send_feed_override(&mut self, percentage: f32);
     fn get_version(&self) -> &str;
