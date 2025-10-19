@@ -119,7 +119,7 @@ impl Default for Visualizer3DState {
             camera_pitch: 45.0,
             camera_yaw: 45.0,
             camera_roll: 0.0,
-            zoom: 1.0,
+            zoom: 0.7,  // Default zoom fits grid in visualizer
             pan_x: 0.0,
             pan_y: 0.0,
             show_rapid_moves: true,
@@ -184,7 +184,15 @@ impl Visualizer3DState {
 
     /// Fit all toolpaths to view
     pub fn fit_to_view(&mut self) {
-        self.zoom = 0.8;
+        // Calculate zoom to fit the grid/stock in the viewport
+        // Using the larger of stock dimensions as the reference
+        let max_dim = self.stock_x.max(self.stock_y).max(self.stock_z);
+        // Default grid size is 100, so scale accordingly
+        self.zoom = if max_dim > 0.0 {
+            (100.0 / max_dim * 0.7).clamp(0.1, 5.0)
+        } else {
+            1.0
+        };
         self.pan_x = 0.0;
         self.pan_y = 0.0;
     }
@@ -427,7 +435,7 @@ mod tests {
         let state = Visualizer3DState::default();
         assert_eq!(state.camera_pitch, 45.0);
         assert_eq!(state.camera_yaw, 45.0);
-        assert_eq!(state.zoom, 1.0);
+        assert_eq!(state.zoom, 0.7);  // Default zoom fits grid in visualizer
         assert!(state.show_rapid_moves);
         assert!(state.show_feed_moves);
         assert!(state.show_arc_moves);
@@ -475,7 +483,8 @@ mod tests {
         state.pan_y = 50.0;
         
         state.fit_to_view();
-        assert_eq!(state.zoom, 0.8);
+        // With stock 100x100, zoom should be ~0.7
+        assert!(state.zoom >= 0.5 && state.zoom <= 1.0);
         assert_eq!(state.pan_x, 0.0);
         assert_eq!(state.pan_y, 0.0);
     }
