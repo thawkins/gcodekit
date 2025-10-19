@@ -1246,6 +1246,12 @@ impl CncController for GrblCommunication {
         self.reset_grbl();
     }
 
+    fn clear_alarm(&mut self) {
+        // Send alarm clear command ($X) to GRBL
+        // This clears the alarm state and unlocks the device
+        let _ = self.send_gcode_line("$X");
+    }
+
     fn send_raw_command(&mut self, command: &str) {
         self.send_grbl_command(command);
     }

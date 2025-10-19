@@ -184,7 +184,33 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
         ui.add_space(10.0);
         ui.separator();
 
-        // Step size control section
+        // Alarm unlock button (only show when in alarm)
+        if app.machine.realtime_status.state == crate::communication::grbl_status::MachineState::Alarm {
+            ui.horizontal(|ui| {
+                let alarm_bg = egui::Color32::from_rgb(255, 165, 0);
+                let alarm_text = egui::Color32::BLACK;
+                
+                ui.label("⚠️ ALARM STATE:");
+                
+                if ui
+                    .add_sized(
+                        [200.0, 40.0],
+                        egui::Button::new(
+                            egui::RichText::new("🔓 UNLOCK DEVICE").size(14.0).color(alarm_text)
+                        )
+                        .fill(alarm_bg),
+                    )
+                    .on_hover_text("Clear alarm status and unlock device")
+                    .clicked()
+                {
+                    app.machine.communication.clear_alarm();
+                    app.machine.status_message = "Device alarm cleared".to_string();
+                }
+            });
+            ui.add_space(5.0);
+        }
+
+        ui.separator();
         ui.horizontal(|ui| {
             ui.label("Step Size:");
             ui.add(
