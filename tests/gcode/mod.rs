@@ -328,3 +328,181 @@ mod move_type_tests {
         assert_eq!(format!("{:?}", MoveType::ArcCCW), "ArcCCW");
     }
 }
+
+#[cfg(test)]
+mod gcode_optimization_tests {
+    use super::*;
+
+    #[test]
+    fn test_truncate_decimal_precision_basic() {
+        let gcode = "G1 X10.123456 Y20.987654 Z5.555555";
+        let result = truncate_decimal_precision(gcode, 3);
+
+        assert!(result.contains("10.123"));
+        assert!(result.contains("20.987"));
+        assert!(result.contains("5.555"));
+    }
+
+    #[test]
+    fn test_truncate_decimal_precision_multi_line() {
+        let gcode = "G0 X10.123456 Y20.987654\nG1 X30.111111 Y40.222222";
+        let result = truncate_decimal_precision(gcode, 2);
+
+        assert!(result.contains("10.12"));
+        assert!(result.contains("20.98"));
+        assert!(result.contains("30.11"));
+        assert!(result.contains("40.22"));
+    }
+
+    #[test]
+    fn test_truncate_decimal_precision_preserves_comments() {
+        let gcode = "G1 X10.123456 Y20.987654 ; This is a comment with 10.999999";
+        let result = truncate_decimal_precision(gcode, 2);
+
+        assert!(result.contains("10.12"));
+        assert!(result.contains("20.98"));
+        // Comment should be preserved
+        assert!(result.contains("; This is a comment"));
+    }
+
+    #[test]
+    fn test_truncate_decimal_precision_zero_decimals() {
+        let gcode = "G1 X10.123456 Y20.987654";
+        let result = truncate_decimal_precision(gcode, 0);
+
+        assert!(result.contains("X10") || result.contains("X10."));
+        assert!(result.contains("Y20") || result.contains("Y20."));
+    }
+
+    #[test]
+    fn test_remove_redundant_whitespace_basic() {
+        let gcode = "G1   X10    Y20    Z5";
+        let result = remove_redundant_whitespace(gcode);
+
+        assert_eq!(result.trim(), "G1 X10 Y20 Z5");
+    }
+
+    #[test]
+    fn test_remove_redundant_whitespace_multi_line() {
+        let gcode = "G0   X0   Y0  \nG1    X10   Y10   F500\n\nG1  X20  Y20";
+        let result = remove_redundant_whitespace(gcode);
+
+        // Should remove excessive whitespace but preserve structure
+        assert!(result.contains("G0 X0 Y0"));
+        assert!(result.contains("G1 X10 Y10 F500"));
+    }
+
+    #[test]
+    fn test_remove_redundant_whitespace_preserves_comments() {
+        let gcode = "G1 X10 Y10 ; Move   to   position";
+        let result = remove_redundant_whitespace(gcode);
+
+        assert!(result.contains("; Move"));
+    }
+
+    #[test]
+    fn test_remove_redundant_whitespace_removes_empty_lines() {
+        let gcode = "G1 X10 Y10\n\n\nG1 X20 Y20\n\n";
+        let result = remove_redundant_whitespace(gcode);
+
+        let lines: Vec<&str> = result.lines().collect();
+        // Empty lines should be removed or consolidated
+        assert!(lines.len() <= 2);
+    }
+
+    #[test]
+    fn test_convert_arcs_to_lines_basic() {
+        let gcode = "G90\nG0 X10 Y10\nG2 X20 Y20 I5 J0 F500";
+        let result = convert_arcs_to_lines(gcode, 0.05);
+
+        // Should replace G2 with G1 segments
+        assert!(result.contains("G1"));
+        assert!(!result.contains("G2"));
+    }
+
+    #[test]
+    fn test_convert_arcs_to_lines_preserves_non_arc_moves() {
+        let gcode = "G0 X0 Y0\nG1 X10 Y10\nG2 X20 Y20 I5 J0\nG1 X30 Y30";
+        let result = convert_arcs_to_lines(gcode, 0.05);
+
+        assert!(result.contains("G0 X0 Y0"));
+        assert!(result.contains("G1 X10 Y10"));
+        assert!(result.contains("G1 X30 Y30"));
+    }
+
+    #[test]
+    fn test_convert_arcs_to_lines_maintains_feed_rate() {
+        let gcode = "G90\nG2 X20 Y20 I10 J0 F1000";
+        let result = convert_arcs_to_lines(gcode, 0.05);
+
+        // Feed rate should be maintained in converted segments
+        assert!(result.contains("F1000"));
+    }
+
+    #[test]
+    fn test_convert_arcs_to_lines_g3_counterclockwise() {
+        let gcode = "G90\nG0 X10 Y10\nG3 X20 Y20 I5 J0";
+        let result = convert_arcs_to_lines(gcode, 0.05);
+
+        // Should convert G3 (CCW arc) to line segments
+        assert!(result.contains("G1"));
+        assert!(!result.contains("G3"));
+    }
+
+    #[test]
+    fn test_optimization_combination() {
+        let gcode = "G90\nG1   X10.12345   Y20.98765   F1000\n\nG1  X30.11111  Y40.22222";
+        let result = remove_redundant_whitespace(gcode);
+        let result = truncate_decimal_precision(&result, 2);
+
+        // Should have both optimizations applied
+        assert!(result.contains("10.12"));
+        assert!(result.contains("20.98"));
+        assert!(result.contains("30.11"));
+        assert!(result.contains("40.22"));
+        // Should not have excessive whitespace
+        assert!(!result.contains("   "));
+    }
+
+    #[test]
+    fn test_optimization_empty_gcode() {
+        let gcode = "";
+        let result1 = remove_redundant_whitespace(gcode);
+        let result2 = truncate_decimal_precision(gcode, 3);
+        let result3 = convert_arcs_to_lines(gcode, 0.05);
+
+        assert_eq!(result1.trim(), "");
+        assert_eq!(result2.trim(), "");
+        assert_eq!(result3.trim(), "");
+    }
+
+    #[test]
+    fn test_optimization_only_comments() {
+        let gcode = "; This is a comment\n; Another comment";
+        let result = remove_redundant_whitespace(gcode);
+
+        // Comments should be preserved
+        assert!(result.contains("; This is a comment"));
+        assert!(result.contains("; Another comment"));
+    }
+
+    #[test]
+    fn test_decimal_precision_preserves_g_codes() {
+        let gcode = "G90\nG21\nG1 X10.123 Y20.456";
+        let result = truncate_decimal_precision(gcode, 1);
+
+        assert!(result.contains("G90"));
+        assert!(result.contains("G21"));
+        assert!(result.contains("G1"));
+    }
+
+    #[test]
+    fn test_arc_conversion_with_negative_coords() {
+        let gcode = "G90\nG0 X-10 Y-10\nG2 X-20 Y-20 I-5 J0";
+        let result = convert_arcs_to_lines(gcode, 0.05);
+
+        assert!(result.contains("G1"));
+        // Negative coordinates should be preserved
+        assert!(result.contains("-"));
+    }
+}

@@ -21,54 +21,63 @@ impl GcodeKitApp {
         self.gcode_editor.parsed_paths = crate::gcode::parse_gcode(&self.gcode.gcode_content);
     }
 
-    /// Optimizes the currently loaded G-code by removing comments, empty lines,
-    /// and redundant commands. Currently performs basic cleanup operations.
+    /// Optimizes the currently loaded G-code with advanced techniques including
+    /// decimal precision truncation, arc-to-line conversion, and whitespace removal.
+    /// Supports multiple optimization passes with configurable parameters.
     pub fn optimize_gcode(&mut self) {
+        self.optimize_gcode_with_options(3, 0.05, true, true);
+    }
+
+    /// Optimizes G-code with configurable parameters for advanced optimization.
+    ///
+    /// # Arguments
+    /// * `decimal_places` - Number of decimal places to retain (typically 3-4)
+    /// * `arc_tolerance` - Maximum deviation in mm for arc-to-line conversion
+    /// * `convert_arcs` - Whether to convert G2/G3 arcs to line segments
+    /// * `remove_whitespace` - Whether to remove redundant whitespace
+    pub fn optimize_gcode_with_options(
+        &mut self,
+        decimal_places: u32,
+        arc_tolerance: f32,
+        convert_arcs: bool,
+        remove_whitespace: bool,
+    ) {
         if self.gcode.gcode_content.is_empty() {
             self.machine.status_message = "No G-code to optimize".to_string();
             return;
         }
 
-        let original_lines = self.gcode.gcode_content.lines().count();
-        let mut optimized_lines = Vec::new();
+        let original_content = self.gcode.gcode_content.clone();
+        let original_size = original_content.len();
+        let original_lines = original_content.lines().count();
 
-        for line in self.gcode.gcode_content.lines() {
-            let line = line.trim();
+        let mut optimized = original_content.clone();
 
-            // Skip empty lines and comments
-            if line.is_empty() || line.starts_with(';') {
-                continue;
-            }
-
-            // Remove inline comments
-            let line = if let Some(comment_pos) = line.find(';') {
-                line[..comment_pos].trim()
-            } else {
-                line
-            };
-
-            if line.is_empty() {
-                continue;
-            }
-
-            // For now, just keep the line as-is (decimal truncation would be more complex)
-            optimized_lines.push(line.to_string());
+        // Step 1: Remove redundant whitespace
+        if remove_whitespace {
+            optimized = crate::gcode::remove_redundant_whitespace(&optimized);
         }
 
-        self.gcode.gcode_content = optimized_lines.join("\n");
-        self.sync_gcode_to_editor();
-        self.parse_gcode(); // Re-parse the optimized G-code
+        // Step 2: Convert arcs to lines if requested
+        if convert_arcs {
+            optimized = crate::gcode::convert_arcs_to_lines(&optimized, arc_tolerance);
+        }
 
-        let optimized_line_count = optimized_lines.len();
+        // Step 3: Truncate decimal precision
+        optimized = crate::gcode::truncate_decimal_precision(&optimized, decimal_places);
+
+        self.gcode.gcode_content = optimized;
+        self.sync_gcode_to_editor();
+        self.parse_gcode();
+
+        let final_size = self.gcode.gcode_content.len();
+        let final_lines = self.gcode.gcode_content.lines().count();
+        let size_reduction = ((original_size as f32 - final_size as f32) / original_size as f32 * 100.0).max(0.0);
+
         self.machine.status_message = format!(
-            "G-code optimized: {} -> {} lines",
-            original_lines, optimized_line_count
+            "G-code optimized: {} -> {} lines, {} -> {} bytes ({:.1}% reduction)",
+            original_lines, final_lines, original_size, final_size, size_reduction
         );
-        // TODO: log_console needs to be accessible
-        // self.log_console(&format!(
-        //     "Optimized G-code: removed {} lines",
-        //     original_lines - optimized_line_count
-        // ));
     }
 
     /// Generates G-code for cutting a rectangular shape.
