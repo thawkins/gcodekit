@@ -133,17 +133,121 @@ impl GcodeKitApp {
         }
     }
 
-    /// Exports the current design from the designer module to G-code.
-    /// Currently a placeholder - full implementation is TODO.
-    pub fn export_design_to_gcode(&mut self) {
-        // TODO: Implement design export
-        self.machine.status_message = "Exporting design to G-code...".to_string();
+    /// Exports the current design to a JSON file for later editing.
+    /// Saves G-code and CAM parameters in a portable format.
+    pub fn export_design_to_file(&mut self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Design files", &["design", "json"])
+            .set_file_name("design.json")
+            .save_file()
+        {
+            // Create design export object with G-code and CAM settings
+            let design_data = serde_json::json!({
+                "version": "1.0",
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "gcode": {
+                    "filename": self.gcode.gcode_filename,
+                    "content": self.gcode.gcode_content,
+                    "lines": self.gcode.gcode_content.lines().count(),
+                },
+                "cam": {
+                    "tool_feed_rate": self.cam.tool_feed_rate,
+                    "tool_spindle_speed": self.cam.tool_spindle_speed,
+                    "image_resolution": self.cam.image_resolution,
+                    "image_max_power": self.cam.image_max_power,
+                }
+            });
+
+            match std::fs::write(&path, serde_json::to_string_pretty(&design_data).unwrap_or_default()) {
+                Ok(_) => {
+                    self.machine.status_message = format!("Design exported to {}", path.display());
+                    self.log_console(&format!("Design exported: {}", path.display()));
+                }
+                Err(e) => {
+                    self.machine.status_message = format!("Export failed: {}", e);
+                    self.log_console(&format!("Export error: {}", e));
+                }
+            }
+        }
     }
 
-    /// Imports a design file for editing in the designer module.
-    /// Currently a placeholder - full implementation is TODO.
+    /// Imports a design file (JSON format) for editing.
+    /// Restores G-code and CAM parameters from saved design.
     pub fn import_design_file(&mut self) {
-        // TODO: Implement design import
-        self.machine.status_message = "Importing design file...".to_string();
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Design files", &["design", "json"])
+            .pick_file()
+        {
+            match std::fs::read_to_string(&path) {
+                Ok(content) => {
+                    match serde_json::from_str::<serde_json::Value>(&content) {
+                        Ok(design_data) => {
+                            // Restore G-code if present
+                            if let Some(gcode) = design_data.get("gcode") {
+                                if let Some(filename) = gcode.get("filename").and_then(|v| v.as_str()) {
+                                    self.gcode.gcode_filename = filename.to_string();
+                                }
+                                if let Some(gcode_content) = gcode.get("content").and_then(|v| v.as_str()) {
+                                    self.gcode.gcode_content = gcode_content.to_string();
+                                    self.sync_gcode_to_editor();
+                                }
+                            }
+
+                            // Restore CAM parameters if present
+                            if let Some(cam) = design_data.get("cam") {
+                                if let Some(feed) = cam.get("tool_feed_rate").and_then(|v| v.as_f64()) {
+                                    self.cam.tool_feed_rate = feed as f32;
+                                }
+                                if let Some(speed) = cam.get("tool_spindle_speed").and_then(|v| v.as_f64()) {
+                                    self.cam.tool_spindle_speed = speed as f32;
+                                }
+                                if let Some(res) = cam.get("image_resolution").and_then(|v| v.as_f64()) {
+                                    self.cam.image_resolution = res as f32;
+                                }
+                                if let Some(power) = cam.get("image_max_power").and_then(|v| v.as_f64()) {
+                                    self.cam.image_max_power = power as f32;
+                                }
+                            }
+
+                            self.machine.status_message = format!("Design imported from {}", path.display());
+                            self.log_console(&format!("Design imported: {}", path.display()));
+                        }
+                        Err(e) => {
+                            self.machine.status_message = format!("Invalid design file: {}", e);
+                            self.log_console(&format!("JSON parse error: {}", e));
+                        }
+                    }
+                }
+                Err(e) => {
+                    self.machine.status_message = format!("Error reading file: {}", e);
+                    self.log_console(&format!("File read error: {}", e));
+                }
+            }
+        }
+    }
+
+    /// Exports the current G-code to a file.
+    pub fn export_gcode_to_file(&mut self) {
+        if self.gcode.gcode_content.is_empty() {
+            self.machine.status_message = "No G-code to export".to_string();
+            return;
+        }
+
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("G-code files", &["gcode", "nc", "txt"])
+            .set_file_name(&self.gcode.gcode_filename)
+            .save_file()
+        {
+            match std::fs::write(&path, &self.gcode.gcode_content) {
+                Ok(_) => {
+                    self.machine.status_message = format!("G-code exported to {}", path.display());
+                    self.log_console(&format!("G-code exported: {} bytes", self.gcode.gcode_content.len()));
+                }
+                Err(e) => {
+                    self.machine.status_message = format!("Export failed: {}", e);
+                    self.log_console(&format!("Export error: {}", e));
+                }
+            }
+        }
     }
 }

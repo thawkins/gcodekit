@@ -8,7 +8,7 @@ pub fn show_designer_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     if let Some(event) = app.designer.show_ui(ui) {
         match event {
             crate::designer::DesignerEvent::ExportGcode => {
-                app.export_design_to_gcode();
+                app.export_gcode_to_file();
             }
             crate::designer::DesignerEvent::ImportFile => {
                 app.import_design_file();

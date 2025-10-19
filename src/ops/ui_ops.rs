@@ -22,7 +22,7 @@ impl GcodeKitApp {
                 self.save_gcode_file();
             }
             Action::ExportGcode => {
-                self.export_design_to_gcode();
+                self.export_gcode_to_file();
             }
             Action::ImportVector => {
                 self.import_vector_file();
