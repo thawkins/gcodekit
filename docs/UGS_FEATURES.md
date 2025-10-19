@@ -23,7 +23,6 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 - Advanced probing routines
 - Tool management system
 - Machine calibration tools
-- Firmware management
 - Settings backup/restore
 - Web pendant interface
 
@@ -155,24 +154,7 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 - Automated calibration procedures
 - Calibration history tracking
 
-### 13.2 Firmware Management
-**Priority: MEDIUM** | **Effort: 1 month**
 
-**Objectives:**
-- Firmware version detection
-- Firmware update capabilities
-- Backup/restore functionality
-- Firmware-specific feature detection
-
-**Deliverables:**
-- Firmware manager interface
-- Update progress tracking
-- Configuration backup/restore
-- Version compatibility checking
-
-**Success Metrics:**
-- Support for GRBL v1.1+ compatibility
-- Configuration migration support
 
 ### 13.3 Settings Management
 **Priority: LOW** | **Effort: 0.5 months**
@@ -286,7 +268,6 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 - **Database** for settings and profiles (SQLite/Rusqlite)
 
 ### External Dependencies
-- **Controller Firmware Specs** for all supported controllers
 - **G-code Standards** documentation
 - **USB/Serial Libraries** for device communication
 - **Web Standards** for pendant interface

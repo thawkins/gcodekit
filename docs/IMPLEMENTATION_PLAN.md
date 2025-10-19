@@ -112,7 +112,6 @@ Add advanced system integration capabilities.
 
 **Key Deliverables:**
 - Web pendant interface
-- Firmware management system
 
 **Success Metrics:**
 - Full-featured web pendant interface
