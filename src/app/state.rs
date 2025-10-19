@@ -342,8 +342,6 @@ mod tests {
     fn test_gcode_state_initialization() {
         let app = GcodeKitApp::default();
         assert_eq!(app.gcode.gcode_content, "");
-        // filename may be empty or have default value
-        assert!(true);
     }
 
     #[test]

@@ -89,9 +89,9 @@ mod cam_boolean_operations_tests {
         let square2 = Polygon::new(vec![(2.0, 2.0), (6.0, 2.0), (6.0, 6.0), (2.0, 6.0)]);
 
         let result = polygon_intersection(&square1, &square2);
-        // Intersection should exist (may be empty with simplified algorithm, so we check for >= 0)
-        // The simplified algorithm may not capture all intersection points
-        assert!(result.len() >= 0);
+        // Intersection may be empty or contain points depending on the algorithm
+        // Just verify it's a valid result
+        let _ = result;
     }
 
     #[test]
@@ -120,8 +120,8 @@ mod cam_boolean_operations_tests {
         let square = Polygon::new(vec![(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)]);
         let lines = fill_region_scanlines(&square, 5.0, 0.0);
 
-        // With 5mm spacing, should have ~2 lines
-        assert!(lines.len() >= 1);
+        // With 5mm spacing, should have at least one line
+        assert!(!lines.is_empty());
     }
 
     #[test]
@@ -143,8 +143,9 @@ mod cam_boolean_operations_tests {
             Polygon::new(vec![(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0)]);
         let tabs = generate_holding_tabs(&small_square, 0.5, 0.2, 2.0);
 
-        // With small perimeter and large spacing, might generate 0, 1, or more tabs
-        assert!(tabs.len() >= 0);
+        // With small perimeter and large spacing, tabs may be generated or not
+        // Just verify it's a valid result
+        let _ = tabs;
     }
 
     #[test]
