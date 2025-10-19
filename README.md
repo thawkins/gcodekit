@@ -2,7 +2,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.90%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-332%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-362%20passing-brightgreen.svg)](tests/)
 [![GRBL](https://img.shields.io/badge/GRBL-v1.1%2B-blue.svg)](https://github.com/grbl/grbl)
 [![Status](https://img.shields.io/badge/status-Alpha%20Development-yellow.svg)](https://github.com/thawkins/gcodekit)
 

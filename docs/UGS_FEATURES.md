@@ -171,8 +171,7 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 - Version compatibility checking
 
 **Success Metrics:**
-- Support for GRBL v1.1+ updates
-- Safe firmware update procedures
+- Support for GRBL v1.1+ compatibility
 - Configuration migration support
 
 ### 13.3 Settings Management
@@ -306,9 +305,8 @@ This roadmap outlines the path to achieve full Universal G-Code Sender (UGS) fea
 2. **Web Pendant Performance**: Real-time control over network latency
 
 ### Medium Risk Items
-1. **Firmware Update Safety**: Preventing bricked controllers
-2. **Settings Compatibility**: Migration between firmware versions
-3. **Performance Scaling**: Maintaining responsiveness with advanced features
+1. **Settings Compatibility**: Migration between GRBL versions
+2. **Performance Scaling**: Maintaining responsiveness with advanced features
 
 ## Success Metrics
 

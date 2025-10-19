@@ -164,14 +164,6 @@ let shared_data = Arc::new(expensive_data);
 
 **Key unimplemented areas:**
 
-**Firmware Updates (`src/firmware/mod.rs`):**
-```rust
-// TODO: Implement checking for firmware updates from remote sources
-// TODO: Implement firmware download functionality
-// TODO: Implement firmware flashing for different controller types
-// TODO: Implement version comparison logic
-```
-
 **Image Processing (`src/ops/file_ops.rs`, `src/ops/gcode_ops.rs`):**
 ```rust
 // TODO: Implement actual image processing

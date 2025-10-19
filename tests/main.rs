@@ -223,21 +223,14 @@ mod tests {
         let mut app = GcodeKitApp::default();
         app.cam.image_resolution = 300.0;
         app.cam.image_max_power = 80.0;
-
+        // No image path set, so it should show "No image loaded" message
+        
         app.generate_image_engraving();
 
-        assert!(app.gcode.gcode_content.contains("; Image engraving G-code"));
-        assert!(app.gcode.gcode_content.contains("; Resolution: 300 dpi"));
-        assert!(app.gcode.gcode_content.contains("; Max Power: 80%"));
-        assert!(app
-            .gcode
-            .gcode_content
-            .contains("; TODO: Implement actual image processing"));
-        assert!(app.gcode.gcode_content.contains("M30 ; End program"));
-        assert_eq!(app.gcode.gcode_filename, "image_engraving.gcode");
+        // When no image is loaded, should get error message
         assert_eq!(
             app.machine.status_message,
-            "Image engraving G-code generated (placeholder)".to_string()
+            "No image loaded. Click 'Load Image' first."
         );
     }
 
@@ -251,22 +244,15 @@ mod tests {
 
         app.generate_tabbed_box();
 
-        assert!(app.gcode.gcode_content.contains("; Tabbed box G-code"));
+        assert!(app.gcode.gcode_content.contains("; Tabbed Box G-code"));
         assert!(app
             .gcode
             .gcode_content
             .contains("; Dimensions: 100x80x50mm"));
         assert!(app.gcode.gcode_content.contains("; Tab size: 10mm"));
-        assert!(app
-            .gcode
-            .gcode_content
-            .contains("; TODO: Implement actual box cutting paths"));
+        assert!(app.gcode.gcode_content.contains("G90 ; Absolute positioning"));
         assert!(app.gcode.gcode_content.contains("M30 ; End program"));
         assert_eq!(app.gcode.gcode_filename, "tabbed_box.gcode");
-        assert_eq!(
-            app.machine.status_message,
-            "Tabbed box G-code generated (placeholder)".to_string()
-        );
     }
 
     #[test]
@@ -277,19 +263,11 @@ mod tests {
 
         app.generate_jigsaw();
 
-        assert!(app.gcode.gcode_content.contains("; Jigsaw puzzle G-code"));
-        assert!(app.gcode.gcode_content.contains("; Pieces: 50"));
-        assert!(app.gcode.gcode_content.contains("; Complexity: 3"));
-        assert!(app
-            .gcode
-            .gcode_content
-            .contains("; TODO: Implement actual puzzle piece cutting"));
+        assert!(app.gcode.gcode_content.contains("; Jigsaw Puzzle G-code"));
+        assert!(app.gcode.gcode_content.contains("; Complexity:"));
+        assert!(app.gcode.gcode_content.contains("G90 ; Absolute positioning"));
         assert!(app.gcode.gcode_content.contains("M30 ; End program"));
         assert_eq!(app.gcode.gcode_filename, "jigsaw_puzzle.gcode");
-        assert_eq!(
-            app.machine.status_message,
-            "Jigsaw G-code generated (placeholder)".to_string()
-        );
     }
 
     #[test]

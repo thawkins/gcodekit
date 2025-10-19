@@ -269,7 +269,6 @@ ui.colored_label(color, format!("{} {}", icon, message));
 **Status Updates**:
 - 250ms poll interval (4 updates/second)
 - History buffer limited to 300 samples (~75 seconds)
-- Anomaly detection O(n) over history
 - No lock contention (async/await)
 
 **Console Messages**:
@@ -353,10 +352,6 @@ ui.colored_label(color, format!("{} {}", icon, message));
    - Severity-based filtering for focused debugging
    - Message history preserved across filter changes
    - Color and emoji indicators for quick scanning
-
-3. **Anomaly Detection**:
-   - Tracks historical status data for debugging
-   - Available for integration with future diagnostic features
 
 ---
 
