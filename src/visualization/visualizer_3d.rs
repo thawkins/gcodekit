@@ -189,7 +189,7 @@ impl Visualizer3DState {
         let max_dim = self.stock_x.max(self.stock_y).max(self.stock_z);
         // Default grid size is 100, so scale accordingly
         self.zoom = if max_dim > 0.0 {
-            (100.0 / max_dim * 0.7).clamp(0.1, 5.0)
+            (100.0 / max_dim * 0.7).clamp(0.1, 25.0)
         } else {
             1.0
         };

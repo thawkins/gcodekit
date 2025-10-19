@@ -57,7 +57,7 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
 
         ui.label("Zoom:");
         ui.add(
-            egui::Slider::new(&mut vis_state.zoom, 0.1..=5.0)
+            egui::Slider::new(&mut vis_state.zoom, 0.1..=25.0)
                 .step_by(0.1)
                 .drag_value_speed(0.01),
         );
@@ -165,7 +165,7 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         if scroll_delta != 0.0 {
             // Scroll up (positive delta) = zoom in, scroll down (negative delta) = zoom out
             let zoom_factor = 0.1;
-            vis_state.zoom = (vis_state.zoom + scroll_delta * zoom_factor * 0.01).clamp(0.1, 5.0);
+            vis_state.zoom = (vis_state.zoom + scroll_delta * zoom_factor * 0.01).clamp(0.1, 25.0);
         }
     }
 
