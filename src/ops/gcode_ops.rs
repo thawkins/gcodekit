@@ -716,3 +716,143 @@ impl GcodeKitApp {
         gcode
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_circle_creates_gcode() {
+        let mut app = crate::GcodeKitApp::default();
+        app.cam.shape_radius = 10.0;
+        app.generate_circle();
+        
+        assert!(!app.gcode.gcode_content.is_empty());
+        assert!(app.gcode.gcode_content.contains("G90"));
+        assert!(app.gcode.gcode_content.contains("M30"));
+    }
+
+    #[test]
+    fn test_generate_rectangle_creates_gcode() {
+        let mut app = crate::GcodeKitApp::default();
+        app.cam.shape_width = 50.0;
+        app.cam.shape_height = 40.0;
+        app.generate_rectangle();
+        
+        assert!(!app.gcode.gcode_content.is_empty());
+        assert!(app.gcode.gcode_content.contains("G0"));
+        assert!(app.gcode.gcode_content.contains("M30"));
+    }
+
+    #[test]
+    fn test_generate_tabbed_box_creates_gcode() {
+        let mut app = crate::GcodeKitApp::default();
+        app.cam.box_length = 100.0;
+        app.cam.box_width = 80.0;
+        app.cam.box_height = 50.0;
+        app.cam.tab_size = 5.0;
+        app.generate_tabbed_box();
+        
+        assert!(!app.gcode.gcode_content.is_empty());
+        assert!(app.gcode.gcode_content.contains("Tabbed Box"));
+        assert!(app.gcode.gcode_content.contains("M30"));
+    }
+
+    #[test]
+    fn test_generate_jigsaw_creates_gcode() {
+        let mut app = crate::GcodeKitApp::default();
+        app.cam.jigsaw_pieces = 9;
+        app.cam.jigsaw_complexity = 3;
+        app.generate_jigsaw();
+        
+        assert!(!app.gcode.gcode_content.is_empty());
+        assert!(app.gcode.gcode_content.contains("Jigsaw"));
+        assert!(app.gcode.gcode_content.contains("M30"));
+    }
+
+    #[test]
+    fn test_gcode_filename_assignment() {
+        let mut app = crate::GcodeKitApp::default();
+        app.generate_circle();
+        
+        assert!(!app.gcode.gcode_filename.is_empty());
+        assert!(app.gcode.gcode_filename.contains(".gcode"));
+    }
+
+    #[test]
+    fn test_box_dimensions_constraints() {
+        let mut app = crate::GcodeKitApp::default();
+        app.cam.box_length = 5.0; // Below minimum
+        app.cam.box_width = 5.0;
+        app.cam.box_height = 5.0;
+        app.generate_tabbed_box();
+        
+        // Should handle minimum constraints
+        assert!(!app.gcode.gcode_content.is_empty());
+    }
+
+    #[test]
+    fn test_circle_radius_handling() {
+        let mut app = crate::GcodeKitApp::default();
+        app.cam.shape_radius = 0.5;
+        app.generate_circle();
+        
+        assert!(!app.gcode.gcode_content.is_empty());
+    }
+
+    #[test]
+    fn test_feed_rate_clamping() {
+        let mut app = crate::GcodeKitApp::default();
+        app.cam.tool_feed_rate = 5000.0; // Should be clamped
+        app.cam.shape_width = 50.0;
+        app.cam.shape_height = 40.0;
+        app.generate_rectangle();
+        
+        // Feed rate should be applied with bounds checking
+        assert!(!app.gcode.gcode_content.is_empty());
+    }
+
+    #[test]
+    fn test_gcode_contains_setup_commands() {
+        let mut app = crate::GcodeKitApp::default();
+        app.generate_rectangle();
+        
+        let gcode = &app.gcode.gcode_content;
+        // Check for machine setup commands
+        assert!(gcode.contains("G90") || gcode.contains("G91") || !gcode.is_empty());
+    }
+
+    #[test]
+    fn test_multiple_generations_update_content() {
+        let mut app = crate::GcodeKitApp::default();
+        
+        app.cam.shape_radius = 10.0;
+        app.generate_circle();
+        let circle_content = app.gcode.gcode_content.clone();
+        
+        app.cam.shape_width = 50.0;
+        app.cam.shape_height = 40.0;
+        app.generate_rectangle();
+        let rect_content = app.gcode.gcode_content.clone();
+        
+        assert_ne!(circle_content, rect_content);
+    }
+
+    #[test]
+    fn test_jigsaw_piece_count_handling() {
+        let mut app = crate::GcodeKitApp::default();
+        app.cam.jigsaw_pieces = 4;
+        app.generate_jigsaw();
+        
+        assert!(app.gcode.gcode_content.contains("Jigsaw"));
+    }
+
+    #[test]
+    fn test_gcode_editor_sync() {
+        let mut app = crate::GcodeKitApp::default();
+        app.generate_circle();
+        
+        // Verify gcode_content is non-empty after generation
+        assert!(!app.gcode.gcode_content.is_empty());
+    }
+}

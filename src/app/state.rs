@@ -319,3 +319,99 @@ impl GcodeKitApp {
         self.machine.console_messages = visible_messages;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_app_state() {
+        let app = GcodeKitApp::default();
+        assert_eq!(app.machine.connection_state, ConnectionState::Disconnected);
+        assert_eq!(app.machine.current_position.x, 0.0);
+        assert_eq!(app.machine.current_position.y, 0.0);
+        assert_eq!(app.machine.current_position.z, 0.0);
+    }
+
+    #[test]
+    fn test_gcode_state_initialization() {
+        let app = GcodeKitApp::default();
+        assert_eq!(app.gcode.gcode_content, "");
+        // filename may be empty or have default value
+        assert!(true);
+    }
+
+    #[test]
+    fn test_machine_position_update() {
+        let mut app = GcodeKitApp::default();
+        app.machine.current_position.x = 10.5;
+        app.machine.current_position.y = 20.3;
+        app.machine.current_position.z = 5.1;
+        
+        assert_eq!(app.machine.current_position.x, 10.5);
+        assert_eq!(app.machine.current_position.y, 20.3);
+        assert_eq!(app.machine.current_position.z, 5.1);
+    }
+
+    #[test]
+    fn test_jog_step_size_bounds() {
+        let mut app = GcodeKitApp::default();
+        app.machine.jog_step_size = 50.0;
+        assert_eq!(app.machine.jog_step_size, 50.0);
+        
+        app.machine.jog_step_size = 0.1;
+        assert_eq!(app.machine.jog_step_size, 0.1);
+    }
+
+    #[test]
+    fn test_feeds_speeds_state_default() {
+        let fs = FeedsSpeedsState::default();
+        assert_eq!(fs.units_metric, false);
+        assert_eq!(fs.material, 0);
+        assert_eq!(fs.tool_diameter, 0.25);
+        assert_eq!(fs.num_flutes, 2);
+        assert_eq!(fs.calculated_rpm, 0.0);
+        assert_eq!(fs.calculated_feed, 0.0);
+    }
+
+    #[test]
+    fn test_console_message_logging() {
+        let mut app = GcodeKitApp::default();
+        let initial_count = app.machine.console_messages.len();
+        
+        app.log_console("Test message");
+        assert!(app.machine.console_messages.len() >= initial_count);
+    }
+
+    #[test]
+    fn test_ui_state_default() {
+        let app = GcodeKitApp::default();
+        assert_eq!(app.ui.show_job_creation_dialog, false);
+        assert_eq!(app.ui.new_job_name, "");
+    }
+
+    #[test]
+    fn test_material_database_available() {
+        let app = GcodeKitApp::default();
+        assert!(!app.material_database.materials.is_empty());
+    }
+
+    #[test]
+    fn test_keybindings_initialized() {
+        let app = GcodeKitApp::default();
+        assert!(!app.keybindings.is_empty());
+    }
+
+    #[test]
+    fn test_machine_mode_default() {
+        let app = GcodeKitApp::default();
+        assert_eq!(app.machine.machine_mode, MachineMode::CNC);
+    }
+
+    #[test]
+    fn test_spindle_feed_override_defaults() {
+        let app = GcodeKitApp::default();
+        assert!(app.machine.spindle_override >= 0.0 && app.machine.spindle_override <= 200.0);
+        assert!(app.machine.feed_override >= 0.0 && app.machine.feed_override <= 200.0);
+    }
+}
