@@ -51,18 +51,12 @@
    - Check active_severities Vec
    - Check filtering logic
 
-3. **Remove anomaly detection UI** (NEW REQUEST)
-   - Remove AnomalyType enum
-   - Remove Anomaly struct  
-   - Remove detect_anomalies() function
-   - Remove any UI display of anomalies
+3. **Verify final integration**
+   - Check all components working together
+   - Verify performance metrics met
 
-4. **Verify tracing integration**
-   - Check that tracing output logs to console
-   - Verify severity levels work
-
-5. **Test and validate**
-   - All 223 tests still pass
+4. **Test and validate**
+   - All tests still pass
    - No compilation warnings
    - Build succeeds
 

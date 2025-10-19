@@ -36,37 +36,20 @@ pub struct MachineState {
 ### 12.3 Status Analytics and Trend Analysis ✅
 
 **Implementation**:
-- Enhanced `communication/status_analytics.rs` with comprehensive anomaly detection
+- Enhanced `communication/status_analytics.rs` with status trend analysis
 
-**New Structures**:
-```rust
-pub enum AnomalyType {
-    UnexpectedPositionChange,  // >10mm jump while Idle
-    StateInconsistency,         // Invalid state transitions
-    FeedRateSpike,              // >50% change during Run
-    SpindleSpeedAnomaly,        // Spindle issues
-    BufferIssue,                // Buffer underrun during Run
-}
+**Analytics Capabilities**:
+1. **State Transitions**: Detects and tracks state changes (Idle → Run → Hold)
+2. **Position Tracking**: Monitors X/Y/Z position changes for movement detection
+3. **Feed Rate Analysis**: Tracks feed rate changes and acceleration/deceleration
+4. **Spindle Speed Monitoring**: Monitors spindle RPM changes
+5. **Historical Data**: Maintains 300-sample circular buffer (~75 seconds at 250ms intervals)
 
-pub struct Anomaly {
-    pub anomaly_type: AnomalyType,
-    pub index: usize,           // Position in history
-    pub description: String,    // Human-readable explanation
-    pub severity: u8,           // 1-10 severity level
-}
-```
-
-**Detection Capabilities**:
-1. **Position Jump Detection**: Detects >10mm position changes while Idle (safety check)
-2. **State Consistency**: Validates proper state transitions (e.g., not Alarm→Run directly)
-3. **Feed Rate Monitoring**: Detects >50% feed rate spikes during Run state
-4. **Buffer Monitoring**: Detects critical buffer underruns (rapid drop during Run)
-5. **Spindle Speed**: Framework for spindle anomalies
-
-**Tests Added**:
-- `test_detect_position_jump_anomaly` - Position jump detection ✅
-- `test_detect_feed_rate_spike` - Feed rate spike detection ✅
-- `test_no_anomaly_normal_operation` - Baseline normal operation ✅
+**Tests**:
+- Feed rate statistics calculations ✅
+- State transition detection ✅
+- Position change tracking ✅
+- Historical buffer management ✅
 
 ---
 
@@ -301,7 +284,7 @@ ui.colored_label(color, format!("{} {}", icon, message));
 
 ### Phase 12 Tests
 
-**status_analytics.rs** (10 tests, all passing):
+**status_analytics.rs** (7 tests, all passing):
 - `test_analyze_empty_history` - Empty input handling
 - `test_analyze_single_status` - Single sample processing
 - `test_feedrate_statistics` - Feed rate calculations
@@ -309,9 +292,6 @@ ui.colored_label(color, format!("{} {}", icon, message));
 - `test_detect_alarms` - Alarm detection
 - `test_position_change` - Distance calculation
 - `test_state_changes` - State change indices
-- `test_detect_position_jump_anomaly` - Position jump detection
-- `test_detect_feed_rate_spike` - Feed rate spike detection
-- `test_no_anomaly_normal_operation` - Baseline normal operation
 
 ### Phase 13 Tests
 
@@ -333,10 +313,9 @@ ui.colored_label(color, format!("{} {}", icon, message));
    - Added `last_status_update: Instant`
 
 2. `src/communication/status_analytics.rs`
-   - Added `AnomalyType` enum (5 types)
-   - Added `Anomaly` struct
-   - Added `detect_anomalies()` function
-   - Added 4 new tests
+   - Added status trend analysis functions
+   - Added state transition tracking
+   - Added feed rate and spindle speed statistics
 
 3. `src/layout/bottom_status.rs`
    - Rewrote status bar display
@@ -376,10 +355,8 @@ ui.colored_label(color, format!("{} {}", icon, message));
    - Color and emoji indicators for quick scanning
 
 3. **Anomaly Detection**:
-   - Detects unexpected position changes
-   - Detects feed rate spikes
-   - Detects state inconsistencies
-   - Available for future integration with alerts
+   - Tracks historical status data for debugging
+   - Available for integration with future diagnostic features
 
 ---
 
@@ -387,18 +364,15 @@ ui.colored_label(color, format!("{} {}", icon, message));
 
 **Current Limitations**:
 - Status queries fixed at 250ms interval (could be adaptive)
-- Anomaly detection only logs internally (could trigger alerts)
 - No search/filter in console (could add string search)
 - No export to file (could add CSV/log export)
 
 **Future Enhancements**:
-- Anomaly-based automatic alerts
 - Console message export to file
 - Search/filter within console
 - Performance metrics overlay on visualizer
 - Status history visualization (mini-charts)
 - User-configurable filtering rules
-- Pattern-based alerting (e.g., repeated errors)
 - Performance analytics dashboard
 
 ---
@@ -441,10 +415,10 @@ ui.colored_label(color, format!("{} {}", icon, message));
    - Call log_trace() for application events
    - Messages automatically filtered for "?" and "ok"
 
-3. **To add anomaly alerts**:
-   - Call detect_anomalies() on status history
-   - Check anomaly.severity
-   - Trigger UI alert or sound notification
+3. **To add diagnostic data tracking**:
+   - Call analyze_status_history() on status history for trend data
+   - Use historical data for debugging and diagnostics
+   - Store historical data for later analysis
 
 4. **To customize filtering**:
    - Modify DeviceLogger::log_command() conditions

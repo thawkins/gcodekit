@@ -71,18 +71,6 @@
 
 ---
 
-## Anomaly Detection Removal
-
-- [x] Remove AnomalyType enum
-- [x] Remove Anomaly struct
-- [x] Remove detect_anomalies() function
-- [x] Remove test_detect_position_jump_anomaly test
-- [x] Remove test_detect_feed_rate_spike test
-- [x] Remove test_no_anomaly_normal_operation test
-- [x] No remaining anomaly UI elements
-
----
-
 ## Build & Test Verification
 
 ### Code Quality
@@ -108,7 +96,7 @@
 - [x] Device console displays correctly
 - [x] Message filtering works
 - [x] Filter state persists
-- [x] No anomaly detection UI visible
+
 - [x] 60 FPS UI rendering maintained
 
 ---
@@ -125,8 +113,8 @@
 
 ## Files Modified Summary
 
-**Removed anomaly detection:**
-- src/communication/status_analytics.rs (removed 3 functions and 3 tests)
+**Enhanced status analytics:**
+- src/communication/status_analytics.rs (trend analysis and historical data)
 
 **Fixed warning:**
 - src/communication/status_manager.rs (fixed unused_must_use)

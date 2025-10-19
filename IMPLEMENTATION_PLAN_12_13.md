@@ -5,16 +5,14 @@
 **Completed**:
 - Phase 12.1: Status query infrastructure (status_monitor.rs exists)
 - Phase 12.2: Status update integration (app/state.rs has realtime_status field)
-- Phase 12.3: Status analytics (status_analytics.rs with anomaly detection)
+- Phase 12.3: Status analytics (status_analytics.rs with trend analysis)
 - Phase 12.4: Status display (bottom_status.rs shows real-time data)
 - Phase 13.1: Console message architecture (device_logger.rs with filtering)
 - Phase 13.2: Basic console UI (device_console.rs tab exists)
 
 **Current Issues**:
 - status_manager.rs has unused_must_use warning (clear_history is async but not awaited)
-- Anomaly detection UI not integrated yet
 - Need to verify device console is properly capturing commands/responses
-- Need to remove anomaly detection UI elements per request
 
 ---
 
@@ -34,18 +32,6 @@
 5. Verify tracing output logs to console
 6. Verify filter checkboxes work correctly
 
-### Anomaly Detection Removal
-1. Remove AnomalyType enum from status_analytics.rs
-2. Remove Anomaly struct from status_analytics.rs
-3. Remove detect_anomalies() function
-4. Remove any UI components showing anomalies
-5. Keep position/state/feedrate history (useful for debugging)
-
-### New Implementation: Phase 13.3 (Tracing Integration)
-1. Verify tracing output goes to device console
-2. Test warning/info/debug message capture
-3. Ensure console displays structured tracing data
-
 ---
 
 ## Implementation Order
@@ -62,14 +48,6 @@
    - Verify all command/response capture
    - Verify filtering works
    - Test with actual device communication
-
-4. **Remove anomaly detection UI**
-   - Remove from status_analytics.rs (keep history tracking)
-   - Remove from any UI components
-
-5. **Implement tracing to console**
-   - Add tracing subscribers that write to device_logger
-   - Verify log levels work correctly
 
 ---
 
@@ -104,5 +82,4 @@
 - ✓ Tracing output logs to console
 - ✓ Severity filters work independently
 - ✓ 60 FPS UI rendering maintained
-- ✓ No anomaly detection UI elements
 

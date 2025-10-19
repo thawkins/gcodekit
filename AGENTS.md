@@ -26,6 +26,7 @@
 ## Github access
 - use "gh" to access all github repositories. 
 - when asked to "push to remote", update the SPEC.md and README.md files with all recent activity and spec changes,  construct a stuitable commit message based on recent activity, commit all changes and push the changes to the remote repository. 
+
 ## Documentation standards 
 -  For all functions create DOCBLOCK documentation comments above each function that describes the purpose of the function, and documents any arguments and return vaulues
 -  For all modules place a DOCBLOCK at the top of the File that describes the purpose of the module, and any dependancies.
@@ -49,4 +50,9 @@
 When dealing with issues in the remote repository:
 1. **Analyze and Comment**: Place a comment in the issue that records your analysis of the issue and your proposed plan for fixing it
 2. **Implement Fix**: After analysis, implement the proposed solution
-3. **Wait for Confirmation**: Do not close the issue until the reporter has confirmed the fix is working 
+3. **Wait for Confirmation**: Do not close the issue until the reporter has confirmed the fix is working a
+
+## Work flow
+
+1. When asked "whats next", present a list of the top 9 unimplemented tasks by task number, accept a task number and perform that task. 
+2. Dont suggest features unless asked to 

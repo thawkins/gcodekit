@@ -62,25 +62,24 @@ Phase 12 implements real-time machine status monitoring by periodically querying
 
 ### Phase 12.3: Status Analytics and Trend Analysis
 
-**Objective**: Implement status trend detection.
+**Objective**: Implement status trend detection and history tracking.
 
 **Components**:
-- `communication/status_analytics.rs`: Trend detection
+- `communication/status_analytics.rs`: Trend analysis
 - History buffer with circular storage
-- Error pattern tracking
+- State transition tracking
 
 **Implementation Tasks**:
 1. Detect state transitions (Idle → Run → Hold)
 2. Track position changes for movement detection
 3. Detect feed/spindle speed changes
 4. Calculate feed rate changes (acceleration/deceleration)
-5. Generate alerts for anomalies (sudden position jumps, state inconsistencies)
+5. Track error patterns for debugging
 
 **Key Points**:
-- Trends used for UI animations and alerts
-- Position jump detection (>10mm sudden change flags anomaly)
+- Trends used for UI animations
 - State consistency validation
-- Error pattern tracking for debugging
+- Historical data available for debugging
 
 ---
 
@@ -305,7 +304,6 @@ Phase 12 implements real-time machine status monitoring by periodically querying
 - [ ] Machine state displayed accurately
 - [ ] Status queries are transparent (not visible to user)
 - [ ] No performance degradation
-- [ ] Status analytics detect anomalies
 - [ ] Status bar shows all required information
 
 ### Phase 13 Success
@@ -401,7 +399,6 @@ Display in console with formatting
 
 - [ ] Search/filter within console messages
 - [ ] Export console to file with multiple formats
-- [ ] Pattern-based alerting (e.g., alert on repeated errors)
 - [ ] Status history visualization
 - [ ] Performance metrics overlay
 - [ ] Replay mode for console playback

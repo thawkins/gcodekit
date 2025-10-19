@@ -819,12 +819,11 @@ Strategy: Automatic retry with backoff
 3. Performance optimization based on trends
 4. Workpiece tracking (time estimation accuracy)
 
-### 15.3 Machine Learning Features
+### 15.3 Advanced Features
 
-1. Anomaly detection (unusual vibration patterns)
-2. Predictive maintenance (wear prediction)
-3. Tool breakage detection
-4. Collision detection from position anomalies
+1. Predictive maintenance (wear prediction)
+2. Tool breakage detection
+3. Performance optimization based on machine learning
 
 ---
 
