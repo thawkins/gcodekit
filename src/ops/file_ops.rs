@@ -22,7 +22,7 @@ impl GcodeKitApp {
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
-                    
+
                     self.sync_gcode_to_editor();
                     self.parse_gcode();
                     self.gcode_editor.sending_from_line = None; // Clear sending indicator
@@ -93,7 +93,7 @@ impl GcodeKitApp {
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
-                    
+
                     self.sync_gcode_to_editor();
                     self.parse_gcode();
                 }

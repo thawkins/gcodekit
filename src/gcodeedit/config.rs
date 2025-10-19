@@ -104,11 +104,10 @@ impl EditorConfig {
             return Ok(Self::default());
         }
 
-        let content = fs::read_to_string(&path)
-            .map_err(|e| format!("Failed to read config: {}", e))?;
-        
-        serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse config: {}", e))
+        let content =
+            fs::read_to_string(&path).map_err(|e| format!("Failed to read config: {}", e))?;
+
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse config: {}", e))
     }
 
     /// Save configuration to disk
@@ -116,9 +115,8 @@ impl EditorConfig {
         let path = Self::config_path();
         let content = serde_json::to_string_pretty(self)
             .map_err(|e| format!("Failed to serialize config: {}", e))?;
-        
-        fs::write(&path, content)
-            .map_err(|e| format!("Failed to write config: {}", e))
+
+        fs::write(&path, content).map_err(|e| format!("Failed to write config: {}", e))
     }
 
     /// Get rule state by ID
@@ -184,7 +182,7 @@ impl ConfigUI {
         }
 
         let mut result = None;
-        
+
         egui::Window::new("Editor Configuration")
             .open(&mut self.show_window)
             .resizable(true)
@@ -243,11 +241,7 @@ mod tests {
     #[test]
     fn test_set_rule_state() {
         let mut config = EditorConfig::default();
-        config.set_rule_state(
-            "test_rule".to_string(),
-            false,
-            RuleSeverity::Warning,
-        );
+        config.set_rule_state("test_rule".to_string(), false, RuleSeverity::Warning);
 
         let state = config.get_rule_state("test_rule");
         assert!(state.is_some());
@@ -259,10 +253,9 @@ mod tests {
     #[test]
     fn test_serialization() {
         let config = EditorConfig::default();
-        let json = serde_json::to_string(&config)
-            .expect("config serialization should succeed");
-        let deserialized: EditorConfig = serde_json::from_str(&json)
-            .expect("config deserialization should succeed");
+        let json = serde_json::to_string(&config).expect("config serialization should succeed");
+        let deserialized: EditorConfig =
+            serde_json::from_str(&json).expect("config deserialization should succeed");
 
         assert_eq!(config.grbl_version, deserialized.grbl_version);
         assert_eq!(config.validation_enabled, deserialized.validation_enabled);

@@ -1506,6 +1506,7 @@ dependencies = [
  "tobj",
  "tokio",
  "tokio-tungstenite",
+ "tokio-util",
  "tracing",
  "tracing-subscriber",
  "usvg",

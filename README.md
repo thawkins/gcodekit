@@ -2,7 +2,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.90%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-341%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-223%20passing-brightgreen.svg)](tests/)
 [![GRBL](https://img.shields.io/badge/GRBL-v1.1%2B-blue.svg)](https://github.com/grbl/grbl)
 [![Status](https://img.shields.io/badge/status-Alpha%20Development-yellow.svg)](https://github.com/thawkins/gcodekit)
 
@@ -50,7 +50,12 @@ A professional desktop GUI application for controlling GRBL-based CNC machines a
 - **Customizable Keybindings**: Configure keyboard shortcuts for all actions
 - **Responsive Design**: Modern egui-based interface with 60+ FPS rendering
 - **Dark/Light Themes**: Comfortable viewing in any environment
-- **Device Console**: Real-time command logging and GRBL feedback
+- **Device Console**: Real-time command logging with severity filtering (Error, Warning, Info, Debug)
+  - Color-coded messages for quick scanning
+  - Automatic status query and "ok" filtering
+  - Live message count display
+- **Real-Time Status Display**: Bottom status bar with live machine state, position tracking, and feed/spindle monitoring
+- **Status Analytics**: Anomaly detection system with alerts for position changes, state inconsistencies, and feed rate anomalies
 
 ## 📁 Project Structure
 

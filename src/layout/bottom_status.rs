@@ -1,15 +1,13 @@
 use crate::app::GcodeKitApp;
-use crate::communication::{grbl, ConnectionState};
+use crate::communication::{ConnectionState, grbl_status::MachineState, ControllerType};
 use egui;
-#[allow(unused_imports)]
-use std::any::Any;
 
 /// Renders the bottom status bar showing connection status, machine state,
-/// controller type, current position, and version information.
+/// controller type, current position, feed rate, spindle speed, and version information.
 pub fn show_bottom_status(app: &mut GcodeKitApp, ctx: &egui::Context) {
     egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
         ui.horizontal(|ui| {
-            // Connection status
+            // Connection status with color
             let status_text = match app.machine.connection_state {
                 ConnectionState::Disconnected => "Disconnected",
                 ConnectionState::Connecting => "Connecting...",
@@ -24,43 +22,84 @@ pub fn show_bottom_status(app: &mut GcodeKitApp, ctx: &egui::Context) {
                     ConnectionState::Connecting => egui::Color32::YELLOW,
                     _ => egui::Color32::GRAY,
                 },
-                format!("Status: {}", status_text),
+                format!("● {}", status_text),
             );
 
             ui.separator();
 
-            // Device state (machine state from GRBL)
-            let machine_state = if let Some(grbl_comm) = app
-                .machine
-                .communication
-                .as_any()
-                .downcast_ref::<grbl::GrblCommunication>()
-            {
-                format!("State: {:?}", grbl_comm.current_status.machine_state)
-            } else {
-                "State: Unknown".to_string()
+            // Machine state with color coding
+            let (state_text, state_color) = match app.machine.realtime_status.state {
+                MachineState::Idle => ("Idle", egui::Color32::GREEN),
+                MachineState::Run => ("Running", egui::Color32::LIGHT_BLUE),
+                MachineState::Hold => ("Hold", egui::Color32::YELLOW),
+                MachineState::Jog => ("Jogging", egui::Color32::LIGHT_BLUE),
+                MachineState::Alarm => ("Alarm", egui::Color32::RED),
+                MachineState::Door => ("Door Open", egui::Color32::YELLOW),
+                MachineState::Check => ("Check", egui::Color32::GRAY),
+                MachineState::Home => ("Homing", egui::Color32::LIGHT_BLUE),
+                MachineState::Sleep => ("Sleep", egui::Color32::GRAY),
+                MachineState::Unknown => ("Unknown", egui::Color32::GRAY),
             };
-            ui.label(machine_state);
+            ui.colored_label(state_color, format!("🔧 {}", state_text));
 
             ui.separator();
 
             // Controller type
-            ui.label(format!("Controller: {:?}", app.machine.controller_type));
+            match app.machine.controller_type {
+                ControllerType::Grbl => ui.label("GRBL"),
+            };
 
             ui.separator();
 
-            // Current position
+            // Real-time machine position (MPos)
             ui.label(format!(
-                "Position: {}",
-                app.machine.current_position.format()
+                "MPos: X:{:.2} Y:{:.2} Z:{:.2}",
+                app.machine.realtime_status.machine_position.x,
+                app.machine.realtime_status.machine_position.y,
+                app.machine.realtime_status.machine_position.z
             ));
 
             ui.separator();
 
-            // Version - TODO: get from thread
-            // Selected port
+            // Work position (WPos) if available
+            if let Some(wpos) = app.machine.realtime_status.work_position {
+                ui.label(format!(
+                    "WPos: X:{:.2} Y:{:.2} Z:{:.2}",
+                    wpos.x, wpos.y, wpos.z
+                ));
+            } else {
+                ui.label("WPos: -");
+            }
+
+            ui.separator();
+
+            // Feed rate
+            if app.machine.realtime_status.feed_speed.feed_rate > 0.0 {
+                ui.label(format!(
+                    "F:{:.0} mm/min",
+                    app.machine.realtime_status.feed_speed.feed_rate
+                ));
+            } else {
+                ui.label("F: -");
+            }
+
+            ui.separator();
+
+            // Spindle speed
+            if app.machine.realtime_status.feed_speed.spindle_speed > 0.0 {
+                ui.label(format!(
+                    "S:{:.0} RPM",
+                    app.machine.realtime_status.feed_speed.spindle_speed
+                ));
+            } else {
+                ui.label("S: -");
+            }
+
+            ui.separator();
+
+            // Port
             if !app.machine.selected_port.is_empty() {
-                ui.label(format!("Port: {}", app.machine.selected_port));
+                ui.label(format!("📍 {}", app.machine.selected_port));
             }
 
             // Version info on the right

@@ -270,7 +270,8 @@ impl GcodeKitApp {
                 "G-code partially queued: {} commands sent, {} errors. Check console for details.",
                 sent_count, error_count
             );
-            self.gcode_editor.sending_progress = (sent_count as f32) / (sent_count + error_count) as f32;
+            self.gcode_editor.sending_progress =
+                (sent_count as f32) / (sent_count + error_count) as f32;
         } else {
             self.machine.status_message = format!(
                 "Failed to send any G-code commands ({} errors)",

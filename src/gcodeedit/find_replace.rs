@@ -116,7 +116,7 @@ impl FindReplace {
             let mut start_pos = 0;
             while let Some(pos) = search_line[start_pos..].find(&query) {
                 let actual_pos = start_pos + pos;
-                
+
                 // Check whole word match if needed
                 if self.options.whole_word && !self.is_whole_word(line, actual_pos, query.len()) {
                     start_pos = actual_pos + 1;
@@ -321,10 +321,10 @@ mod tests {
     fn test_find_plain() {
         let mut fr = FindReplace::new();
         fr.query = "G0".to_string();
-        
+
         let content = "G0 X10\nG1 Y20\nG0 Z30";
         let count = fr.find(content);
-        
+
         assert_eq!(count, 2);
         assert_eq!(fr.matches[0].line, 0);
         assert_eq!(fr.matches[1].line, 2);
@@ -335,10 +335,10 @@ mod tests {
         let mut fr = FindReplace::new();
         fr.query = "G0".to_string();
         fr.options.case_sensitive = true;
-        
+
         let content = "G0 X10\ng0 Y20";
         let count = fr.find(content);
-        
+
         assert_eq!(count, 1);
         assert_eq!(fr.matches[0].line, 0);
     }
@@ -348,10 +348,10 @@ mod tests {
         let mut fr = FindReplace::new();
         fr.query = "G0".to_string();
         fr.options.case_sensitive = false;
-        
+
         let content = "G0 X10\ng0 Y20";
         let count = fr.find(content);
-        
+
         assert_eq!(count, 2);
     }
 
@@ -360,10 +360,10 @@ mod tests {
         let mut fr = FindReplace::new();
         fr.query = "G0".to_string();
         fr.options.whole_word = true;
-        
+
         let content = "G0 X10\nG01 Y20";
         let count = fr.find(content);
-        
+
         assert_eq!(count, 1);
         assert_eq!(fr.matches[0].line, 0);
     }
@@ -373,10 +373,10 @@ mod tests {
         let mut fr = FindReplace::new();
         fr.query = r"G\d+".to_string();
         fr.options.use_regex = true;
-        
+
         let content = "G0 X10\nG1 Y20\nM3 S1000";
         let count = fr.find(content);
-        
+
         assert_eq!(count, 2);
     }
 
@@ -384,15 +384,15 @@ mod tests {
     fn test_next_match() {
         let mut fr = FindReplace::new();
         fr.query = "G".to_string();
-        
+
         let content = "G0\nG1\nG2";
         fr.find(content);
-        
+
         assert_eq!(fr.current_match, 0);
-        
+
         fr.next_match();
         assert_eq!(fr.current_match, 1);
-        
+
         fr.next_match();
         assert_eq!(fr.current_match, 2);
     }
@@ -401,14 +401,14 @@ mod tests {
     fn test_prev_match() {
         let mut fr = FindReplace::new();
         fr.query = "G".to_string();
-        
+
         let content = "G0\nG1\nG2";
         fr.find(content);
         fr.current_match = 2;
-        
+
         fr.prev_match();
         assert_eq!(fr.current_match, 1);
-        
+
         fr.prev_match();
         assert_eq!(fr.current_match, 0);
     }
@@ -418,10 +418,10 @@ mod tests {
         let mut fr = FindReplace::new();
         fr.query = "G0".to_string();
         fr.replace_text = "G1".to_string();
-        
+
         let content = "G0 X10\nG0 Y20";
         fr.find(content);
-        
+
         let result = fr.replace_current(content);
         assert_eq!(result, "G1 X10\nG0 Y20");
     }
@@ -433,11 +433,11 @@ mod tests {
             replace_text: "G1".to_string(),
             ..Default::default()
         };
-        
+
         let content = "G0 X10\nG0 Y20\nG0 Z30";
         let mut fr_mut = fr.clone();
         fr_mut.find(content);
-        
+
         let (result, count) = fr_mut.replace_all(content);
         assert_eq!(count, 3);
         assert!(result.contains("G1 X10"));
@@ -450,11 +450,11 @@ mod tests {
         let mut fr = FindReplace::new();
         fr.query = "G".to_string();
         fr.options.wrap_around = true;
-        
+
         let content = "G0\nG1";
         fr.find(content);
         fr.current_match = 1;
-        
+
         fr.next_match();
         assert_eq!(fr.current_match, 0); // Wrapped around
     }

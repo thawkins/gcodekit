@@ -190,13 +190,36 @@ The advanced 3D machining phase adds sophisticated 3D capabilities:
 - **XYZ Strategies**: Optimized machining operations for GRBL machines
 - **Simplified Architecture**: Removed rotary axis complexity for cleaner codebase
 
+## Phase 12 & 13: Real-Time Machine Status Monitoring & Device Console Integration ✅ COMPLETED
+
+The real-time machine status monitoring and device console integration phases add professional-grade machine monitoring and diagnostic capabilities:
+
+### Phase 12: Real-Time Machine Status Display
+- **Status Update Integration**: Enhanced app state with real-time machine status monitoring
+- **Bottom Status Bar Redesign**: Displays connection status, machine state (with color coding), machine position (MPos/WPos), feed rate, and spindle speed
+- **Status Analytics**: Anomaly detection system with 5 anomaly types (position changes, state inconsistencies, feed rate spikes, spindle anomalies, buffer issues)
+- **Color-Coded Status**: Green (Idle), Blue (Run/Jog), Yellow (Hold/Door), Red (Alarm), Gray (Unknown/Sleep/Check)
+
+### Phase 13: Device Console Integration  
+- **Enhanced Device Console Tab**: Severity-based filtering (Error, Warning, Info, Debug) with independent toggles
+- **Color-Coded Messages**: Type and severity-based message coloring for easy scanning
+- **Automatic Filtering**: Status queries and simple "ok" responses automatically excluded from display
+- **Message Counts**: Real-time message count display with copy/clear controls
+
+### Phase 12.3: Status Analytics & Anomaly Detection
+- **Anomaly Detection**: 5 anomaly types with severity levels (1-10)
+- **Position Change Tracking**: Detects unexpected position changes >10mm while Idle
+- **State Transition Validation**: Identifies invalid state transitions
+- **Feed Rate Spike Detection**: >50% change during Run triggers alert
+- **Buffer Monitoring**: Critical underrun detection during Run
+
 ## Development Status
 
-**Current Phase**: Phase 10 Complete - Advanced CAM Features and Controller Support
+**Current Phase**: Phase 13 Complete - Device Console Integration
 **Implementation Status**: Alpha Development Version - Core features functional with ongoing development
 **Version**: 0.1.0-alpha
-**Test Coverage**: 143 passing tests covering all major components, machine control, UI functionality, and communication
-**Architecture**: Modular, extensible design with stable UI framework, advanced CAM capabilities, and improved code quality
+**Test Coverage**: 223 passing tests covering all major components, machine control, UI functionality, communication, and status monitoring
+**Architecture**: Modular, extensible design with stable UI framework, advanced CAM capabilities, real-time status monitoring, and improved code quality
 
 ⚠️ **Alpha Notice**: This software is under active development. While functional and tested, it may contain bugs and the API may change in future releases. Use with appropriate caution.
 
@@ -204,12 +227,14 @@ The advanced 3D machining phase adds sophisticated 3D capabilities:
 - Phase 1-8: Core GRBL communication, GUI framework, CAM functions, multi-axis support
 - Phase 9: Advanced error recovery, job management, multi-axis support, and job scheduling system
 - Phase 10: Configurable UI system, advanced CAM operations with part nesting
+- Phase 12: Real-time machine status display and status analytics
+- Phase 13: Device console integration with severity filtering
 - UI Stabilization: Resolved duplicate element IDs and improved interface reliability
 - Code Quality: Clippy warnings fixed and code maintainability improved
 - User Experience: Port filtering implemented for easier GRBL device identification
 - Development Tools: GitHub issue templates added for structured issue reporting
 
-**Next Development Focus**: Phase 11 - Advanced 3D Machining
+**Next Development Focus**: Phase 14 - Error Recovery Integration with Anomaly Response System
 
   Future Enhancements (UGS Feature Parity):
 19. **Designer Editor**: Import SVG/DXF/C2D files ✓, draw shapes/text ✓, boolean operations (union ✓/intersect/subtract), undo/redo ✓, shape manipulation (move/scale/rotate/mirror), grid multiplication, clipart library, bitmap tracing

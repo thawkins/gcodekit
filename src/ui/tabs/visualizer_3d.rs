@@ -20,14 +20,13 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ui.label("3D Visualizer");
         ui.separator();
-        
+
         // Step-through controls
         ui.label("Step-through:");
-        if ui.button("⏮️ First").clicked()
-            && !app.gcode_editor.parsed_paths.is_empty() {
-                app.gcode.selected_line = Some(app.gcode_editor.parsed_paths[0].line_number);
-            }
-        
+        if ui.button("⏮️ First").clicked() && !app.gcode_editor.parsed_paths.is_empty() {
+            app.gcode.selected_line = Some(app.gcode_editor.parsed_paths[0].line_number);
+        }
+
         if ui.button("◀️ Prev").clicked() {
             if let Some(current) = app.gcode.selected_line {
                 // Find previous segment
@@ -39,7 +38,7 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
                 }
             }
         }
-        
+
         if ui.button("▶️ Next").clicked() {
             if let Some(current) = app.gcode.selected_line {
                 // Find next segment
@@ -54,14 +53,13 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
                 app.gcode.selected_line = Some(app.gcode_editor.parsed_paths[0].line_number);
             }
         }
-        
-        if ui.button("⏭️ Last").clicked()
-            && !app.gcode_editor.parsed_paths.is_empty() {
-                if let Some(last_path) = app.gcode_editor.parsed_paths.last() {
-                    app.gcode.selected_line = Some(last_path.line_number);
-                }
+
+        if ui.button("⏭️ Last").clicked() && !app.gcode_editor.parsed_paths.is_empty() {
+            if let Some(last_path) = app.gcode_editor.parsed_paths.last() {
+                app.gcode.selected_line = Some(last_path.line_number);
             }
-        
+        }
+
         ui.separator();
         ui.button("🔄 Refresh View").clicked();
         ui.button("📏 Fit to View").clicked();
@@ -105,11 +103,12 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
             for (idx, segment) in app.gcode_editor.parsed_paths.iter().enumerate() {
                 let start = egui::pos2(rect.min.x + segment.start.x, rect.min.y + segment.start.y);
                 let end = egui::pos2(rect.min.x + segment.end.x, rect.min.y + segment.end.y);
-                
+
                 // Calculate distance from click to line segment
                 let distance = distance_point_to_segment(pos, start, end);
-                
-                if distance < min_distance && distance < 20.0 {  // 20px threshold
+
+                if distance < min_distance && distance < 20.0 {
+                    // 20px threshold
                     min_distance = distance;
                     closest_segment_idx = Some(idx);
                 }
@@ -123,15 +122,15 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     }
 
     let painter = ui.painter();
-    
+
     // Draw all segments
     for (idx, segment) in app.gcode_editor.parsed_paths.iter().enumerate() {
         let start = egui::pos2(rect.min.x + segment.start.x, rect.min.y + segment.start.y);
         let end = egui::pos2(rect.min.x + segment.end.x, rect.min.y + segment.end.y);
-        
+
         // Determine if this segment's line is selected
         let is_selected = app.gcode.selected_line == Some(segment.line_number);
-        
+
         let (color, width) = if is_selected {
             // Highlight selected line
             (egui::Color32::from_rgb(255, 128, 0), 4.0)
@@ -142,15 +141,15 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
                 MoveType::Arc => (egui::Color32::YELLOW, 2.0),
             }
         };
-        
+
         painter.line_segment([start, end], egui::Stroke::new(width, color));
-        
+
         // Draw start point for selected segment
         if is_selected {
             painter.circle_filled(start, 4.0, egui::Color32::RED);
         }
     }
-    
+
     // Show tooltip for selected segment (outside the loop to avoid borrow issues)
     if let Some(selected_line) = app.gcode.selected_line {
         for segment in &app.gcode_editor.parsed_paths {
@@ -159,8 +158,12 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
                     "Line {}: {:?} move\nFrom ({:.2}, {:.2}, {:.2})\nTo ({:.2}, {:.2}, {:.2})",
                     segment.line_number + 1,
                     segment.move_type,
-                    segment.start.x, segment.start.y, segment.start.z,
-                    segment.end.x, segment.end.y, segment.end.z
+                    segment.start.x,
+                    segment.start.y,
+                    segment.start.z,
+                    segment.end.x,
+                    segment.end.y,
+                    segment.end.z
                 );
                 response.on_hover_text(tooltip_text);
                 break;
@@ -169,21 +172,21 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     }
 
     ui.label(format!("Segments: {}", app.gcode_editor.parsed_paths.len()));
-    
+
     if let Some(selected) = app.gcode.selected_line {
         ui.colored_label(
             egui::Color32::from_rgb(255, 128, 0),
             format!("Selected: Line {}", selected + 1),
         );
     }
-    
+
     if let Some(sending_line) = app.gcode_editor.sending_from_line {
         ui.colored_label(
             egui::Color32::GREEN,
             format!("Sending from line {}", sending_line + 1),
         );
     }
-    
+
     ui.separator();
     ui.label("💡 Tip: Click on toolpath to select line in editor");
 }
@@ -193,18 +196,18 @@ fn distance_point_to_segment(point: egui::Pos2, seg_start: egui::Pos2, seg_end: 
     let dx = seg_end.x - seg_start.x;
     let dy = seg_end.y - seg_start.y;
     let length_squared = dx * dx + dy * dy;
-    
+
     if length_squared == 0.0 {
         // Segment is a point
         return ((point.x - seg_start.x).powi(2) + (point.y - seg_start.y).powi(2)).sqrt();
     }
-    
+
     // Project point onto line segment
     let t = ((point.x - seg_start.x) * dx + (point.y - seg_start.y) * dy) / length_squared;
     let t = t.clamp(0.0, 1.0);
-    
+
     let proj_x = seg_start.x + t * dx;
     let proj_y = seg_start.y + t * dy;
-    
+
     ((point.x - proj_x).powi(2) + (point.y - proj_y).powi(2)).sqrt()
 }

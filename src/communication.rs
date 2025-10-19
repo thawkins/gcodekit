@@ -4,8 +4,24 @@
 //! interfaces for connecting, sending commands, and receiving responses.
 
 pub mod grbl;
+pub mod grbl_status;
+pub mod status_analytics;
+pub mod status_monitor;
+pub mod status_parser;
+pub mod status_manager;
+pub mod device_logger;
+pub mod device_logger_integration;
 
 pub use grbl::GrblCommunication;
+pub use grbl_status::{MachineState, MachineStatus, Position};
+pub use status_analytics::StatusAnalytics;
+pub use status_monitor::{StatusMonitor, StatusMonitorConfig};
+pub use status_parser::parse_status_response;
+pub use status_manager::{StatusManager, StatusManagerConfig};
+pub use device_logger::{DeviceLogger, ConsoleMessage, ConsoleSeverity, MessageType};
+pub use device_logger_integration::{
+    log_device_command, log_device_response, log_trace_message,
+};
 
 use std::time::{Duration, Instant};
 

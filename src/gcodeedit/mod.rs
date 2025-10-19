@@ -239,9 +239,10 @@ impl GcodeEditorState {
             let trimmed = line.trim();
             if let Some(first) = trimmed.split_whitespace().next() {
                 if (first.starts_with('G') || first.starts_with('M'))
-                    && !commands.contains(&first.to_string()) {
-                        commands.push(first.to_string());
-                    }
+                    && !commands.contains(&first.to_string())
+                {
+                    commands.push(first.to_string());
+                }
             }
         }
 
@@ -305,7 +306,7 @@ impl GcodeEditorState {
         if let Some(path) = &self.current_file_path {
             // Sync buffer before saving
             self.buffer.set_content(&self.gcode_content);
-            
+
             let content = self.buffer.get_content();
             match std::fs::write(path, &content) {
                 Ok(_) => {
@@ -332,7 +333,7 @@ impl GcodeEditorState {
         {
             // Sync buffer before saving
             self.buffer.set_content(&self.gcode_content);
-            
+
             let content = self.buffer.get_content();
             match std::fs::write(&path, &content) {
                 Ok(_) => {
@@ -792,16 +793,16 @@ impl GcodeEditorState {
     /// Generate syntax highlighting for G-code content using tokenizer
     fn syntax_highlight(&self) -> LayoutJob {
         let mut job = LayoutJob::default();
-        
+
         for line in self.last_parsed.iter() {
             for token in &line.tokens {
                 let color = match token.kind {
-                    tokenizer::TokenKind::Command => egui::Color32::from_rgb(100, 150, 255),     // Blue for G/M commands
-                    tokenizer::TokenKind::Parameter => egui::Color32::from_rgb(100, 200, 100),   // Green for parameters
-                    tokenizer::TokenKind::Comment => egui::Color32::from_rgb(150, 150, 150),     // Gray for comments
+                    tokenizer::TokenKind::Command => egui::Color32::from_rgb(100, 150, 255), // Blue for G/M commands
+                    tokenizer::TokenKind::Parameter => egui::Color32::from_rgb(100, 200, 100), // Green for parameters
+                    tokenizer::TokenKind::Comment => egui::Color32::from_rgb(150, 150, 150), // Gray for comments
                     tokenizer::TokenKind::Unknown => egui::Color32::WHITE,
                 };
-                
+
                 job.append(
                     &token.text,
                     0.0,
@@ -813,7 +814,7 @@ impl GcodeEditorState {
             }
             job.append("\n", 0.0, TextFormat::default());
         }
-        
+
         job
     }
 
@@ -843,8 +844,10 @@ impl GcodeEditorState {
             self.buffer.undo();
             self.on_buffer_change();
         }
-        if ui.input(|i| (i.key_pressed(egui::Key::Z) && i.modifiers.ctrl && i.modifiers.shift) 
-                        || (i.key_pressed(egui::Key::Y) && i.modifiers.ctrl)) {
+        if ui.input(|i| {
+            (i.key_pressed(egui::Key::Z) && i.modifiers.ctrl && i.modifiers.shift)
+                || (i.key_pressed(egui::Key::Y) && i.modifiers.ctrl)
+        }) {
             self.buffer.redo();
             self.on_buffer_change();
         }
@@ -863,16 +866,20 @@ impl GcodeEditorState {
                 if line_num < lines.len() {
                     let mut new_lines = lines.clone();
                     let line = &new_lines[line_num];
-                    
+
                     // Toggle comment
                     if line.trim_start().starts_with(';') {
                         // Remove comment
-                        new_lines[line_num] = line.trim_start().trim_start_matches(';').trim_start().to_string();
+                        new_lines[line_num] = line
+                            .trim_start()
+                            .trim_start_matches(';')
+                            .trim_start()
+                            .to_string();
                     } else {
                         // Add comment
                         new_lines[line_num] = format!("; {}", line);
                     }
-                    
+
                     self.buffer.set_content(&new_lines.join("\n"));
                     self.on_buffer_change();
                 }
@@ -892,8 +899,10 @@ impl GcodeEditorState {
         // Paste (Ctrl+V) - handled by egui
 
         // Show shortcuts help (F1 or Ctrl+?)
-        if ui.input(|i| i.key_pressed(egui::Key::F1) 
-                        || (i.key_pressed(egui::Key::Slash) && i.modifiers.ctrl && i.modifiers.shift)) {
+        if ui.input(|i| {
+            i.key_pressed(egui::Key::F1)
+                || (i.key_pressed(egui::Key::Slash) && i.modifiers.ctrl && i.modifiers.shift)
+        }) {
             self.show_shortcuts_help = !self.show_shortcuts_help;
         }
 
@@ -948,7 +957,7 @@ impl GcodeEditorState {
             let mut needs_replace_all = false;
             let mut nav_prev = false;
             let mut nav_next = false;
-            
+
             egui::Window::new("Find and Replace")
                 .open(&mut window_open)
                 .resizable(false)
@@ -957,7 +966,7 @@ impl GcodeEditorState {
                     ui.horizontal(|ui| {
                         ui.label("Find:");
                         let find_response = ui.text_edit_singleline(&mut self.find_replace.query);
-                        
+
                         if find_response.changed() || ui.button("🔍 Find All").clicked() {
                             needs_find = true;
                         }
@@ -999,11 +1008,15 @@ impl GcodeEditorState {
 
                     if self.show_replace {
                         ui.horizontal(|ui| {
-                            if ui.button("Replace").clicked() && !self.find_replace.matches.is_empty() {
+                            if ui.button("Replace").clicked()
+                                && !self.find_replace.matches.is_empty()
+                            {
                                 needs_replace_current = true;
                             }
 
-                            if ui.button("Replace All").clicked() && !self.find_replace.matches.is_empty() {
+                            if ui.button("Replace All").clicked()
+                                && !self.find_replace.matches.is_empty()
+                            {
                                 needs_replace_all = true;
                             }
                         });
@@ -1050,7 +1063,7 @@ impl GcodeEditorState {
                 let new_content = self.find_replace.replace_current(&content);
                 self.buffer.set_content(&new_content);
                 self.on_buffer_change();
-                
+
                 // Re-run find to update matches
                 let content = self.content();
                 self.find_replace.find(&content);
@@ -1135,7 +1148,8 @@ impl GcodeEditorState {
         let content_clone = self.content();
         let lines: Vec<String> = content_clone.lines().map(|s| s.to_string()).collect();
         let total_lines = lines.len();
-        let use_virtualization = self.enable_virtualization && total_lines > self.virtualized_config.max_rendered_lines;
+        let use_virtualization =
+            self.enable_virtualization && total_lines > self.virtualized_config.max_rendered_lines;
 
         // Add performance info header
         ui.horizontal(|ui| {
@@ -1155,146 +1169,145 @@ impl GcodeEditorState {
         egui::ScrollArea::vertical()
             .id_salt("gcode_editor_scroll")
             .show(ui, |ui| {
-            // Render all lines
-            
-            // For virtualization, calculate visible range
-            let visible_lines: Vec<usize> = if use_virtualization && total_lines > 1000 {
-                // Use virtualized range
-                let range = self.virtualized_state.visible_range();
-                range.collect()
-            } else {
                 // Render all lines
-                (0..total_lines).collect()
-            };
 
-            ui.horizontal(|ui| {
-                // Get the actual row height from egui's font system to match TextEdit's line height
-                let font_id = egui::TextStyle::Monospace.resolve(ui.style());
-                let row_height = ui.text_style_height(&egui::TextStyle::Monospace);
-                
-                // Gutter column with clickable markers
-                ui.vertical(|g| {
-                    // Remove all spacing to let text height control layout
-                    g.spacing_mut().item_spacing.y = 0.0;
-                    g.spacing_mut().button_padding = egui::vec2(4.0, 0.0);
-                    
-                    for &i in &visible_lines {
-                        // Use allocate_ui to have full control over the row
-                        let (rect, response) = g.allocate_exact_size(
-                            egui::vec2(80.0, row_height),
-                            egui::Sense::click()
-                        );
-                        
-                        // Click to select line
-                        if response.clicked() {
-                            self.selected_line = Some(i);
-                        }
-                        
-                        // Draw background for selected line
-                        if self.selected_line == Some(i) {
-                            g.painter().rect_filled(
-                                rect,
-                                0.0,
-                                g.visuals().selection.bg_fill
+                // For virtualization, calculate visible range
+                let visible_lines: Vec<usize> = if use_virtualization && total_lines > 1000 {
+                    // Use virtualized range
+                    let range = self.virtualized_state.visible_range();
+                    range.collect()
+                } else {
+                    // Render all lines
+                    (0..total_lines).collect()
+                };
+
+                ui.horizontal(|ui| {
+                    // Get the actual row height from egui's font system to match TextEdit's line height
+                    let font_id = egui::TextStyle::Monospace.resolve(ui.style());
+                    let row_height = ui.text_style_height(&egui::TextStyle::Monospace);
+
+                    // Gutter column with clickable markers
+                    ui.vertical(|g| {
+                        // Remove all spacing to let text height control layout
+                        g.spacing_mut().item_spacing.y = 0.0;
+                        g.spacing_mut().button_padding = egui::vec2(4.0, 0.0);
+
+                        for &i in &visible_lines {
+                            // Use allocate_ui to have full control over the row
+                            let (rect, response) = g.allocate_exact_size(
+                                egui::vec2(80.0, row_height),
+                                egui::Sense::click(),
                             );
-                        }
-                        
-                        // Draw the line number
-                        let text = format!("{:05}", i + 1);
-                        let text_color = if self.selected_line == Some(i) {
-                            g.visuals().strong_text_color()
-                        } else {
-                            g.visuals().text_color()
-                        };
-                        
-                        g.painter().text(
-                            rect.left_top() + egui::vec2(2.0, 2.0),
-                            egui::Align2::LEFT_TOP,
-                            text,
-                            font_id.clone(),
-                            text_color
-                        );
-                        
-                        // Attach hover UI to show diagnostics
-                        let diags: Vec<_> =
-                            self.diagnostics.iter().filter(|d| d.line == i).collect();
-                        if !diags.is_empty() {
-                            response.on_hover_ui(|ui| {
-                                ui.vertical(|ui| {
-                                    for d in diags.iter() {
-                                        let sev = match d.severity {
-                                            crate::gcodeedit::rules::Severity::Error => "Error",
-                                            crate::gcodeedit::rules::Severity::Warn => "Warn",
-                                            crate::gcodeedit::rules::Severity::Info => "Info",
-                                        };
-                                        ui.label(format!("[{}] {}", sev, d.message));
-                                    }
+
+                            // Click to select line
+                            if response.clicked() {
+                                self.selected_line = Some(i);
+                            }
+
+                            // Draw background for selected line
+                            if self.selected_line == Some(i) {
+                                g.painter()
+                                    .rect_filled(rect, 0.0, g.visuals().selection.bg_fill);
+                            }
+
+                            // Draw the line number
+                            let text = format!("{:05}", i + 1);
+                            let text_color = if self.selected_line == Some(i) {
+                                g.visuals().strong_text_color()
+                            } else {
+                                g.visuals().text_color()
+                            };
+
+                            g.painter().text(
+                                rect.left_top() + egui::vec2(2.0, 2.0),
+                                egui::Align2::LEFT_TOP,
+                                text,
+                                font_id.clone(),
+                                text_color,
+                            );
+
+                            // Attach hover UI to show diagnostics
+                            let diags: Vec<_> =
+                                self.diagnostics.iter().filter(|d| d.line == i).collect();
+                            if !diags.is_empty() {
+                                response.on_hover_ui(|ui| {
+                                    ui.vertical(|ui| {
+                                        for d in diags.iter() {
+                                            let sev = match d.severity {
+                                                crate::gcodeedit::rules::Severity::Error => "Error",
+                                                crate::gcodeedit::rules::Severity::Warn => "Warn",
+                                                crate::gcodeedit::rules::Severity::Info => "Info",
+                                            };
+                                            ui.label(format!("[{}] {}", sev, d.message));
+                                        }
+                                    });
                                 });
-                            });
+                            }
                         }
+                    });
+
+                    // Editor column
+                    // Use gcode_content for editing (it's a persistent String field)
+                    // NOTE: Syntax highlighting disabled - custom layouters cause cursor jumping issues
+                    // The syntax_highlight() function is available but requires a proper implementation
+                    // that doesn't interfere with text editing cursor position
+                    let response = ui.add_sized(
+                        ui.available_size(),
+                        egui::TextEdit::multiline(&mut self.gcode_content)
+                            .font(egui::TextStyle::Monospace)
+                            .code_editor(),
+                    );
+
+                    // If the text was changed, mark for validation but don't sync to buffer yet
+                    if response.changed() {
+                        // DON'T sync to buffer on every keystroke - it causes cursor jumping!
+                        // The buffer will be synced when needed (save, undo, etc.)
+
+                        // Mark that we need validation
+                        self.needs_validation = true;
+                    }
+
+                    // Perform debounced validation (only every 500ms)
+                    if self.needs_validation
+                        && self.last_validation_time.elapsed().as_millis() > 500
+                    {
+                        // Now sync to buffer before validation
+                        self.buffer.set_content(&self.gcode_content);
+                        self.on_buffer_change();
+                        self.last_validation_time = std::time::Instant::now();
+                        self.needs_validation = false;
                     }
                 });
 
-                // Editor column
-                // Use gcode_content for editing (it's a persistent String field)
-                // NOTE: Syntax highlighting disabled - custom layouters cause cursor jumping issues
-                // The syntax_highlight() function is available but requires a proper implementation
-                // that doesn't interfere with text editing cursor position
-                let response = ui.add_sized(
-                    ui.available_size(),
-                    egui::TextEdit::multiline(&mut self.gcode_content)
-                        .font(egui::TextStyle::Monospace)
-                        .code_editor()
-                );
-                
-                // If the text was changed, mark for validation but don't sync to buffer yet
-                if response.changed() {
-                    // DON'T sync to buffer on every keystroke - it causes cursor jumping!
-                    // The buffer will be synced when needed (save, undo, etc.)
-                    
-                    // Mark that we need validation
-                    self.needs_validation = true;
-                }
-                
-                // Perform debounced validation (only every 500ms)
-                if self.needs_validation && self.last_validation_time.elapsed().as_millis() > 500 {
-                    // Now sync to buffer before validation
-                    self.buffer.set_content(&self.gcode_content);
-                    self.on_buffer_change();
-                    self.last_validation_time = std::time::Instant::now();
-                    self.needs_validation = false;
+                // Diagnostics pane below editor
+                if let Some(sel) = self.selected_line {
+                    let diags: Vec<_> = self.diagnostics.iter().filter(|d| d.line == sel).collect();
+                    if !diags.is_empty() {
+                        ui.separator();
+                        ui.horizontal(|ui| {
+                            ui.colored_label(
+                                egui::Color32::LIGHT_RED,
+                                format!("Diagnostics for line {}:", sel + 1),
+                            );
+                        });
+                        for d in diags {
+                            ui.label(format!(
+                                "- [{}] {}",
+                                match d.severity {
+                                    crate::gcodeedit::rules::Severity::Error => "Error",
+                                    crate::gcodeedit::rules::Severity::Warn => "Warn",
+                                    crate::gcodeedit::rules::Severity::Info => "Info",
+                                },
+                                d.message
+                            ));
+                        }
+                    }
                 }
             });
 
-            // Diagnostics pane below editor
-            if let Some(sel) = self.selected_line {
-                let diags: Vec<_> = self.diagnostics.iter().filter(|d| d.line == sel).collect();
-                if !diags.is_empty() {
-                    ui.separator();
-                    ui.horizontal(|ui| {
-                        ui.colored_label(
-                            egui::Color32::LIGHT_RED,
-                            format!("Diagnostics for line {}:", sel + 1),
-                        );
-                    });
-                    for d in diags {
-                        ui.label(format!(
-                            "- [{}] {}",
-                            match d.severity {
-                                crate::gcodeedit::rules::Severity::Error => "Error",
-                                crate::gcodeedit::rules::Severity::Warn => "Warn",
-                                crate::gcodeedit::rules::Severity::Info => "Info",
-                            },
-                            d.message
-                        ));
-                    }
-                }
-            }
-        });
-
         // Update performance metrics
         let render_time = render_start.elapsed();
-        let lines_to_track = if use_virtualization { 
+        let lines_to_track = if use_virtualization {
             self.virtualized_state.last_visible_line - self.virtualized_state.first_visible_line
         } else {
             total_lines

@@ -3703,7 +3703,7 @@ mod tests {
         let result = designer.export_to_obj();
         // If no shapes, OBJ may be empty but should return Ok with at least header lines
         match result {
-            Ok(_s) => { /* success - string length is always >= 0 */ },
+            Ok(_s) => { /* success - string length is always >= 0 */ }
             Err(_) => panic!("export_to_obj failed when it should return Ok"),
         }
     }

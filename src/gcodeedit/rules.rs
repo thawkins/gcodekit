@@ -133,16 +133,17 @@ impl RuleSet {
                 // Normalize code: G38.2 etc. Accept dot codes as-is
                 let code = tok;
                 if self.rule_enabled("unknown_code")
-                    && !vocabulary::code_supported(&code, &self.grbl_version) {
-                        diags.push(Diagnostic {
-                            line: line_no,
-                            severity: Severity::Error,
-                            message: format!(
-                                "Code '{}' not supported in GRBL {}",
-                                code, self.grbl_version
-                            ),
-                        });
-                    }
+                    && !vocabulary::code_supported(&code, &self.grbl_version)
+                {
+                    diags.push(Diagnostic {
+                        line: line_no,
+                        severity: Severity::Error,
+                        message: format!(
+                            "Code '{}' not supported in GRBL {}",
+                            code, self.grbl_version
+                        ),
+                    });
+                }
             }
         }
 
@@ -174,16 +175,17 @@ impl RuleSet {
         {
             let code = first.text.to_uppercase();
             if self.rule_enabled("unknown_code")
-                && !vocabulary::code_supported(&code, &self.grbl_version) {
-                    diags.push(Diagnostic {
-                        line: syntax.line,
-                        severity: Severity::Error,
-                        message: format!(
-                            "Code '{}' not supported in GRBL {}",
-                            code, self.grbl_version
-                        ),
-                    });
-                }
+                && !vocabulary::code_supported(&code, &self.grbl_version)
+            {
+                diags.push(Diagnostic {
+                    line: syntax.line,
+                    severity: Severity::Error,
+                    message: format!(
+                        "Code '{}' not supported in GRBL {}",
+                        code, self.grbl_version
+                    ),
+                });
+            }
         }
 
         diags

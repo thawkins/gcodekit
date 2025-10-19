@@ -200,6 +200,12 @@ pub struct MachineState {
     pub connection_state: ConnectionState,
     pub selected_port: String,
     pub manual_command: String,
+    pub device_logger: std::sync::Arc<crate::communication::DeviceLogger>,
+    pub active_severities: Vec<crate::communication::ConsoleSeverity>,
+    /// Real-time machine status from "?" queries
+    pub realtime_status: crate::communication::grbl_status::MachineStatus,
+    /// Last update timestamp for status display smoothing
+    pub last_status_update: std::time::Instant,
 }
 
 impl Default for MachineState {
@@ -219,6 +225,15 @@ impl Default for MachineState {
             connection_state: ConnectionState::Disconnected,
             selected_port: String::new(),
             manual_command: String::new(),
+            device_logger: std::sync::Arc::new(crate::communication::DeviceLogger::new(5000)),
+            active_severities: vec![
+                crate::communication::ConsoleSeverity::Error,
+                crate::communication::ConsoleSeverity::Warning,
+                crate::communication::ConsoleSeverity::Info,
+                crate::communication::ConsoleSeverity::Debug,
+            ],
+            realtime_status: crate::communication::grbl_status::MachineStatus::default(),
+            last_status_update: std::time::Instant::now(),
         }
     }
 }
@@ -267,5 +282,30 @@ impl GcodeKitApp {
         if self.machine.console_messages.len() > 1000 {
             self.machine.console_messages.remove(0);
         }
+    }
+
+    /// Syncs filtered device logger messages to console_messages for display.
+    /// Should be called each frame to keep console display up-to-date.
+    pub fn sync_device_logger_to_console(&mut self) {
+        // Get filtered messages from device logger respecting current severity filters
+        let messages = self.machine.console_messages.clone();
+        let visible_messages: Vec<String> = messages
+            .iter()
+            .filter(|msg| {
+                // Filter based on active severities
+                let contains_error = msg.contains("ERROR");
+                let contains_warn = msg.contains("WARN");
+                let contains_debug = msg.contains("DEBUG");
+                let contains_info = !contains_error && !contains_warn && !contains_debug;
+
+                (contains_error && self.machine.active_severities.contains(&crate::communication::ConsoleSeverity::Error))
+                    || (contains_warn && self.machine.active_severities.contains(&crate::communication::ConsoleSeverity::Warning))
+                    || (contains_debug && self.machine.active_severities.contains(&crate::communication::ConsoleSeverity::Debug))
+                    || (contains_info && self.machine.active_severities.contains(&crate::communication::ConsoleSeverity::Info))
+            })
+            .cloned()
+            .collect();
+
+        self.machine.console_messages = visible_messages;
     }
 }
