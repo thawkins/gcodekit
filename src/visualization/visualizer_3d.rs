@@ -6,6 +6,81 @@
 use crate::types::MoveType;
 use eframe::egui;
 
+/// Material for stock visualization
+#[derive(Clone, Debug)]
+pub struct StockMaterial {
+    pub name: String,
+    pub color_rgb: (u8, u8, u8),
+    pub opacity: f32,
+    pub material_type: String,
+}
+
+impl Default for StockMaterial {
+    fn default() -> Self {
+        Self {
+            name: "Aluminum".to_string(),
+            color_rgb: (200, 200, 200),
+            opacity: 0.7,
+            material_type: "Metal".to_string(),
+        }
+    }
+}
+
+impl StockMaterial {
+    /// Create StockMaterial from material properties
+    pub fn from_material_properties(name: &str, material_type: &str) -> Self {
+        // Map material types to colors
+        let (r, g, b) = match material_type.to_lowercase().as_str() {
+            // Metals
+            "aluminum" => (200, 200, 200),    // Light gray
+            "steel" => (60, 60, 60),          // Dark gray
+            "stainless" => (180, 180, 190),   // Light silvery
+            "brass" => (184, 130, 11),        // Brass color
+            "copper" => (184, 115, 51),       // Copper color
+            "titanium" => (210, 180, 140),    // Light bronze
+            
+            // Plastics
+            "acrylic" => (230, 230, 250),     // Very light blue
+            "pvc" => (200, 200, 220),         // Light blue
+            "abs" => (210, 210, 210),         // Off-white
+            "polycarbonate" => (220, 220, 230), // Light lavender
+            
+            // Wood
+            "oak" => (139, 90, 43),           // Brown
+            "pine" => (160, 110, 60),         // Light brown
+            "maple" => (150, 100, 50),        // Medium brown
+            "walnut" => (100, 60, 40),        // Dark brown
+            
+            // Composites
+            "carbon" => (40, 40, 40),         // Very dark
+            "fiberglass" => (150, 150, 160),  // Light gray
+            "composite" => (130, 130, 140),   // Medium gray
+            
+            // Default
+            _ => (180, 180, 180),             // Medium gray
+        };
+
+        Self {
+            name: name.to_string(),
+            color_rgb: (r, g, b),
+            opacity: 0.7,
+            material_type: material_type.to_string(),
+        }
+    }
+
+    /// Adjust opacity (0.0 to 1.0)
+    pub fn with_opacity(mut self, opacity: f32) -> Self {
+        self.opacity = opacity.clamp(0.0, 1.0);
+        self
+    }
+
+    /// Set custom color
+    pub fn with_color(mut self, r: u8, g: u8, b: u8) -> Self {
+        self.color_rgb = (r, g, b);
+        self
+    }
+}
+
 /// 3D Visualizer state for camera and rendering
 #[derive(Clone, Debug)]
 pub struct Visualizer3DState {
@@ -33,6 +108,9 @@ pub struct Visualizer3DState {
     pub stock_x: f32,
     pub stock_y: f32,
     pub stock_z: f32,
+    
+    /// Stock material
+    pub stock_material: StockMaterial,
 }
 
 impl Default for Visualizer3DState {
@@ -53,6 +131,7 @@ impl Default for Visualizer3DState {
             stock_x: 100.0,
             stock_y: 100.0,
             stock_z: 50.0,
+            stock_material: StockMaterial::default(),
         }
     }
 }
@@ -153,7 +232,7 @@ pub fn draw_3d_grid(
     painter.line_segment([origin, z_end], egui::Stroke::new(2.0, egui::Color32::BLUE));
 }
 
-/// Draw stock/material visualization
+/// Draw stock/material visualization with material color
 pub fn draw_stock(
     painter: &egui::Painter,
     state: &Visualizer3DState,
@@ -167,9 +246,15 @@ pub fn draw_stock(
     let hy = state.stock_y / 2.0;
     let hz = state.stock_z;
 
-    // Draw stock box edges
-    let color = egui::Color32::from_rgba_unmultiplied(200, 200, 200, 100);
-    let stroke = egui::Stroke::new(1.0, color);
+    // Draw stock box edges with material color
+    let (r, g, b) = state.stock_material.color_rgb;
+    let color = egui::Color32::from_rgba_unmultiplied(
+        r,
+        g,
+        b,
+        (state.stock_material.opacity * 255.0) as u8,
+    );
+    let stroke = egui::Stroke::new(1.5, color);
 
     // Bottom face (Z=0)
     let p1 = state.project_to_2d(-hx, -hy, 0.0, center);
@@ -290,6 +375,52 @@ pub fn calculate_bounds(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_stock_material_default() {
+        let material = StockMaterial::default();
+        assert_eq!(material.name, "Aluminum");
+        assert_eq!(material.opacity, 0.7);
+        assert_eq!(material.color_rgb, (200, 200, 200));
+    }
+
+    #[test]
+    fn test_stock_material_from_properties() {
+        let al_material = StockMaterial::from_material_properties("Al 6061", "Aluminum");
+        assert_eq!(al_material.color_rgb, (200, 200, 200)); // Light gray
+
+        let steel_material = StockMaterial::from_material_properties("AISI 1018", "Steel");
+        assert_eq!(steel_material.color_rgb, (60, 60, 60)); // Dark gray
+
+        let brass_material = StockMaterial::from_material_properties("Brass", "Brass");
+        assert_eq!(brass_material.color_rgb, (184, 130, 11)); // Brass color
+    }
+
+    #[test]
+    fn test_stock_material_with_opacity() {
+        let material = StockMaterial::default().with_opacity(0.5);
+        assert_eq!(material.opacity, 0.5);
+
+        // Test clamping
+        let material = StockMaterial::default().with_opacity(1.5);
+        assert_eq!(material.opacity, 1.0);
+
+        let material = StockMaterial::default().with_opacity(-0.5);
+        assert_eq!(material.opacity, 0.0);
+    }
+
+    #[test]
+    fn test_stock_material_with_color() {
+        let material = StockMaterial::default().with_color(100, 150, 200);
+        assert_eq!(material.color_rgb, (100, 150, 200));
+    }
+
+    #[test]
+    fn test_visualizer_3d_state_with_material() {
+        let state = Visualizer3DState::default();
+        assert_eq!(state.stock_material.name, "Aluminum");
+        assert!(state.show_stock);
+    }
 
     #[test]
     fn test_visualizer_3d_state_default() {

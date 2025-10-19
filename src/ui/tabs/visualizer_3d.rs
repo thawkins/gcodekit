@@ -67,6 +67,41 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         ui.checkbox(&mut vis_state.show_arc_moves, "Arc (yellow)");
     });
 
+    // Stock material selection
+    ui.horizontal(|ui| {
+        ui.label("Material:");
+        let materials = app.material_database.get_all_materials();
+        
+        if !materials.is_empty() {
+            let material_names: Vec<&str> = materials.iter().map(|m| m.name.as_str()).collect();
+            let selected_idx = materials.iter()
+                .position(|m| m.name == vis_state.stock_material.name)
+                .unwrap_or(0);
+            
+            let mut current_idx = selected_idx;
+            egui::ComboBox::from_label("")
+                .selected_text(&vis_state.stock_material.name)
+                .show_index(ui, &mut current_idx, materials.len(), |i| {
+                    material_names[i].to_string()
+                });
+            
+            if current_idx != selected_idx && current_idx < materials.len() {
+                let selected_mat = materials[current_idx];
+                vis_state.stock_material = crate::visualization::StockMaterial::from_material_properties(
+                    &selected_mat.name,
+                    &format!("{:?}", selected_mat.material_type),
+                );
+            }
+        }
+        
+        // Material color indicator
+        let (r, g, b) = vis_state.stock_material.color_rgb;
+        let color = egui::Color32::from_rgb(r, g, b);
+        let color_rect = egui::Rect::from_min_size(ui.cursor().left_top(), egui::vec2(20.0, 20.0));
+        ui.painter().rect_filled(color_rect, 2.0, color);
+        ui.advance_cursor_after_rect(color_rect);
+    });
+
     // Stock dimensions
     ui.horizontal(|ui| {
         ui.label("Stock (X × Y × Z):");
@@ -77,6 +112,29 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         ui.add(egui::DragValue::new(&mut vis_state.stock_z).speed(1.0));
         ui.label("mm");
     });
+
+    // Material properties display
+    if let Some(material) = app.material_database.get_material(&vis_state.stock_material.name) {
+        ui.collapsing("📊 Material Properties", |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Type:");
+                ui.label(format!("{:?}", material.material_type));
+                ui.separator();
+                ui.label("Density:");
+                ui.label(format!("{:.0} kg/m³", material.density));
+                ui.separator();
+                ui.label("Hardness:");
+                ui.label(format!("{:.0} HB", material.hardness));
+            });
+            
+            if let Some(hardness) = material.tensile_strength {
+                ui.label(format!("Tensile Strength: {:.0} MPa", hardness));
+            }
+            if let Some(speed) = material.cutting_speed {
+                ui.label(format!("Recommended Speed: {:.0} m/min", speed));
+            }
+        });
+    }
 
     ui.separator();
 
