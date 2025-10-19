@@ -64,6 +64,9 @@ pub struct GcodeEditorState {
     // Track last validation time to debounce
     last_validation_time: std::time::Instant,
     needs_validation: bool,
+    // Goto line dialog
+    pub show_goto_line_dialog: bool,
+    pub goto_line_input: String,
 }
 
 impl Default for GcodeEditorState {
@@ -99,6 +102,8 @@ impl Default for GcodeEditorState {
             sending_progress: 0.0,
             last_validation_time: std::time::Instant::now(),
             needs_validation: false,
+            show_goto_line_dialog: false,
+            goto_line_input: String::new(),
         }
     }
 }
@@ -886,12 +891,15 @@ impl GcodeEditorState {
             }
         }
 
-        // Go to line (Ctrl+L)
-        // TODO: Add goto line dialog
+        // Go to line (Ctrl+G)
+        if ui.input(|i| i.key_pressed(egui::Key::G) && i.modifiers.ctrl) {
+            self.show_goto_line_dialog = true;
+        }
 
-        // Select all (Ctrl+A)
+        // Select all (Ctrl+A) - highlight all text in editor
         if ui.input(|i| i.key_pressed(egui::Key::A) && i.modifiers.ctrl) {
-            // TODO: Implement select all
+            // Select all is handled by egui's TextEdit widget automatically
+            // when Ctrl+A is pressed within the editor
         }
 
         // Copy (Ctrl+C) - handled by egui
@@ -1361,6 +1369,47 @@ impl GcodeEditorState {
                         ui.label("to show completions");
                     });
                 });
+        }
+
+        // Goto line dialog
+        if self.show_goto_line_dialog {
+            let mut open = true;
+            let total_lines = self.buffer.get_content().lines().count().max(1);
+            
+            egui::Window::new("Go to Line")
+                .open(&mut open)
+                .collapsible(false)
+                .resizable(false)
+                .show(ui.ctx(), |ui| {
+                    ui.label(format!("Go to line (1-{}):", total_lines));
+                    ui.text_edit_singleline(&mut self.goto_line_input);
+                    
+                    // Only allow digits
+                    if self.goto_line_input.chars().any(|c| !c.is_ascii_digit() && !c.is_ascii_whitespace()) {
+                        self.goto_line_input.retain(|c| c.is_ascii_digit());
+                    }
+                    
+                    ui.horizontal(|ui| {
+                        if ui.button("Go").clicked() {
+                            if let Ok(line_num) = self.goto_line_input.trim().parse::<usize>() {
+                                if line_num > 0 && line_num <= total_lines {
+                                    self.selected_line = Some(line_num - 1);
+                                    self.show_goto_line_dialog = false;
+                                    self.goto_line_input.clear();
+                                }
+                            }
+                        }
+                        if ui.button("Cancel").clicked() {
+                            self.show_goto_line_dialog = false;
+                            self.goto_line_input.clear();
+                        }
+                    });
+                });
+            
+            if !open {
+                self.show_goto_line_dialog = false;
+                self.goto_line_input.clear();
+            }
         }
 
         None

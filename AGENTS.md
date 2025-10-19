@@ -8,6 +8,8 @@
 - `cargo build` - Build debug binary
 - `cargo build --release` - Build optimized release binary
 - `cargo check` - Check code without building
+- Build only debug builds unless specificaly asked to perform a `release build`
+
 
 ## Test Commands
 - `cargo test` - Run all tests
