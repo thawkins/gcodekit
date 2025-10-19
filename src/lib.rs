@@ -1,6 +1,7 @@
 #![allow(dead_code, unused_variables, unused_imports, unused_comparisons)]
 
 pub mod app;
+pub mod calibration;
 pub mod cam;
 pub mod communication;
 pub mod designer;
@@ -21,6 +22,10 @@ pub mod widgets;
 pub use crate::designer::Material;
 pub use crate::designer::Tool;
 pub use app::state::GcodeKitApp;
+pub use calibration::{
+    BacklashCompensation, CalibrationProcedure, CalibrationProfiles, CalibrationResult,
+    HomingConfiguration, MachineCalibration, StepCalibration,
+};
 pub use cam::CAMOperation;
 pub use cam::CAMParameters;
 pub use communication::CncController;

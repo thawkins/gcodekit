@@ -21,6 +21,7 @@ use tracing::{debug, info};
 
 mod app;
 pub mod cam;
+mod calibration;
 mod communication;
 mod designer;
 mod errors;

@@ -235,7 +235,7 @@ The real-time machine status monitoring and device console integration phases ad
   22. **Work Coordinate System (WCS)**: G54-G59 coordinate system management and switching ✓
 23. **Probing Routines**: Z-probing ✓, auto-leveling ✓, workpiece measurement with G38.x commands ✓
 24. **Tool Management**: Tool length offsets (G43/G49) ✓, tool change support ✓, tool libraries with predefined cutter parameters ✓
-25. **Machine Calibration**: Step calibration, backlash compensation, homing sequence configuration
+25. **Machine Calibration**: Step calibration, backlash compensation, homing sequence configuration ✓
 
 27. **Gamepad/Joystick Support**: SDL-based gamepad/joystick control with customizable button mapping
 28. **Web Pendant Interface**: Remote control via web-based pendant interface

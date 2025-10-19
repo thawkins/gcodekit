@@ -43,6 +43,7 @@ A professional desktop GUI application for controlling GRBL-based CNC machines a
   - Right-click to jog, left-click to select paths
 - **Probing Routines**: Z-probing, auto-leveling, and workpiece measurement (G38.x)
 - **Tool Management**: Tool libraries, length offsets (G43/G49), and change support
+- **Machine Calibration**: Step calibration, backlash compensation, homing configuration with multi-profile support
 - **Web Pendant**: Remote control via web browser interface
 
 ### 🎛️ User Interface
