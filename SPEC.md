@@ -197,7 +197,6 @@ The real-time machine status monitoring and device console integration phases ad
 ### Phase 12: Real-Time Machine Status Display
 - **Status Update Integration**: Enhanced app state with real-time machine status monitoring
 - **Bottom Status Bar Redesign**: Displays connection status, machine state (with color coding), machine position (MPos/WPos), feed rate, and spindle speed
-- **Status Analytics**: Anomaly detection system with 5 anomaly types (position changes, state inconsistencies, feed rate spikes, spindle anomalies, buffer issues)
 - **Color-Coded Status**: Green (Idle), Blue (Run/Jog), Yellow (Hold/Door), Red (Alarm), Gray (Unknown/Sleep/Check)
 
 ### Phase 13: Device Console Integration  
@@ -205,13 +204,6 @@ The real-time machine status monitoring and device console integration phases ad
 - **Color-Coded Messages**: Type and severity-based message coloring for easy scanning
 - **Automatic Filtering**: Status queries and simple "ok" responses automatically excluded from display
 - **Message Counts**: Real-time message count display with copy/clear controls
-
-### Phase 12.3: Status Analytics & Anomaly Detection
-- **Anomaly Detection**: 5 anomaly types with severity levels (1-10)
-- **Position Change Tracking**: Detects unexpected position changes >10mm while Idle
-- **State Transition Validation**: Identifies invalid state transitions
-- **Feed Rate Spike Detection**: >50% change during Run triggers alert
-- **Buffer Monitoring**: Critical underrun detection during Run
 
 ## Development Status
 
@@ -227,7 +219,7 @@ The real-time machine status monitoring and device console integration phases ad
 - Phase 1-8: Core GRBL communication, GUI framework, CAM functions, multi-axis support
 - Phase 9: Advanced error recovery, job management, multi-axis support, and job scheduling system
 - Phase 10: Configurable UI system, advanced CAM operations with part nesting
-- Phase 12: Real-time machine status display and status analytics
+- Phase 12: Real-time machine status display
 - Phase 13: Device console integration with severity filtering
 - UI Stabilization: Resolved duplicate element IDs and improved interface reliability
 - Code Quality: Clippy warnings fixed and code maintainability improved

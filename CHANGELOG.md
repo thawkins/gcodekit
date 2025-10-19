@@ -18,17 +18,6 @@ All notable changes to gcodekit are documented in this file.
   - Connection status with visual indicator (● symbol)
   - Active port display with 📍 icon
 
-#### Status Analytics & Anomaly Detection (Phase 12.3)
-- **Anomaly Detection System** with 5 anomaly types:
-  - Unexpected position changes (>10mm while Idle)
-  - State inconsistencies (invalid state transitions)
-  - Feed rate spikes (>50% change during Run)
-  - Spindle speed anomalies
-  - Buffer issues (critical underrun during Run)
-- **Anomaly Struct** with severity levels (1-10) and human-readable descriptions
-- **detect_anomalies()** function for history analysis
-- Comprehensive test coverage for anomaly detection
-
 #### Device Console Integration (Phase 13)
 - **Enhanced Device Console Tab** with:
   - Severity-based filtering (Error, Warning, Info, Debug)
@@ -60,26 +49,21 @@ All notable changes to gcodekit are documented in this file.
   - Added `last_status_update` timestamp for UI smoothing
 
 ### Technical Improvements
-- **Status Analytics Module Enhancement**:
-  - New anomaly detection framework
-  - Position change calculation
-  - State transition tracking
-  - Buffer monitoring
-  - 10 comprehensive tests added
+- **Status Monitor Module**:
+  - Real-time status polling (250ms interval)
+  - Status history tracking with 300-sample buffer
+  - Device logger integration for command/response tracking
+  - Connection state monitoring
 
 - **Error Recovery Integration Ready**:
   - Status monitor foundation for automatic error detection
-  - Anomaly data available for alert system
   - Framework for corrective actions
 
 ### Testing
 - **223 total tests passing** ✅
-- **4 new anomaly detection tests** covering:
-  - Position jump anomalies
-  - Feed rate spikes
-  - Normal operation baseline
-  - State transitions
-- All status analytics tests passing
+- Status monitoring tests for state tracking and history
+- Device console message filtering tests
+- All status monitor tests passing
 
 ### Performance
 - Status queries: 4/second (250ms interval)

@@ -5,7 +5,6 @@
 
 pub mod grbl;
 pub mod grbl_status;
-pub mod status_analytics;
 pub mod status_monitor;
 pub mod status_parser;
 pub mod status_manager;
@@ -14,7 +13,6 @@ pub mod device_logger_integration;
 
 pub use grbl::GrblCommunication;
 pub use grbl_status::{MachineState, MachineStatus, Position};
-pub use status_analytics::StatusAnalytics;
 pub use status_monitor::{StatusMonitor, StatusMonitorConfig};
 pub use status_parser::parse_status_response;
 pub use status_manager::{StatusManager, StatusManagerConfig};

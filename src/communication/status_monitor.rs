@@ -56,7 +56,7 @@ impl Default for StatusMonitorConfig {
 
 /// Running status monitor instance.
 ///
-/// Manages async polling of device status with history tracking and analytics.
+/// Manages async polling of device status with history tracking.
 pub struct StatusMonitor {
     config: StatusMonitorConfig,
 

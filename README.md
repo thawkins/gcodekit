@@ -55,7 +55,6 @@ A professional desktop GUI application for controlling GRBL-based CNC machines a
   - Automatic status query and "ok" filtering
   - Live message count display
 - **Real-Time Status Display**: Bottom status bar with live machine state, position tracking, and feed/spindle monitoring
-- **Status Analytics**: Anomaly detection system with alerts for position changes, state inconsistencies, and feed rate anomalies
 
 ## 📁 Project Structure
 
