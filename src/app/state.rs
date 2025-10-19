@@ -9,6 +9,7 @@ use crate::materials::MaterialDatabase;
 use crate::materials::MaterialType;
 use crate::types::{MachineMode, MachinePosition, PathSegment, Tab};
 use crate::widgets::SettingsUiState;
+use crate::visualization::Visualizer3DState;
 
 // Import the enhanced editor state - this will work because gcodeedit is a public module
 use crate::gcodeedit::GcodeEditorState;
@@ -71,6 +72,7 @@ pub struct UiState {
     pub right_panel_width: f32,
     pub feeds_speeds: FeedsSpeedsState,
     pub settings: SettingsUiState,
+    pub visualizer_3d: Visualizer3DState,
 }
 
 impl Default for UiState {
@@ -101,6 +103,7 @@ impl Default for UiState {
             right_panel_width: 250.0,
             feeds_speeds: FeedsSpeedsState::default(),
             settings: SettingsUiState::new(),
+            visualizer_3d: Visualizer3DState::default(),
         }
     }
 }

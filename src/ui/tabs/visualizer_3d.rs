@@ -5,7 +5,7 @@
 
 use crate::types::MoveType;
 use crate::visualization::{
-    draw_3d_grid, draw_3d_line, draw_machine_position, draw_stock, Visualizer3DState,
+    draw_3d_grid, draw_3d_line, draw_machine_position, draw_stock,
 };
 use crate::GcodeKitApp;
 use eframe::egui;
@@ -23,8 +23,8 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         }
     }
 
-    // Create visualizer state
-    let mut vis_state = Visualizer3DState::default();
+    // Use persisted visualizer state from app.ui
+    let vis_state = &mut app.ui.visualizer_3d;
 
     // Camera controls
     ui.horizontal(|ui| {
@@ -42,13 +42,25 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     // Camera adjustment controls
     ui.horizontal(|ui| {
         ui.label("Pitch:");
-        ui.add(egui::Slider::new(&mut vis_state.camera_pitch, -90.0..=90.0).step_by(5.0));
+        ui.add(
+            egui::Slider::new(&mut vis_state.camera_pitch, -90.0..=90.0)
+                .step_by(5.0)
+                .drag_value_speed(0.5),
+        );
 
         ui.label("Yaw:");
-        ui.add(egui::Slider::new(&mut vis_state.camera_yaw, 0.0..=360.0).step_by(5.0));
+        ui.add(
+            egui::Slider::new(&mut vis_state.camera_yaw, 0.0..=360.0)
+                .step_by(5.0)
+                .drag_value_speed(0.5),
+        );
 
         ui.label("Zoom:");
-        ui.add(egui::Slider::new(&mut vis_state.zoom, 0.1..=5.0).step_by(0.1));
+        ui.add(
+            egui::Slider::new(&mut vis_state.zoom, 0.1..=5.0)
+                .step_by(0.1)
+                .drag_value_speed(0.01),
+        );
     });
 
     // Display options
@@ -140,11 +152,21 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
 
     // Visualization area
     let available_size = ui.available_size();
-    let (rect, response) = ui.allocate_exact_size(available_size, egui::Sense::click());
+    let (rect, response) = ui.allocate_exact_size(available_size, egui::Sense::click_and_drag());
 
     if app.gcode.gcode_content.is_empty() {
         ui.centered_and_justified(|ui| ui.label("📄 Load G-code to visualize toolpath"));
         return;
+    }
+
+    // Handle mouse scroll for zoom when focused on 3D view
+    if response.has_focus() {
+        let scroll_delta = ui.input(|i| i.raw_scroll_delta.y);
+        if scroll_delta != 0.0 {
+            // Scroll up (positive delta) = zoom in, scroll down (negative delta) = zoom out
+            let zoom_factor = 0.1;
+            vis_state.zoom = (vis_state.zoom + scroll_delta * zoom_factor * 0.01).clamp(0.1, 5.0);
+        }
     }
 
     let painter = ui.painter();
