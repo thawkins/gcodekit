@@ -1,4 +1,5 @@
 use crate::{errors::GcodeKitError, GcodeKitApp};
+use image::GenericImageView;
 
 impl GcodeKitApp {
     /// Opens a file dialog to select and load a G-code file.
@@ -105,14 +106,30 @@ impl GcodeKitApp {
     }
 
     /// Opens a file dialog to select an image file for engraving.
-    /// Currently a placeholder - full image processing implementation is TODO.
+    /// Loads the image and stores dimensions for later conversion to G-code.
     pub fn load_image_for_engraving(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
             .add_filter("Image files", &["png", "jpg", "jpeg", "bmp"])
             .pick_file()
         {
-            // TODO: Implement actual image processing
-            self.machine.status_message = format!("Image loaded for engraving: {}", path.display());
+            match image::open(&path) {
+                Ok(img) => {
+                    let (width, height) = img.dimensions();
+                    self.cam.image_path = Some(path.to_string_lossy().to_string());
+                    self.cam.image_width = width;
+                    self.cam.image_height = height;
+                    self.machine.status_message = 
+                        format!("Image loaded: {}x{} pixels", width, height);
+                    self.log_console(&format!(
+                        "Image engraving: Loaded {}x{} image from {}",
+                        width, height, path.display()
+                    ));
+                }
+                Err(e) => {
+                    self.machine.status_message = format!("Error loading image: {}", e);
+                    self.log_console(&format!("Image load failed: {}", e));
+                }
+            }
         }
     }
 

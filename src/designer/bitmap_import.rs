@@ -60,14 +60,23 @@ pub fn show_bitmap_import_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             );
         });
 
-        if ui.button("Import Bitmap").clicked() {
-            // TODO: Implement bitmap file import
-            // app.import_bitmap_file();
+        if ui.button("Load Image for Engraving").clicked() {
+            app.load_image_for_engraving();
         }
 
-        if ui.button("Preview Vectorization").clicked() {
-            // TODO: Implement bitmap vectorization preview
-            // app.preview_bitmap_vectorization();
+        // Show loaded image status
+        if let Some(path) = &app.cam.image_path {
+            ui.label(format!("Loaded: {}", path));
+            ui.label(format!(
+                "Dimensions: {}x{} pixels",
+                app.cam.image_width, app.cam.image_height
+            ));
+            
+            if ui.button("Generate Engraving G-code").clicked() {
+                app.generate_image_engraving();
+            }
+        } else {
+            ui.label("No image loaded");
         }
     });
 }
