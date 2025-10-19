@@ -261,6 +261,7 @@ pub struct GcodeKitApp {
     pub keybindings: HashMap<Action, KeyBinding>,
     pub designer: DesignerState,
     pub material_database: MaterialDatabase,
+    pub back_plotter: crate::gcodeedit::BackPlotter,
 }
 
 impl Default for GcodeKitApp {
@@ -275,6 +276,7 @@ impl Default for GcodeKitApp {
             keybindings: create_default_keybindings(),
             designer: DesignerState::default(),
             material_database: MaterialDatabase::default(),
+            back_plotter: crate::gcodeedit::BackPlotter::new(),
         }
     }
 }

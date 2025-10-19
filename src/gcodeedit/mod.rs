@@ -1,5 +1,6 @@
 // G-code editor module.
 pub mod autocomplete;
+pub mod back_plot;
 pub mod config;
 pub mod editor;
 pub mod find_replace;
@@ -9,6 +10,7 @@ pub mod virtualized_view;
 pub mod vocabulary;
 
 // Re-export main types
+pub use back_plot::{BackPlotter, BackPlotState, BackPlotStep};
 pub use editor::TextBufferCore;
 pub use rules::{Diagnostic, RuleSet, Severity};
 pub use tokenizer::{LineSyntax, TokenizerService};

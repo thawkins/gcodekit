@@ -1,3 +1,4 @@
+pub mod back_plot_ui;
 pub mod calibration;
 pub mod cam_operations;
 pub mod connection;
@@ -13,6 +14,7 @@ pub mod settings_panel;
 pub mod tool_management;
 
 // Re-export the main widget functions for easy access
+pub use back_plot_ui::{show_back_plot_panel, BackPlotUiConfig};
 pub use connection::show_connection_widget;
 pub use error_recovery::show_error_recovery_widget;
 pub use gamepad_settings::{show_gamepad_settings, GamepadSettingsUiState};
