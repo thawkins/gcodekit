@@ -1252,6 +1252,12 @@ impl CncController for GrblCommunication {
         let _ = self.send_gcode_line("$X");
     }
 
+    fn resume_job(&mut self) {
+        // Send cycle resume command (~) to GRBL
+        // This resumes a paused job execution
+        self.send_grbl_command("~");
+    }
+
     fn send_raw_command(&mut self, command: &str) {
         self.send_grbl_command(command);
     }

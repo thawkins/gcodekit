@@ -210,6 +210,32 @@ pub fn show_jog_widget(ui: &mut egui::Ui, app: &mut GcodeKitApp) {
             ui.add_space(5.0);
         }
 
+        // Resume button (only show when in hold/pause state)
+        if app.machine.realtime_status.state == crate::communication::grbl_status::MachineState::Hold {
+            ui.horizontal(|ui| {
+                let pause_bg = egui::Color32::from_rgb(100, 150, 200);
+                let pause_text = egui::Color32::WHITE;
+                
+                ui.label("⏸️ PAUSED:");
+                
+                if ui
+                    .add_sized(
+                        [200.0, 40.0],
+                        egui::Button::new(
+                            egui::RichText::new("▶️ RESUME JOB").size(14.0).color(pause_text)
+                        )
+                        .fill(pause_bg),
+                    )
+                    .on_hover_text("Resume paused job execution")
+                    .clicked()
+                {
+                    app.machine.communication.resume_job();
+                    app.machine.status_message = "Job resumed".to_string();
+                }
+            });
+            ui.add_space(5.0);
+        }
+
         ui.separator();
         ui.horizontal(|ui| {
             ui.label("Step Size:");

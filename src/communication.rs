@@ -244,6 +244,7 @@ pub trait CncController {
     fn emergency_stop(&mut self);
     fn reset_machine(&mut self);
     fn clear_alarm(&mut self);
+    fn resume_job(&mut self);
     fn send_spindle_override(&mut self, percentage: f32);
     fn send_feed_override(&mut self, percentage: f32);
     fn get_version(&self) -> &str;
