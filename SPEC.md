@@ -233,8 +233,7 @@ The real-time machine status monitoring and device console integration phases ad
 - ✅ Task 5: File Import/Export Operations (JSON design persistence)
 - ✅ Task 9: Machine Control UI Features (Reset, stop, about, documentation)
 
-**Remaining Tasks (6/11)**:
-- Task 2: Firmware Management System (3-4 days)
+**Remaining Tasks (5/11)**:
 - Task 6: 3D Visualizer Enhancements (1-2 days) 
 - Task 7: Toolpath Segment Optimization (3-4 days)
 - Task 8: Communication Error Recovery UI (2-3 days) - RECOMMENDED NEXT
@@ -257,13 +256,12 @@ The real-time machine status monitoring and device console integration phases ad
 
 27. **Gamepad/Joystick Support**: SDL-based gamepad/joystick control with customizable button mapping
 28. **Web Pendant Interface**: Remote control via web-based pendant interface
-29. **Firmware Management**: GRBL firmware updating and flashing capabilities
-30. **Settings Management**: Backup/restore GRBL settings, multiple machine profiles
-31. **File Management**: Multiple file queuing, sequential processing, file preprocessing
-32. **Safety Features**: Emergency stop, soft limits, safety door handling
-33. **Material Database**: Predefined material settings and cutting parameters
+29. **Settings Management**: Backup/restore GRBL settings, multiple machine profiles
+30. **File Management**: Multiple file queuing, sequential processing, file preprocessing
+31. **Safety Features**: Emergency stop, soft limits, safety door handling
+32. **Material Database**: Predefined material settings and cutting parameters
 
-35. **Pendant Support**: External pendant/joystick hardware support
+34. **Pendant Support**: External pendant/joystick hardware support
 36. **Custom Button Panels**: User-defined control buttons and macros
 37. **Keybinding Customization**: Configurable keyboard shortcuts for all actions ✓
 38. **Data Logging**: Operation logging, analytics, and performance metrics

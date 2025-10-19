@@ -25,7 +25,6 @@ mod calibration;
 mod communication;
 mod designer;
 mod errors;
-mod firmware;
 mod gcode;
 mod gcodeedit; // Add the gcodeedit module so app can see it
 mod input;

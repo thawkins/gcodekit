@@ -6,7 +6,6 @@ pub mod cam;
 pub mod communication;
 pub mod designer;
 pub mod errors;
-pub mod firmware;
 pub mod gcode;
 pub mod gcodeedit;
 pub mod input;

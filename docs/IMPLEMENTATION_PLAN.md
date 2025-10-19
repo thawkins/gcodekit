@@ -116,7 +116,6 @@ Add advanced system integration capabilities.
 
 **Success Metrics:**
 - Full-featured web pendant interface
-- Automated firmware update system
 
 ### Phase 8: Production Features (Months 24-36) ✅ COMPLETED
 **Priority: LOW** | **Effort: 12 months** | **Dependencies: Phase 7**
