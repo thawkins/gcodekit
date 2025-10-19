@@ -7,6 +7,7 @@ pub enum Tab {
     DeviceConsole,
     JobManager,
     FeedsSpeeds,
+    ErrorRecovery,
 }
 
 #[allow(clippy::upper_case_acronyms)]

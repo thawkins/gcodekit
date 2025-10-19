@@ -63,6 +63,9 @@ pub fn show_center_panel(app: &mut GcodeKitApp, ctx: &egui::Context) {
             crate::types::Tab::Designer => {
                 crate::ui::tabs::show_designer_tab(app, ui);
             }
+            crate::types::Tab::ErrorRecovery => {
+                crate::ui::tabs::show_error_recovery_tab(app, ui);
+            }
         }
     });
 

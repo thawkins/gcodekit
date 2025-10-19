@@ -1,7 +1,7 @@
 use crate::types::Tab;
 use crate::ui::tabs::{
-    show_designer_tab, show_device_console_tab, show_feeds_speeds_tab, show_gcode_editor_tab,
-    show_job_manager_tab, show_visualizer_3d_tab,
+    show_designer_tab, show_device_console_tab, show_error_recovery_tab, show_feeds_speeds_tab,
+    show_gcode_editor_tab, show_job_manager_tab, show_visualizer_3d_tab,
 };
 use crate::GcodeKitApp;
 use eframe::egui;
@@ -29,6 +29,11 @@ impl GcodeKitApp {
                     "Feeds & Speeds",
                 );
                 ui.selectable_value(&mut self.ui.selected_tab, Tab::Designer, "Designer");
+                ui.selectable_value(
+                    &mut self.ui.selected_tab,
+                    Tab::ErrorRecovery,
+                    "🔧 Error Recovery",
+                );
             });
             ui.separator();
 
@@ -50,6 +55,9 @@ impl GcodeKitApp {
                 }
                 Tab::Designer => {
                     show_designer_tab(self, ui);
+                }
+                Tab::ErrorRecovery => {
+                    show_error_recovery_tab(self, ui);
                 }
             }
         });
