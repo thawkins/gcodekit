@@ -2,7 +2,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.90%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-362%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-348%2B%20passing-brightgreen.svg)](tests/)
 [![GRBL](https://img.shields.io/badge/GRBL-v1.1%2B-blue.svg)](https://github.com/grbl/grbl)
 [![Status](https://img.shields.io/badge/status-Alpha%20Development-yellow.svg)](https://github.com/thawkins/gcodekit)
 
@@ -50,6 +50,7 @@ A professional desktop GUI application for controlling GRBL-based CNC machines a
 ### 🎛️ User Interface
 - **Configurable Layout**: Dockable windows with toggleable left/right panels
 - **Customizable Keybindings**: Configure keyboard shortcuts for all actions
+- **Gamepad Support**: Cross-platform gamepad/joystick control with customizable button mapping and analog stick jogging
 - **Responsive Design**: Modern egui-based interface with 60+ FPS rendering
 - **Dark/Light Themes**: Comfortable viewing in any environment
 - **Device Console**: Real-time command logging with severity filtering (Error, Warning, Info, Debug)
