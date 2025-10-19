@@ -8,6 +8,7 @@ use crate::jobs::{JobQueue, JobType};
 use crate::materials::MaterialDatabase;
 use crate::materials::MaterialType;
 use crate::types::{MachineMode, MachinePosition, PathSegment, Tab};
+use crate::widgets::SettingsUiState;
 
 // Import the enhanced editor state - this will work because gcodeedit is a public module
 use crate::gcodeedit::GcodeEditorState;
@@ -69,6 +70,7 @@ pub struct UiState {
     pub left_panel_width: f32,
     pub right_panel_width: f32,
     pub feeds_speeds: FeedsSpeedsState,
+    pub settings: SettingsUiState,
 }
 
 impl Default for UiState {
@@ -98,6 +100,7 @@ impl Default for UiState {
             left_panel_width: 200.0,
             right_panel_width: 250.0,
             feeds_speeds: FeedsSpeedsState::default(),
+            settings: SettingsUiState::new(),
         }
     }
 }

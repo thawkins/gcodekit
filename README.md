@@ -2,7 +2,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.90%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-301%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-332%20passing-brightgreen.svg)](tests/)
 [![GRBL](https://img.shields.io/badge/GRBL-v1.1%2B-blue.svg)](https://github.com/grbl/grbl)
 [![Status](https://img.shields.io/badge/status-Alpha%20Development-yellow.svg)](https://github.com/thawkins/gcodekit)
 
@@ -41,6 +41,7 @@ A professional desktop GUI application for controlling GRBL-based CNC machines a
   - Green: Feed moves (G1)
   - Yellow: Arc moves (G2/G3)
   - Right-click to jog, left-click to select paths
+- **Settings Management**: Save/load GRBL machine profiles with multi-machine support, backup/restore functionality
 - **Probing Routines**: Z-probing, auto-leveling, and workpiece measurement (G38.x)
 - **Tool Management**: Tool libraries, length offsets (G43/G49), and change support
 - **Machine Calibration**: Step calibration, backlash compensation, homing configuration with multi-profile support

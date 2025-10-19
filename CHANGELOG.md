@@ -2,6 +2,45 @@
 
 All notable changes to gcodekit are documented in this file.
 
+## [0.1.0-alpha] - 2025-10-19
+
+### Added
+
+**Task 8: Settings Management System**
+
+- **Machine Profile Management**: Complete profile system for saving and loading GRBL machine configurations
+  - `MachineProfile` struct with metadata (name, description, machine type, port)
+  - `ProfileSettings` struct with all GRBL parameters:
+    - Axis step rates (steps/mm)
+    - Maximum feed rates (mm/min)
+    - Acceleration values (mm/sec²)
+    - Spindle speed ranges (RPM)
+    - Soft limits configuration
+    - Axis inversion settings
+- **ProfileManager**: In-memory profile management with active profile tracking
+- **SettingsStorage**: Persistent JSON-based storage
+  - Save/load individual profiles
+  - List available profiles
+  - Delete profiles
+  - Export/import profiles
+  - Backup all profiles to timestamped directories
+  - Restore profiles from backups
+- **Settings UI Panel**: User-friendly interface for profile management
+  - Profile list with active indicator (✓)
+  - Profile creation dialog with machine type selection
+  - Delete confirmation dialog
+  - Error/success message display
+- **Multi-Machine Support**: Switch between different machine configurations instantly
+- **Cross-Platform Storage**: Platform-specific config directories
+  - Linux: `~/.config/gcodekit/profiles/`
+  - Windows: `%APPDATA%\gcodekit\profiles/`
+  - macOS: `~/Library/Application Support/gcodekit/profiles/`
+- **16 new tests** covering profile creation, management, and persistence
+
+### Changed
+- Updated badge in README to show 332 passing tests (from 301)
+- Updated SPEC.md with Task 8 completion details
+
 ## [0.1.0-alpha] - 2025-10-18
 
 ### Added

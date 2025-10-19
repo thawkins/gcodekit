@@ -32,6 +32,7 @@ mod jobs;
 mod layout;
 mod materials;
 mod ops;
+mod settings;
 mod types;
 mod ui;
 mod visualization;
