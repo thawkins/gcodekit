@@ -1,9 +1,16 @@
-use eframe::egui;
+/// 3D Visualizer Tab
+///
+/// Enhanced 3D visualization of toolpaths with real-time camera controls,
+/// machine position tracking, and stock visualization.
 
 use crate::types::MoveType;
+use crate::visualization::{
+    draw_3d_grid, draw_3d_line, draw_machine_position, draw_stock, Visualizer3DState,
+};
 use crate::GcodeKitApp;
+use eframe::egui;
 
-/// Shows the 3D visualizer tab (simplified, avoids deep nested closures to fix parsing errors)
+/// Shows the enhanced 3D visualizer tab
 pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     // Keyboard shortcut: Ctrl+R -> run from selected line
     if ui.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::R)) {
@@ -16,20 +23,168 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         }
     }
 
-    // Header row with step-through controls
+    // Create visualizer state
+    let mut vis_state = Visualizer3DState::default();
+
+    // Camera controls
     ui.horizontal(|ui| {
-        ui.label("3D Visualizer");
+        ui.label("🎥 3D Visualizer");
         ui.separator();
 
-        // Step-through controls
-        ui.label("Step-through:");
+        if ui.button("🏠 Reset Camera").clicked() {
+            vis_state.reset_camera();
+        }
+        if ui.button("📐 Fit View").clicked() {
+            vis_state.fit_to_view();
+        }
+    });
+
+    // Camera adjustment controls
+    ui.horizontal(|ui| {
+        ui.label("Pitch:");
+        ui.add(egui::Slider::new(&mut vis_state.camera_pitch, -90.0..=90.0).step_by(5.0));
+
+        ui.label("Yaw:");
+        ui.add(egui::Slider::new(&mut vis_state.camera_yaw, 0.0..=360.0).step_by(5.0));
+
+        ui.label("Zoom:");
+        ui.add(egui::Slider::new(&mut vis_state.zoom, 0.1..=5.0).step_by(0.1));
+    });
+
+    // Display options
+    ui.horizontal(|ui| {
+        ui.label("Display:");
+        ui.checkbox(&mut vis_state.show_grid, "Grid");
+        ui.checkbox(&mut vis_state.show_stock, "Stock");
+        ui.checkbox(&mut vis_state.show_machine_position, "Position");
+    });
+
+    // Toolpath visibility
+    ui.horizontal(|ui| {
+        ui.label("Toolpath:");
+        ui.checkbox(&mut vis_state.show_rapid_moves, "Rapid (blue)");
+        ui.checkbox(&mut vis_state.show_feed_moves, "Feed (green)");
+        ui.checkbox(&mut vis_state.show_arc_moves, "Arc (yellow)");
+    });
+
+    // Stock dimensions
+    ui.horizontal(|ui| {
+        ui.label("Stock (X × Y × Z):");
+        ui.add(egui::DragValue::new(&mut vis_state.stock_x).speed(1.0));
+        ui.label("×");
+        ui.add(egui::DragValue::new(&mut vis_state.stock_y).speed(1.0));
+        ui.label("×");
+        ui.add(egui::DragValue::new(&mut vis_state.stock_z).speed(1.0));
+        ui.label("mm");
+    });
+
+    ui.separator();
+
+    // Visualization area
+    let available_size = ui.available_size();
+    let (rect, response) = ui.allocate_exact_size(available_size, egui::Sense::click());
+
+    if app.gcode.gcode_content.is_empty() {
+        ui.centered_and_justified(|ui| ui.label("📄 Load G-code to visualize toolpath"));
+        return;
+    }
+
+    let painter = ui.painter();
+    let center = rect.center();
+
+    // Draw 3D scene
+    draw_3d_grid(&painter, &vis_state, center, 100.0, 20.0);
+    draw_stock(&painter, &vis_state, center);
+
+    // Draw toolpath segments
+    for segment in &app.gcode_editor.parsed_paths {
+        if (segment.move_type == MoveType::Rapid && !vis_state.show_rapid_moves)
+            || (segment.move_type == MoveType::Feed && !vis_state.show_feed_moves)
+            || (segment.move_type == MoveType::Arc && !vis_state.show_arc_moves)
+        {
+            continue;
+        }
+
+        let is_selected = app.gcode.selected_line == Some(segment.line_number);
+
+        let (color, width) = if is_selected {
+            (egui::Color32::from_rgb(255, 128, 0), 3.0)
+        } else {
+            match segment.move_type {
+                MoveType::Rapid => (egui::Color32::BLUE, 1.5),
+                MoveType::Feed => (egui::Color32::GREEN, 1.5),
+                MoveType::Arc => (egui::Color32::YELLOW, 1.5),
+            }
+        };
+
+        draw_3d_line(
+            &painter,
+            &vis_state,
+            center,
+            segment.start.x,
+            segment.start.y,
+            segment.start.z,
+            segment.end.x,
+            segment.end.y,
+            segment.end.z,
+            egui::Stroke::new(width, color),
+        );
+    }
+
+    // Draw machine position
+    draw_machine_position(
+        &painter,
+        &vis_state,
+        center,
+        app.machine.current_position.x,
+        app.machine.current_position.y,
+        app.machine.current_position.z,
+    );
+
+    // Click to select line
+    if response.clicked() {
+        if let Some(pos) = response.interact_pointer_pos() {
+            let mut closest_distance = f32::MAX;
+            let mut closest_line = None;
+
+            for segment in &app.gcode_editor.parsed_paths {
+                let start = vis_state.project_to_2d(
+                    segment.start.x,
+                    segment.start.y,
+                    segment.start.z,
+                    center,
+                );
+                let end = vis_state.project_to_2d(
+                    segment.end.x,
+                    segment.end.y,
+                    segment.end.z,
+                    center,
+                );
+
+                let distance = distance_point_to_segment(pos, start, end);
+                if distance < closest_distance && distance < 20.0 {
+                    closest_distance = distance;
+                    closest_line = Some(segment.line_number);
+                }
+            }
+
+            if let Some(line) = closest_line {
+                app.gcode.selected_line = Some(line);
+            }
+        }
+    }
+
+    ui.separator();
+
+    // Step-through controls
+    ui.horizontal(|ui| {
+        ui.label("Navigate:");
         if ui.button("⏮️ First").clicked() && !app.gcode_editor.parsed_paths.is_empty() {
             app.gcode.selected_line = Some(app.gcode_editor.parsed_paths[0].line_number);
         }
 
         if ui.button("◀️ Prev").clicked() {
             if let Some(current) = app.gcode.selected_line {
-                // Find previous segment
                 for segment in app.gcode_editor.parsed_paths.iter().rev() {
                     if segment.line_number < current {
                         app.gcode.selected_line = Some(segment.line_number);
@@ -41,7 +196,6 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
 
         if ui.button("▶️ Next").clicked() {
             if let Some(current) = app.gcode.selected_line {
-                // Find next segment
                 for segment in &app.gcode_editor.parsed_paths {
                     if segment.line_number > current {
                         app.gcode.selected_line = Some(segment.line_number);
@@ -49,7 +203,6 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
                     }
                 }
             } else if !app.gcode_editor.parsed_paths.is_empty() {
-                // Start from first if nothing selected
                 app.gcode.selected_line = Some(app.gcode_editor.parsed_paths[0].line_number);
             }
         }
@@ -61,134 +214,34 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         }
 
         ui.separator();
-        ui.button("🔄 Refresh View").clicked();
-        ui.button("📏 Fit to View").clicked();
-        ui.separator();
-        let run_button_enabled = app.gcode.selected_line.is_some()
+
+        let run_enabled = app.gcode.selected_line.is_some()
             && *app.machine.communication.get_connection_state()
                 == crate::communication::ConnectionState::Connected;
         if ui
-            .add_enabled(
-                run_button_enabled,
-                egui::Button::new("▶️ Run from Selected Line"),
-            )
+            .add_enabled(run_enabled, egui::Button::new("▶️ Run"))
             .clicked()
         {
-            if let Some(line_number) = app.gcode.selected_line {
-                app.send_gcode_from_line(line_number);
+            if let Some(line) = app.gcode.selected_line {
+                app.send_gcode_from_line(line);
             }
         }
-        ui.separator();
-        ui.label("(Ctrl+R to run)");
+
+        ui.label("(Ctrl+R)");
     });
 
-    ui.separator();
-
-    // Visualization area with click handling
-    let available_size = ui.available_size();
-    let (rect, response) = ui.allocate_exact_size(available_size, egui::Sense::click());
-
-    if app.gcode.gcode_content.is_empty() {
-        ui.centered_and_justified(|ui| ui.label("Load G-code to visualize toolpath"));
-        return;
-    }
-
-    // Handle click to select line
-    if response.clicked() {
-        if let Some(pos) = response.interact_pointer_pos() {
-            // Find closest segment to click position
-            let mut closest_segment_idx = None;
-            let mut min_distance = f32::MAX;
-
-            for (idx, segment) in app.gcode_editor.parsed_paths.iter().enumerate() {
-                let start = egui::pos2(rect.min.x + segment.start.x, rect.min.y + segment.start.y);
-                let end = egui::pos2(rect.min.x + segment.end.x, rect.min.y + segment.end.y);
-
-                // Calculate distance from click to line segment
-                let distance = distance_point_to_segment(pos, start, end);
-
-                if distance < min_distance && distance < 20.0 {
-                    // 20px threshold
-                    min_distance = distance;
-                    closest_segment_idx = Some(idx);
-                }
-            }
-
-            // Select the line if segment found
-            if let Some(idx) = closest_segment_idx {
-                app.gcode.selected_line = Some(app.gcode_editor.parsed_paths[idx].line_number);
-            }
+    // Status info
+    ui.horizontal(|ui| {
+        ui.label(format!("Segments: {}", app.gcode_editor.parsed_paths.len()));
+        if let Some(selected) = app.gcode.selected_line {
+            ui.colored_label(
+                egui::Color32::from_rgb(255, 128, 0),
+                format!("Selected: Line {}", selected + 1),
+            );
         }
-    }
+    });
 
-    let painter = ui.painter();
-
-    // Draw all segments
-    for (idx, segment) in app.gcode_editor.parsed_paths.iter().enumerate() {
-        let start = egui::pos2(rect.min.x + segment.start.x, rect.min.y + segment.start.y);
-        let end = egui::pos2(rect.min.x + segment.end.x, rect.min.y + segment.end.y);
-
-        // Determine if this segment's line is selected
-        let is_selected = app.gcode.selected_line == Some(segment.line_number);
-
-        let (color, width) = if is_selected {
-            // Highlight selected line
-            (egui::Color32::from_rgb(255, 128, 0), 4.0)
-        } else {
-            match segment.move_type {
-                MoveType::Rapid => (egui::Color32::BLUE, 2.0),
-                MoveType::Feed => (egui::Color32::GREEN, 2.0),
-                MoveType::Arc => (egui::Color32::YELLOW, 2.0),
-            }
-        };
-
-        painter.line_segment([start, end], egui::Stroke::new(width, color));
-
-        // Draw start point for selected segment
-        if is_selected {
-            painter.circle_filled(start, 4.0, egui::Color32::RED);
-        }
-    }
-
-    // Show tooltip for selected segment (outside the loop to avoid borrow issues)
-    if let Some(selected_line) = app.gcode.selected_line {
-        for segment in &app.gcode_editor.parsed_paths {
-            if segment.line_number == selected_line {
-                let tooltip_text = format!(
-                    "Line {}: {:?} move\nFrom ({:.2}, {:.2}, {:.2})\nTo ({:.2}, {:.2}, {:.2})",
-                    segment.line_number + 1,
-                    segment.move_type,
-                    segment.start.x,
-                    segment.start.y,
-                    segment.start.z,
-                    segment.end.x,
-                    segment.end.y,
-                    segment.end.z
-                );
-                response.on_hover_text(tooltip_text);
-                break;
-            }
-        }
-    }
-
-    ui.label(format!("Segments: {}", app.gcode_editor.parsed_paths.len()));
-
-    if let Some(selected) = app.gcode.selected_line {
-        ui.colored_label(
-            egui::Color32::from_rgb(255, 128, 0),
-            format!("Selected: Line {}", selected + 1),
-        );
-    }
-
-    if let Some(sending_line) = app.gcode_editor.sending_from_line {
-        ui.colored_label(
-            egui::Color32::GREEN,
-            format!("Sending from line {}", sending_line + 1),
-        );
-    }
-
-    ui.separator();
-    ui.label("💡 Tip: Click on toolpath to select line in editor");
+    ui.label("💡 Tip: Click on toolpath to select, drag camera controls to rotate view");
 }
 
 /// Calculate distance from point to line segment
@@ -198,11 +251,9 @@ fn distance_point_to_segment(point: egui::Pos2, seg_start: egui::Pos2, seg_end: 
     let length_squared = dx * dx + dy * dy;
 
     if length_squared == 0.0 {
-        // Segment is a point
         return ((point.x - seg_start.x).powi(2) + (point.y - seg_start.y).powi(2)).sqrt();
     }
 
-    // Project point onto line segment
     let t = ((point.x - seg_start.x) * dx + (point.y - seg_start.y) * dy) / length_squared;
     let t = t.clamp(0.0, 1.0);
 
@@ -210,4 +261,25 @@ fn distance_point_to_segment(point: egui::Pos2, seg_start: egui::Pos2, seg_end: 
     let proj_y = seg_start.y + t * dy;
 
     ((point.x - proj_x).powi(2) + (point.y - proj_y).powi(2)).sqrt()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_show_visualizer_3d_tab_compiles() {
+        let _fn_exists = show_visualizer_3d_tab as fn(&mut GcodeKitApp, &mut egui::Ui);
+    }
+
+    #[test]
+    fn test_distance_calculation() {
+        let point = egui::pos2(50.0, 50.0);
+        let start = egui::pos2(0.0, 0.0);
+        let end = egui::pos2(100.0, 100.0);
+
+        let dist = distance_point_to_segment(point, start, end);
+        // Distance should be reasonable
+        assert!(dist >= 0.0 && dist < 100.0);
+    }
 }

@@ -15,6 +15,7 @@ pub mod materials;
 pub mod ops;
 pub mod types;
 pub mod ui;
+pub mod visualization;
 pub mod web_pendant;
 pub mod widgets;
 

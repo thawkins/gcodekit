@@ -34,6 +34,7 @@ mod materials;
 mod ops;
 mod types;
 mod ui;
+mod visualization;
 mod web_pendant;
 mod widgets;
 
