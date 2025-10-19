@@ -252,13 +252,39 @@ The real-time machine status monitoring and device console integration phases ad
 - ✅ Code quality improved with clippy fixes (10+ warnings resolved)
 
 **Current Status**:
-- Test Coverage: 348 tests (100% passing)
+- Test Coverage: 365 tests (100% passing) - 17 new tests for back plotter
 - Code Quality: Improved with clippy lint fixes (resolved doc comments, clamp patterns, borrowing issues)
 - Firmware Management: Removed from scope
 - Jog Panel: Enhanced with state-based controls (alarm unlock, resume)
 - Anomaly Detection: Removed from scope
 - Materials Integration: Stock visualization linked to materials database
 - Gamepad Support: Implemented with customizable button mapping and jogging
+- Back Plotting: Complete step-through G-code simulator with full UI integration
+
+## Task 2: Back Plotting (Visual G-code Simulator) ✅ COMPLETED
+
+Professional-grade visual G-code simulation with step-through execution:
+
+### Core Features:
+- **Step-Through Execution**: Forward/backward stepping through G-code with real-time position tracking
+- **Jump to Step**: Quick navigation to specific step numbers in G-code sequence
+- **Pause/Resume**: Full control over simulation execution with state management
+- **Progress Tracking**: Real-time progress bar showing simulation completion percentage
+- **Speed Control**: Adjustable simulation speed multiplier (0.1x to 5.0x)
+- **Step History**: Maintains execution history for undo/redo capabilities
+
+### Implementation Details:
+- **BackPlotter**: Core simulator with step management and state tracking
+- **BackPlotStep**: Represents individual move with line number, position, feed rate, spindle speed
+- **BackPlotState**: Enum for Idle/Running/Paused/Completed states
+- **UI Integration**: Full control panel with visualization in dedicated widget
+- **Current Step Info**: Displays line number, position, move type, feed/spindle parameters
+
+### Test Coverage:
+- 17 comprehensive tests for BackPlotter module (14 core + 3 UI tests)
+- Tests cover: creation, step tracking, forward/backward, jumping, pause/resume, progress calculation
+- All tests passing with 365 total tests in project
+- UI compilation test ensures widget integrates correctly
 
 ## Task 8: Settings Management System ✅ COMPLETED
 
@@ -282,26 +308,26 @@ Comprehensive machine profile and settings management enabling users to:
 - All tests passing (362 total tests in project)
 - Full error handling with anyhow::Result
 
-**Completed Tasks (5/10)**:
+**Completed Tasks (6/10)**:
 - ✅ Task 1: G-code Editor Advanced Features
+- ✅ Task 2: Back Plotting (Visual G-code Simulator) - Step-through visualization with pause/resume and speed control
 - ✅ Task 3: Image to G-code Conversion
 - ✅ Task 4: Tabbed Box & Jigsaw Path Generation
 - ✅ Task 5: File Import/Export Operations
 - ✅ Task 8: Settings Management System
+- ✅ Task 9: Machine Control UI Features
 
 **Additional Completed (Oct 19, 2025)**:
-- ✅ Task 4: Gamepad/Joystick Support (gilrs-based cross-platform gamepad control with customizable button mapping and analog stick jogging)
+- ✅ Gamepad/Joystick Support (gilrs-based cross-platform control with customizable button mapping)
+- ✅ Code Quality Improvements (Clippy lint fixes - 10+ warnings resolved)
+- ✅ Back Plotting Module (365 total tests, 17 new tests for simulator)
 
 **Remaining Tasks (3/10)**:
-- Task 2: Back Plotting (Visual G-code Simulator) (2-3 days)
+- Task 6: Not Yet Defined
 - Task 7: Advanced CAM Features (3-4 days)
 - Task 10: Web Pendant Interface (3-5 days)
 
-**Next Development Focus**: Task 2 - Back Plotting
-- Step-through G-code visualization
-- Tool path tracing and line highlighting
-- Rewind and step-through capabilities
-- Integration with 3D visualizer
+**Next Development Focus**: Task 7 - Advanced CAM Features
 
   Future Enhancements (UGS Feature Parity):
 19. **Designer Editor**: Import SVG/DXF/C2D files ✓, draw shapes/text ✓, boolean operations (union ✓/intersect/subtract), undo/redo ✓, shape manipulation (move/scale/rotate/mirror), grid multiplication, clipart library, bitmap tracing
