@@ -41,3 +41,4 @@ stl_io = "0.8"  # STL file I/O
 tobj = "4.0"  # OBJ file loading
 gltf = "1.1"  # GLTF file handling
 regex = "1.12.2"
+gilrs = "0.10"  # Cross-platform gamepad support (no SDL2 dependency)

@@ -1,13 +1,17 @@
 //! Input handling module.
 //!
 //! This module manages keyboard shortcuts, user actions, and input processing
-//! for the gcodekit application, providing customizable key bindings.
+//! for the gcodekit application, providing customizable key bindings and gamepad support.
+
+pub mod gamepad;
 
 use eframe::egui;
 use std::collections::HashMap;
 
+pub use gamepad::{AnalogStickState, GamepadButton, GamepadController, GamepadMapping, GamepadState};
+
 /// Represents user actions that can be triggered by keyboard shortcuts or UI elements.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Action {
     OpenFile,
     SaveFile,
