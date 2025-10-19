@@ -188,7 +188,7 @@ pub fn convert_arcs_to_lines(gcode_content: &str, tolerance: f32) -> String {
         if !is_arc {
             result.push(line.to_string());
             // Update current position for non-arc moves
-            update_position(&trimmed, &mut current_pos, absolute_mode);
+            update_position(trimmed, &mut current_pos, absolute_mode);
             continue;
         }
 
@@ -366,7 +366,7 @@ fn approximate_arc(
     }
 
     let steps = ((sweep.abs() * radius / (2.0 * tolerance.max(0.001))).ceil()) as u32;
-    let steps = steps.max(1).min(1000);
+    let steps = steps.clamp(1, 1000);
 
     for i in 1..=steps {
         let t = i as f32 / steps as f32;

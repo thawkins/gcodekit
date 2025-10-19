@@ -410,7 +410,7 @@ pub fn generate_toolpath_from_polygon(poly: &Polygon, z_depth: f32) -> Vec<PathS
             start: current_pos.clone(),
             end: MachinePosition::new(vertex.0, vertex.1, z_depth),
             move_type: MoveType::Feed,
-            line_number: i as usize + 1,
+            line_number: i + 1,
         });
         current_pos = MachinePosition::new(vertex.0, vertex.1, z_depth);
     }
