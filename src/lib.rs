@@ -19,6 +19,7 @@ pub mod ui;
 pub mod visualization;
 pub mod web_pendant;
 pub mod widgets;
+pub mod boolean_ops;
 
 pub use crate::designer::Material;
 pub use crate::designer::Tool;
