@@ -35,7 +35,7 @@ impl ConsoleSeverity {
     }
 
     /// Convert string to severity.
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "error" => Some(ConsoleSeverity::Error),
             "warning" | "warn" => Some(ConsoleSeverity::Warning),
@@ -192,10 +192,6 @@ impl DeviceLogger {
             || response_trimmed.starts_with("ALARM:")
         {
             ConsoleSeverity::Error
-        } else if response_trimmed.starts_with("[MSG:")
-            || response_trimmed.starts_with("$")
-        {
-            ConsoleSeverity::Info
         } else {
             ConsoleSeverity::Info
         };
@@ -303,24 +299,24 @@ mod tests {
     }
 
     #[test]
-    fn test_console_severity_from_str() {
+    fn test_console_severity_parse() {
         assert_eq!(
-            ConsoleSeverity::from_str("error"),
+            ConsoleSeverity::parse("error"),
             Some(ConsoleSeverity::Error)
         );
         assert_eq!(
-            ConsoleSeverity::from_str("WARNING"),
+            ConsoleSeverity::parse("WARNING"),
             Some(ConsoleSeverity::Warning)
         );
         assert_eq!(
-            ConsoleSeverity::from_str("info"),
+            ConsoleSeverity::parse("info"),
             Some(ConsoleSeverity::Info)
         );
         assert_eq!(
-            ConsoleSeverity::from_str("debug"),
+            ConsoleSeverity::parse("debug"),
             Some(ConsoleSeverity::Debug)
         );
-        assert_eq!(ConsoleSeverity::from_str("invalid"), None);
+        assert_eq!(ConsoleSeverity::parse("invalid"), None);
     }
 
     #[test]

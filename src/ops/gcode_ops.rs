@@ -473,7 +473,7 @@ impl GcodeKitApp {
         gcode.push_str("G90 ; Absolute positioning\n");
         gcode.push_str("G21 ; Metric units\n");
         gcode.push_str("M3 S0 ; Spindle/laser off\n");
-        gcode.push_str("\n");
+        gcode.push('\n');
 
         // Calculate scaling factors
         let mm_per_inch = 25.4;
@@ -499,7 +499,7 @@ impl GcodeKitApp {
             for point in contour.iter().skip(1) {
                 let x = point.0 * scale;
                 let y = point.1 * scale;
-                let feed = self.cam.tool_feed_rate.max(10.0).min(1000.0);
+                let feed = self.cam.tool_feed_rate.clamp(10.0, 1000.0);
                 gcode.push_str(&format!("G1 X{:.3} Y{:.3} F{:.0}\n", x, y, feed));
             }
 
@@ -522,8 +522,8 @@ impl GcodeKitApp {
         let length = self.cam.box_length.max(10.0);
         let width = self.cam.box_width.max(10.0);
         let height = self.cam.box_height.max(10.0);
-        let tab_size = self.cam.tab_size.max(2.0).min(length / 4.0);
-        let feed = self.cam.tool_feed_rate.max(10.0).min(1000.0);
+        let tab_size = self.cam.tab_size.clamp(2.0, length / 4.0);
+        let feed = self.cam.tool_feed_rate.clamp(10.0, 1000.0);
 
         let mut gcode = String::new();
         gcode.push_str("; Tabbed Box G-code\n");
@@ -600,7 +600,7 @@ impl GcodeKitApp {
         self.log_console("generate_jigsaw: Starting jigsaw generation");
 
         let pieces = (self.cam.jigsaw_pieces as f32).max(4.0).sqrt() as i32;
-        let complexity = (self.cam.jigsaw_complexity as f32).max(1.0).min(5.0) as i32;
+        let complexity = (self.cam.jigsaw_complexity as f32).clamp(1.0, 5.0) as i32;
         
         // Material dimensions
         let material_width = 100.0;
@@ -608,7 +608,7 @@ impl GcodeKitApp {
         let piece_width = material_width / pieces as f32;
         let piece_height = material_height / pieces as f32;
         let wave_height = piece_width / (complexity as f32 + 2.0);
-        let feed = self.cam.tool_feed_rate.max(10.0).min(1000.0);
+        let feed = self.cam.tool_feed_rate.clamp(10.0, 1000.0);
 
         let mut gcode = String::new();
         gcode.push_str("; Jigsaw Puzzle G-code\n");

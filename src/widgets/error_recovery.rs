@@ -1,8 +1,8 @@
-/// Error Recovery UI Widget
-///
-/// Displays error recovery status, job resumption controls, and error notifications.
-/// Provides visual indicators for recovery state, automatic retry status, and
-/// detailed error messages with recovery options.
+//! Error Recovery UI Widget
+//!
+//! Displays error recovery status, job resumption controls, and error notifications.
+//! Provides visual indicators for recovery state, automatic retry status, and
+//! detailed error messages with recovery options.
 
 use crate::GcodeKitApp;
 use eframe::egui;

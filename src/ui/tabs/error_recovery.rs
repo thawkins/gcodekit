@@ -1,6 +1,6 @@
-/// Error Recovery Tab
-///
-/// Displays error recovery status, job resumption controls, and error notifications.
+//! Error Recovery Tab
+//!
+//! Displays error recovery status, job resumption controls, and error notifications.
 
 use crate::widgets::error_recovery::show_error_recovery_widget;
 use crate::GcodeKitApp;

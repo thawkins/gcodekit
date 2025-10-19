@@ -215,11 +215,13 @@ impl CalibrationProfiles {
 
     /// Create a new calibration profile.
     pub fn create_profile(&mut self, name: String) -> Result<(), String> {
-        if self.profiles.contains_key(&name) {
-            Err(format!("Profile '{}' already exists", name))
-        } else {
-            self.profiles.insert(name, MachineCalibration::default());
+        if let std::collections::hash_map::Entry::Vacant(e) =
+            self.profiles.entry(name.clone())
+        {
+            e.insert(MachineCalibration::default());
             Ok(())
+        } else {
+            Err(format!("Profile '{}' already exists", name))
         }
     }
 

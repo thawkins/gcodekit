@@ -1,7 +1,7 @@
-/// Enhanced 3D Visualizer Module
-///
-/// Provides real-time 3D visualization of toolpaths, machine position,
-/// and material stock with interactive camera controls.
+//! Enhanced 3D Visualizer Module
+//!
+//! Provides real-time 3D visualization of toolpaths, machine position,
+//! and material stock with interactive camera controls.
 
 use crate::types::MoveType;
 use eframe::egui;

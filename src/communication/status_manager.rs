@@ -55,13 +55,13 @@ impl StatusManagerConfig {
 
     /// Set query interval.
     pub fn with_query_interval(mut self, ms: u64) -> Self {
-        self.query_interval_ms = ms.max(10).min(5000);
+        self.query_interval_ms = ms.clamp(10, 5000);
         self
     }
 
     /// Set maximum history size.
     pub fn with_max_history(mut self, max: usize) -> Self {
-        self.max_history = max.max(10).min(10000);
+        self.max_history = max.clamp(10, 10000);
         self
     }
 

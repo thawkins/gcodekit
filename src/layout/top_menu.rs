@@ -120,7 +120,7 @@ pub fn show_top_menu(app: &mut GcodeKitApp, ctx: &egui::Context) {
                         show_about_dialog = true;
                     }
                     if ui.button("GRBL Documentation").clicked() {
-                        let _ = open_url("https://github.com/grbl/grbl/wiki");
+                        open_url("https://github.com/grbl/grbl/wiki");
                     }
                 });
             });

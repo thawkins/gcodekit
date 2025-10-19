@@ -66,7 +66,7 @@ impl BacklashCompensation {
 
     /// Validate backlash value is within reasonable range.
     pub fn validate_backlash(backlash: f32) -> bool {
-        backlash >= 0.0 && backlash < 10.0 // Reasonable range: 0 to 10mm
+        (0.0..10.0).contains(&backlash) // Reasonable range: 0 to 10mm
     }
 
     /// Update X axis backlash compensation.

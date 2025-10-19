@@ -55,7 +55,7 @@ impl SettingsStorage {
             let entry = entry?;
             let path = entry.path();
 
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+            if path.is_file() && path.extension().is_some_and(|ext| ext == "json") {
                 if let Some(filename) = path.file_stem() {
                     if let Some(name) = filename.to_str() {
                         profiles.push(name.to_string());
@@ -116,7 +116,7 @@ impl SettingsStorage {
                 let entry = entry?;
                 let path = entry.path();
 
-                if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+                if path.is_file() && path.extension().is_some_and(|ext| ext == "json") {
                     if let Some(filename) = path.file_name() {
                         let dest = backup_subdir.join(filename);
                         fs::copy(&path, dest)?;
@@ -142,7 +142,7 @@ impl SettingsStorage {
             let entry = entry?;
             let path = entry.path();
 
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+            if path.is_file() && path.extension().is_some_and(|ext| ext == "json") {
                 if let Some(filename) = path.file_name() {
                     let dest = profiles_dir.join(filename);
                     fs::copy(&path, dest)?;
@@ -166,7 +166,7 @@ impl SettingsStorage {
                 let entry = entry?;
                 let path = entry.path();
 
-                if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+                if path.is_file() && path.extension().is_some_and(|ext| ext == "json") {
                     if let Some(filename) = path.file_name() {
                         let dest = export_dir.join(filename);
                         fs::copy(&path, dest)?;
@@ -192,7 +192,7 @@ impl SettingsStorage {
             let entry = entry?;
             let path = entry.path();
 
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+            if path.is_file() && path.extension().is_some_and(|ext| ext == "json") {
                 if let Some(filename) = path.file_name() {
                     let dest = profiles_dir.join(filename);
                     fs::copy(&path, dest)?;

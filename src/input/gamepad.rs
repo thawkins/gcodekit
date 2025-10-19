@@ -188,7 +188,7 @@ impl GamepadController {
             for (button, pressed) in &state.buttons {
                 if *pressed {
                     if let Some(action) = self.mapping.button_map.get(button) {
-                        actions.push(action.clone());
+                        actions.push(*action);
                     }
                 }
             }

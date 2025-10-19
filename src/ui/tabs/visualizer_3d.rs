@@ -1,7 +1,7 @@
-/// 3D Visualizer Tab
-///
-/// Enhanced 3D visualization of toolpaths with real-time camera controls,
-/// machine position tracking, and stock visualization.
+//! 3D Visualizer Tab
+//!
+//! Enhanced 3D visualization of toolpaths with real-time camera controls,
+//! machine position tracking, and stock visualization.
 
 use crate::types::MoveType;
 use crate::visualization::{
@@ -151,8 +151,8 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
     let center = rect.center();
 
     // Draw 3D scene
-    draw_3d_grid(&painter, &vis_state, center, 100.0, 20.0);
-    draw_stock(&painter, &vis_state, center);
+    draw_3d_grid(painter, &vis_state, center, 100.0, 20.0);
+    draw_stock(painter, &vis_state, center);
 
     // Draw toolpath segments
     for segment in &app.gcode_editor.parsed_paths {
@@ -176,7 +176,7 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
         };
 
         draw_3d_line(
-            &painter,
+            painter,
             &vis_state,
             center,
             segment.start.x,
@@ -191,7 +191,7 @@ pub fn show_visualizer_3d_tab(app: &mut GcodeKitApp, ui: &mut egui::Ui) {
 
     // Draw machine position
     draw_machine_position(
-        &painter,
+        painter,
         &vis_state,
         center,
         app.machine.current_position.x,
