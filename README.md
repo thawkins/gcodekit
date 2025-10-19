@@ -455,8 +455,6 @@ cargo fmt            # Code formatting
 - ✅ Real-time machine status monitoring
 
 ### Session Verification (Oct 19, 2025)
-- ✅ All anomaly detection references removed from specs/plans
-- ✅ All firmware management features removed from documentation
 - ✅ Alarm unlock button verified in jog panel
 - ✅ Resume button verified in jog panel for pause state
 - ✅ Comprehensive test coverage verified (365 tests)
